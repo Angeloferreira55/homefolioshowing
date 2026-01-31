@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,25 +11,28 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2 } from 'lucide-react';
+import { Link2, Loader2, Upload, FileText, X } from 'lucide-react';
+
+interface PropertyData {
+  address: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  price?: number;
+  photoUrl?: string;
+  beds?: number;
+  baths?: number;
+  sqft?: number;
+}
 
 interface AddPropertyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (data: {
-    address: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    price?: number;
-    photoUrl?: string;
-    beds?: number;
-    baths?: number;
-    sqft?: number;
-  }) => void;
+  onAdd: (data: PropertyData) => void;
+  onAddMultiple?: (data: PropertyData[]) => void;
 }
 
-const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps) => {
+const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddPropertyDialogProps) => {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -42,6 +45,11 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
 
   const [listingUrl, setListingUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [parsedProperties, setParsedProperties] = useState<PropertyData[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportFromUrl = async () => {
     if (!listingUrl.trim()) {
@@ -85,6 +93,101 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ['application/pdf', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+      if (!validTypes.includes(file.type) && !file.name.endsWith('.csv')) {
+        toast.error('Please upload a PDF, CSV, or Excel file');
+        return;
+      }
+      setSelectedFile(file);
+      setParsedProperties([]);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Please sign in to upload files');
+      }
+
+      // Upload file to storage
+      const filePath = `${user.id}/${Date.now()}-${selectedFile.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('mls-uploads')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Determine file type
+      let fileType = 'pdf';
+      if (selectedFile.type.includes('csv') || selectedFile.name.endsWith('.csv')) {
+        fileType = 'csv';
+      } else if (selectedFile.type.includes('excel') || selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
+        fileType = 'excel';
+      }
+
+      // Parse the file
+      const { data, error } = await supabase.functions.invoke('parse-mls-file', {
+        body: { filePath, fileType },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to parse file');
+      }
+
+      const properties = data.data as PropertyData[];
+      
+      if (properties.length === 0) {
+        toast.error('No properties found in the file');
+        return;
+      }
+
+      if (properties.length === 1) {
+        // Single property - fill the form
+        const prop = properties[0];
+        if (prop.address) setAddress(prop.address);
+        if (prop.city) setCity(prop.city);
+        if (prop.state) setState(prop.state);
+        if (prop.zipCode) setZipCode(prop.zipCode);
+        if (prop.price) setPrice(prop.price.toString());
+        if (prop.beds) setBeds(prop.beds.toString());
+        if (prop.baths) setBaths(prop.baths.toString());
+        if (prop.sqft) setSqft(prop.sqft.toString());
+        toast.success('Property data extracted! Review and submit.');
+      } else {
+        // Multiple properties - show list
+        setParsedProperties(properties);
+        toast.success(`Found ${properties.length} properties!`);
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to process file');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAddAllProperties = () => {
+    if (onAddMultiple && parsedProperties.length > 0) {
+      onAddMultiple(parsedProperties);
+      resetForm();
+      onOpenChange(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (address.trim()) {
@@ -115,6 +218,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
     setBaths('');
     setSqft('');
     setListingUrl('');
+    setSelectedFile(null);
+    setParsedProperties([]);
   };
 
   return (
@@ -122,7 +227,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">
             Add Property
@@ -130,18 +235,19 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
         </DialogHeader>
 
         <Tabs defaultValue="manual" className="mt-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-            <TabsTrigger value="import">Import from URL</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="manual">Manual</TabsTrigger>
+            <TabsTrigger value="url">URL</TabsTrigger>
+            <TabsTrigger value="file">File Upload</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="import" className="space-y-4 mt-4">
+          <TabsContent value="url" className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="listingUrl">Listing URL</Label>
               <div className="flex gap-2">
                 <Input
                   id="listingUrl"
-                  placeholder="https://zillow.com/... or redfin.com/..."
+                  placeholder="https://redfin.com/... or flexmls.com/..."
                   value={listingUrl}
                   onChange={(e) => setListingUrl(e.target.value)}
                   className="flex-1"
@@ -161,7 +267,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Paste a link from Zillow, Redfin, Realtor.com, or any MLS listing
+                Works best with Redfin. Paste any MLS listing URL.
               </p>
             </div>
 
@@ -172,6 +278,106 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd }: AddPropertyDialogProps
                 {price && <p className="text-accent font-medium">${Number(price).toLocaleString()}</p>}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="file" className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <Label>Upload MLS File</Label>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.csv,.xlsx,.xls"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
+              {!selectedFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="font-medium">Click to upload</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF, CSV, or Excel files
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <FileText className="w-8 h-8 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setParsedProperties([]);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {selectedFile && parsedProperties.length === 0 && (
+                <Button
+                  type="button"
+                  onClick={handleFileUpload}
+                  disabled={isUploading}
+                  className="w-full gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Extract Properties
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {parsedProperties.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">
+                    Found {parsedProperties.length} properties:
+                  </p>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {parsedProperties.map((prop, idx) => (
+                      <div key={idx} className="p-2 bg-muted/50 rounded text-sm">
+                        <p className="font-medium">{prop.address}</p>
+                        {prop.city && prop.state && (
+                          <p className="text-muted-foreground text-xs">
+                            {prop.city}, {prop.state}
+                          </p>
+                        )}
+                        {prop.price && (
+                          <p className="text-accent text-xs">
+                            ${prop.price.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleAddAllProperties}
+                    className="w-full"
+                  >
+                    Add All {parsedProperties.length} Properties
+                  </Button>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="manual" className="mt-4">

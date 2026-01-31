@@ -156,6 +156,45 @@ const SessionDetail = () => {
     }
   };
 
+  const handleAddMultipleProperties = async (propertiesData: Array<{
+    address: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    price?: number;
+    photoUrl?: string;
+    beds?: number;
+    baths?: number;
+    sqft?: number;
+  }>) => {
+    try {
+      const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
+      
+      const insertData = propertiesData.map((data, index) => ({
+        session_id: id,
+        address: data.address,
+        city: data.city || null,
+        state: data.state || null,
+        zip_code: data.zipCode || null,
+        price: data.price || null,
+        photo_url: data.photoUrl || null,
+        beds: data.beds || null,
+        baths: data.baths || null,
+        sqft: data.sqft || null,
+        order_index: maxOrder + 1 + index,
+      }));
+
+      const { error } = await supabase.from('session_properties').insert(insertData);
+
+      if (error) throw error;
+
+      toast.success(`${propertiesData.length} properties added!`);
+      fetchProperties();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add properties');
+    }
+  };
+
   const handleMoveProperty = async (propertyId: string, direction: 'up' | 'down') => {
     const currentIndex = properties.findIndex((p) => p.id === propertyId);
     if (currentIndex === -1) return;
@@ -467,6 +506,7 @@ const SessionDetail = () => {
         open={isAddPropertyOpen}
         onOpenChange={setIsAddPropertyOpen}
         onAdd={handleAddProperty}
+        onAddMultiple={handleAddMultipleProperties}
       />
 
       <QRCodeDialog
