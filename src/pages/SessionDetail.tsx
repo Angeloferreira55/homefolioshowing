@@ -123,6 +123,9 @@ const SessionDetail = () => {
     zipCode?: string;
     price?: number;
     photoUrl?: string;
+    beds?: number;
+    baths?: number;
+    sqft?: number;
   }) => {
     try {
       const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
@@ -135,6 +138,9 @@ const SessionDetail = () => {
         zip_code: data.zipCode || null,
         price: data.price || null,
         photo_url: data.photoUrl || null,
+        beds: data.beds || null,
+        baths: data.baths || null,
+        sqft: data.sqft || null,
         order_index: maxOrder + 1,
       });
 
