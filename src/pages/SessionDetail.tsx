@@ -42,6 +42,9 @@ interface SessionProperty {
   price: number | null;
   photo_url: string | null;
   order_index: number;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
   doc_count?: number;
 }
 
@@ -399,11 +402,22 @@ const SessionDetail = () => {
                       {property.zip_code && ` ${property.zip_code}`}
                     </h3>
                   </div>
-                  {property.price && (
-                    <p className="text-accent font-medium">
-                      {formatPrice(property.price)}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-3 mt-1">
+                    {property.price && (
+                      <span className="text-accent font-medium">
+                        {formatPrice(property.price)}
+                      </span>
+                    )}
+                    {(property.beds || property.baths || property.sqft) && (
+                      <span className="text-muted-foreground text-sm">
+                        {property.beds && `${property.beds} bed`}
+                        {property.beds && property.baths && ' · '}
+                        {property.baths && `${property.baths} bath`}
+                        {(property.beds || property.baths) && property.sqft && ' · '}
+                        {property.sqft && `${property.sqft.toLocaleString()} sqft`}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Actions */}
