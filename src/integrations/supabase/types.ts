@@ -14,13 +14,221 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      property_documents: {
+        Row: {
+          created_at: string
+          doc_type: string | null
+          file_url: string
+          id: string
+          name: string
+          session_property_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_type?: string | null
+          file_url: string
+          id?: string
+          name: string
+          session_property_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          session_property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_documents_session_property_id_fkey"
+            columns: ["session_property_id"]
+            isOneToOne: false
+            referencedRelation: "session_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_ratings: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          rating: number | null
+          session_property_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          rating?: number | null
+          session_property_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          rating?: number | null
+          session_property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_ratings_session_property_id_fkey"
+            columns: ["session_property_id"]
+            isOneToOne: false
+            referencedRelation: "session_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_properties: {
+        Row: {
+          address: string
+          baths: number | null
+          beds: number | null
+          city: string | null
+          created_at: string
+          id: string
+          order_index: number
+          photo_url: string | null
+          price: number | null
+          session_id: string
+          sqft: number | null
+          state: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          address: string
+          baths?: number | null
+          beds?: number | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          photo_url?: string | null
+          price?: number | null
+          session_id: string
+          sqft?: number | null
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string
+          baths?: number | null
+          beds?: number | null
+          city?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          photo_url?: string | null
+          price?: number | null
+          session_id?: string
+          sqft?: number | null
+          state?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_properties_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "showing_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showing_sessions: {
+        Row: {
+          admin_id: string
+          client_email: string | null
+          client_name: string
+          client_phone: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          session_date: string | null
+          share_token: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          client_email?: string | null
+          client_name: string
+          client_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_session_id_from_property: {
+        Args: { property_id: string }
+        Returns: string
+      }
+      is_session_admin: { Args: { session_id: string }; Returns: boolean }
+      is_valid_share_token: { Args: { token: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
