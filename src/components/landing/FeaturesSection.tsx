@@ -1,4 +1,4 @@
-import { Users, Home, Calendar, Share2, FileText, RefreshCw } from 'lucide-react';
+import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route } from 'lucide-react';
 
 const features = [
   {
@@ -28,8 +28,13 @@ const features = [
   },
   {
     icon: RefreshCw,
-    title: 'Always Current',
+    title: 'Real-Time Updates',
     description: 'Update your client\'s Homefolio anytime. Properties can be added, removed, or reordered with ease.',
+  },
+  {
+    icon: Route,
+    title: 'Route Optimization',
+    description: 'Plan efficient showing routes for multiple properties. Save time and maximize your client visits.',
   },
 ];
 
