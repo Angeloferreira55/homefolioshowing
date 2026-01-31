@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
+import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +67,8 @@ const SessionDetail = () => {
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
+  const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -479,7 +482,17 @@ const SessionDetail = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => {
+                      setDocsPropertyId(property.id);
+                      setDocsPropertyAddress(
+                        `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
+                      );
+                    }}
+                  >
                     <FileText className="w-3.5 h-3.5" />
                     Docs{property.doc_count ? ` (${property.doc_count})` : ''}
                   </Button>
@@ -554,6 +567,18 @@ const SessionDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PropertyDocumentsDialog
+        open={!!docsPropertyId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDocsPropertyId(null);
+            fetchProperties(); // Refresh doc counts
+          }
+        }}
+        propertyId={docsPropertyId || ''}
+        propertyAddress={docsPropertyAddress}
+      />
     </div>
   );
 };
