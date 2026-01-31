@@ -1,0 +1,280 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Plus, Home, LogOut, Users, Calendar, Star, Copy, ChevronRight } from 'lucide-react';
+import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+
+interface ShowingSession {
+  id: string;
+  title: string;
+  client_name: string;
+  session_date: string | null;
+  share_token: string;
+  created_at: string;
+  property_count?: number;
+  rating_count?: number;
+}
+
+const ShowingHub = () => {
+  const navigate = useNavigate();
+  const [sessions, setSessions] = useState<ShowingSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+    fetchSessions();
+  }, []);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
+      return;
+    }
+    setUserEmail(session.user.email || '');
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+  };
+
+  const fetchSessions = async () => {
+    try {
+      const { data: sessionsData, error } = await supabase
+        .from('showing_sessions')
+        .select(`
+          id,
+          title,
+          client_name,
+          session_date,
+          share_token,
+          created_at
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch property counts for each session
+      const sessionsWithCounts = await Promise.all(
+        (sessionsData || []).map(async (session) => {
+          const { count: propertyCount } = await supabase
+            .from('session_properties')
+            .select('*', { count: 'exact', head: true })
+            .eq('session_id', session.id);
+
+          const { count: ratingCount } = await supabase
+            .from('property_ratings')
+            .select('*', { count: 'exact', head: true })
+            .eq('session_property_id', session.id);
+
+          return {
+            ...session,
+            property_count: propertyCount || 0,
+            rating_count: ratingCount || 0,
+          };
+        })
+      );
+
+      setSessions(sessionsWithCounts);
+    } catch (error: any) {
+      toast.error('Failed to load sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateSession = async (data: {
+    title: string;
+    sessionDate?: Date;
+    clientName: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    notes?: string;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase.from('showing_sessions').insert({
+        admin_id: user.id,
+        title: data.title,
+        session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+        client_name: data.clientName,
+        client_email: data.clientEmail || null,
+        client_phone: data.clientPhone || null,
+        notes: data.notes || null,
+      });
+
+      if (error) throw error;
+
+      toast.success('Session created!');
+      fetchSessions();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create session');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const handleDuplicate = async (session: ShowingSession, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase.from('showing_sessions').insert({
+        admin_id: user.id,
+        title: `${session.title} (Copy)`,
+        session_date: session.session_date,
+        client_name: session.client_name,
+      });
+
+      if (error) throw error;
+
+      toast.success('Session duplicated!');
+      fetchSessions();
+    } catch (error: any) {
+      toast.error('Failed to duplicate session');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <Home className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-display text-xl font-semibold text-foreground">
+                HomeFolio
+              </span>
+            </Link>
+
+            <Button variant="ghost" onClick={handleLogout} className="gap-2">
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-foreground mb-1">
+              Showing Hub
+            </h1>
+            <p className="text-muted-foreground">
+              Logged in as {userEmail}
+            </p>
+          </div>
+        </div>
+
+        {/* New Session Button */}
+        <Button
+          onClick={() => setIsCreateOpen(true)}
+          className="w-full sm:w-auto mb-8 h-14 bg-primary text-primary-foreground font-semibold uppercase tracking-wide gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          New Showing Session
+        </Button>
+
+        {/* Sessions List */}
+        {loading ? (
+          <div className="text-center py-16 text-muted-foreground">
+            Loading sessions...
+          </div>
+        ) : sessions.length > 0 ? (
+          <div className="space-y-4">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => navigate(`/admin/session/${session.id}`)}
+                className="bg-card rounded-xl p-5 card-elevated cursor-pointer hover:bg-card/80 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-display text-xl font-semibold text-foreground mb-1">
+                      {session.title}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4" />
+                        {session.client_name}
+                      </span>
+                      {session.session_date && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4" />
+                          {format(new Date(session.session_date), 'M/d/yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Home className="w-3.5 h-3.5" />
+                        {session.property_count} properties
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5" />
+                        {session.rating_count} ratings
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDuplicate(session, e)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+              No sessions yet
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Create your first showing session to get started
+            </p>
+            <Button onClick={() => setIsCreateOpen(true)} variant="accent">
+              <Plus className="w-4 h-4 mr-2" />
+              Create First Session
+            </Button>
+          </div>
+        )}
+      </main>
+
+      <CreateSessionDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreate={handleCreateSession}
+      />
+    </div>
+  );
+};
+
+export default ShowingHub;

@@ -7,6 +7,10 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import HomefolioEdit from "./pages/HomefolioEdit";
 import ClientView from "./pages/ClientView";
+import Auth from "./pages/Auth";
+import ShowingHub from "./pages/ShowingHub";
+import SessionDetail from "./pages/SessionDetail";
+import PublicSession from "./pages/PublicSession";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +26,11 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/homefolio/:id" element={<HomefolioEdit />} />
           <Route path="/view/:link" element={<ClientView />} />
+          {/* Showing Sessions Routes */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/admin/showings" element={<ShowingHub />} />
+          <Route path="/admin/session/:id" element={<SessionDetail />} />
+          <Route path="/s/:token" element={<PublicSession />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
