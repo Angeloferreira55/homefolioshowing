@@ -36,10 +36,10 @@ const Navbar = () => {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <Button variant="ghost" asChild>
-              <Link to="/login">Sign In</Link>
+              <Link to="/auth">Sign In</Link>
             </Button>
             <Button variant="accent" asChild>
-              <Link to="/dashboard">Get Started</Link>
+              <Link to="/admin/showings">Get Started</Link>
             </Button>
           </div>
 
@@ -84,10 +84,10 @@ const Navbar = () => {
               </Link>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Button variant="outline" asChild className="w-full">
-                  <Link to="/login" onClick={() => setIsOpen(false)}>Sign In</Link>
+                  <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
                 </Button>
                 <Button variant="accent" asChild className="w-full">
-                  <Link to="/dashboard" onClick={() => setIsOpen(false)}>Get Started</Link>
+                  <Link to="/admin/showings" onClick={() => setIsOpen(false)}>Get Started</Link>
                 </Button>
               </div>
             </div>

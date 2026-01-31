@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     console.log('Scraping listing URL:', formattedUrl);
 
-    // Use Firecrawl with JSON extraction for structured property data
+    // Use Firecrawl with extract format for structured property data
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -56,26 +56,23 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: [
-          'markdown',
-          {
-            type: 'json',
-            schema: {
-              type: 'object',
-              properties: {
-                address: { type: 'string', description: 'Street address of the property' },
-                city: { type: 'string', description: 'City name' },
-                state: { type: 'string', description: 'State abbreviation (e.g. CA, TX, NY)' },
-                zipCode: { type: 'string', description: 'ZIP code' },
-                price: { type: 'number', description: 'Listing price in dollars (just the number, no symbols)' },
-                beds: { type: 'number', description: 'Number of bedrooms' },
-                baths: { type: 'number', description: 'Number of bathrooms' },
-                sqft: { type: 'number', description: 'Square footage' },
-              },
-              required: ['address'],
+        formats: ['markdown', 'extract'],
+        extract: {
+          schema: {
+            type: 'object',
+            properties: {
+              address: { type: 'string', description: 'Street address of the property' },
+              city: { type: 'string', description: 'City name' },
+              state: { type: 'string', description: 'State abbreviation (e.g. CA, TX, NY)' },
+              zipCode: { type: 'string', description: 'ZIP code' },
+              price: { type: 'number', description: 'Listing price in dollars (just the number, no symbols)' },
+              beds: { type: 'number', description: 'Number of bedrooms' },
+              baths: { type: 'number', description: 'Number of bathrooms' },
+              sqft: { type: 'number', description: 'Square footage' },
             },
+            required: ['address'],
           },
-        ],
+        },
         onlyMainContent: true,
       }),
     });
@@ -91,7 +88,7 @@ Deno.serve(async (req) => {
     }
 
     // Extract property data from the response
-    const extractedData = data.data?.json || data.json || {};
+    const extractedData = data.data?.extract || data.extract || {};
     const metadata = data.data?.metadata || data.metadata || {};
     
     // Try to get an image from metadata if available
