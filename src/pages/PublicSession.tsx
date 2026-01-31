@@ -2,9 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+
+interface PropertyDocument {
+  id: string;
+  name: string;
+  doc_type: string | null;
+  file_url: string;
+}
 
 interface SessionProperty {
   id: string;
@@ -15,6 +22,7 @@ interface SessionProperty {
   price: number | null;
   photo_url: string | null;
   order_index: number;
+  documents?: PropertyDocument[];
 }
 
 interface ShowingSession {
@@ -63,7 +71,29 @@ const PublicSession = () => {
         .order('order_index', { ascending: true });
 
       if (propsError) throw propsError;
-      setProperties(propertiesData || []);
+
+      // Fetch documents for all properties
+      const propertyIds = (propertiesData || []).map(p => p.id);
+      const { data: docsData } = await supabase
+        .from('property_documents')
+        .select('id, name, doc_type, file_url, session_property_id')
+        .in('session_property_id', propertyIds);
+
+      // Group documents by property
+      const docsByProperty: Record<string, PropertyDocument[]> = {};
+      docsData?.forEach(doc => {
+        if (!docsByProperty[doc.session_property_id]) {
+          docsByProperty[doc.session_property_id] = [];
+        }
+        docsByProperty[doc.session_property_id].push(doc);
+      });
+
+      // Attach documents to properties
+      const propertiesWithDocs = (propertiesData || []).map(p => ({
+        ...p,
+        documents: docsByProperty[p.id] || [],
+      }));
+      setProperties(propertiesWithDocs);
 
       // Fetch existing ratings
       const { data: ratingsData } = await supabase
@@ -119,6 +149,32 @@ const PublicSession = () => {
       currency: 'USD',
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  const handleViewDocument = async (fileUrl: string, docName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('property-documents')
+        .createSignedUrl(fileUrl, 3600);
+
+      if (error) throw error;
+      window.open(data.signedUrl, '_blank');
+    } catch (error) {
+      toast.error('Failed to open document');
+    }
+  };
+
+  const getDocTypeLabel = (type: string | null) => {
+    const labels: Record<string, string> = {
+      disclosure: 'Disclosure',
+      inspection: 'Inspection',
+      floor_plan: 'Floor Plan',
+      hoa: 'HOA',
+      survey: 'Survey',
+      title: 'Title',
+      other: 'Document',
+    };
+    return labels[type || 'other'] || 'Document';
   };
 
   if (loading) {
@@ -230,6 +286,36 @@ const PublicSession = () => {
                       .filter(Boolean)
                       .join(', ') || 'Location TBD'}
                   </p>
+
+                  {/* Documents */}
+                  {property.documents && property.documents.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5" />
+                        Documents ({property.documents.length})
+                      </h4>
+                      <div className="space-y-1.5">
+                        {property.documents.map((doc) => (
+                          <button
+                            key={doc.id}
+                            onClick={() => handleViewDocument(doc.file_url, doc.name)}
+                            className="w-full flex items-center justify-between p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-sm text-foreground truncate">{doc.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                                {getDocTypeLabel(doc.doc_type)}
+                              </span>
+                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Rating */}
                   <div className="flex items-center gap-2">
