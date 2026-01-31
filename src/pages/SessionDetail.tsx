@@ -17,6 +17,8 @@ import {
   ChevronDown,
   Route,
   Upload,
+  Star,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -34,6 +36,23 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+interface FeedbackData {
+  topThingsLiked?: string;
+  concerns?: string;
+  lifestyleFit?: string;
+  layoutThoughts?: string;
+  priceFeel?: string;
+  neighborhoodThoughts?: string;
+  conditionConcerns?: string;
+  nextStep?: string;
+  investigateRequest?: string;
+}
+
+interface PropertyRating {
+  rating: number | null;
+  feedback: FeedbackData;
+}
+
 interface SessionProperty {
   id: string;
   address: string;
@@ -47,6 +66,7 @@ interface SessionProperty {
   baths: number | null;
   sqft: number | null;
   doc_count?: number;
+  rating?: PropertyRating;
 }
 
 interface ShowingSession {
@@ -105,18 +125,46 @@ const SessionDetail = () => {
 
       if (error) throw error;
 
-      // Get doc counts for each property
-      const propsWithDocs = await Promise.all(
+      // Get doc counts and ratings for each property
+      const propsWithExtras = await Promise.all(
         (propertiesData || []).map(async (prop) => {
-          const { count } = await supabase
-            .from('property_documents')
-            .select('*', { count: 'exact', head: true })
-            .eq('session_property_id', prop.id);
-          return { ...prop, doc_count: count || 0 };
+          const [docResult, ratingResult] = await Promise.all([
+            supabase
+              .from('property_documents')
+              .select('*', { count: 'exact', head: true })
+              .eq('session_property_id', prop.id),
+            supabase
+              .from('property_ratings')
+              .select('rating, feedback')
+              .eq('session_property_id', prop.id)
+              .maybeSingle()
+          ]);
+
+          let rating: PropertyRating | undefined;
+          if (ratingResult.data) {
+            let parsedFeedback: FeedbackData = {};
+            if (ratingResult.data.feedback) {
+              try {
+                parsedFeedback = JSON.parse(ratingResult.data.feedback);
+              } catch {
+                parsedFeedback = {};
+              }
+            }
+            rating = {
+              rating: ratingResult.data.rating,
+              feedback: parsedFeedback
+            };
+          }
+
+          return { 
+            ...prop, 
+            doc_count: docResult.count || 0,
+            rating
+          };
         })
       );
 
-      setProperties(propsWithDocs);
+      setProperties(propsWithExtras);
     } catch (error) {
       toast.error('Failed to load properties');
     }
@@ -461,6 +509,12 @@ const SessionDetail = () => {
                       {property.state && `, ${property.state}`}
                       {property.zip_code && ` ${property.zip_code}`}
                     </h3>
+                    {property.rating && (
+                      <div className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
+                        <Star className="w-3 h-3 fill-current" />
+                        {property.rating.rating}/10
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
                     {property.price && (
@@ -478,6 +532,48 @@ const SessionDetail = () => {
                       </span>
                     )}
                   </div>
+                  {/* Client Feedback Summary */}
+                  {property.rating?.feedback && Object.keys(property.rating.feedback).length > 0 && (
+                    <div className="mt-2 p-2 bg-muted/50 rounded-lg text-sm space-y-1">
+                      <div className="flex items-center gap-1 text-muted-foreground font-medium">
+                        <MessageSquare className="w-3 h-3" />
+                        Client Feedback
+                      </div>
+                      {property.rating.feedback.nextStep && (
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            property.rating.feedback.nextStep === 'interested' 
+                              ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                              : property.rating.feedback.nextStep === 'not_interested'
+                              ? 'bg-red-500/20 text-red-700 dark:text-red-400'
+                              : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
+                          }`}>
+                            {property.rating.feedback.nextStep === 'interested' && '✓ Interested'}
+                            {property.rating.feedback.nextStep === 'not_interested' && '✗ Not Interested'}
+                            {property.rating.feedback.nextStep === 'revisit' && '↻ Wants to Revisit'}
+                          </span>
+                        </div>
+                      )}
+                      {property.rating.feedback.priceFeel && (
+                        <p className="text-muted-foreground">
+                          <span className="font-medium">Price:</span>{' '}
+                          {property.rating.feedback.priceFeel === 'fair' && 'Fair'}
+                          {property.rating.feedback.priceFeel === 'high' && 'Too High'}
+                          {property.rating.feedback.priceFeel === 'low' && 'Great Value'}
+                        </p>
+                      )}
+                      {property.rating.feedback.topThingsLiked && (
+                        <p className="text-muted-foreground truncate">
+                          <span className="font-medium">Liked:</span> {property.rating.feedback.topThingsLiked}
+                        </p>
+                      )}
+                      {property.rating.feedback.concerns && (
+                        <p className="text-muted-foreground truncate">
+                          <span className="font-medium">Concerns:</span> {property.rating.feedback.concerns}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
