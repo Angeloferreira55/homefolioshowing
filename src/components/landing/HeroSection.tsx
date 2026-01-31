@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Link2, RefreshCw, Users } from 'lucide-react';
+import { ArrowRight, Link2, RefreshCw, Users, Route } from 'lucide-react';
 
 const HeroSection = () => {
   return (
@@ -67,6 +67,10 @@ const HeroSection = () => {
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm">
               <RefreshCw className="w-4 h-4 text-accent" />
               <span className="text-primary-foreground/90 text-sm">Real-Time Updates</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm">
+              <Route className="w-4 h-4 text-accent" />
+              <span className="text-primary-foreground/90 text-sm">Route Optimization</span>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm">
               <Users className="w-4 h-4 text-accent" />
