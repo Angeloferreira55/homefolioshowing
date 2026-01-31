@@ -5,6 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Home, Calendar, MapPin, Star, FileText, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
+
+interface FeedbackData {
+  topThingsLiked?: string;
+  concerns?: string;
+  lifestyleFit?: 'yes' | 'no' | 'not_sure';
+  layoutThoughts?: string;
+  priceFeel?: 'too_high' | 'fair' | 'great_value';
+  neighborhoodThoughts?: string;
+  conditionConcerns?: string;
+  nextStep?: 'see_again' | 'write_offer' | 'keep_looking' | 'sleep_on_it';
+  investigateRequest?: string;
+}
 
 interface PropertyDocument {
   id: string;
@@ -33,13 +46,22 @@ interface ShowingSession {
   notes: string | null;
 }
 
+interface PropertyRating {
+  rating: number;
+  feedback: FeedbackData;
+}
+
 const PublicSession = () => {
   const { token } = useParams<{ token: string }>();
   const [session, setSession] = useState<ShowingSession | null>(null);
   const [properties, setProperties] = useState<SessionProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [ratings, setRatings] = useState<Record<string, PropertyRating>>({});
+  
+  // Feedback dialog state
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [activeProperty, setActiveProperty] = useState<SessionProperty | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -95,15 +117,26 @@ const PublicSession = () => {
       }));
       setProperties(propertiesWithDocs);
 
-      // Fetch existing ratings
+      // Fetch existing ratings with feedback
       const { data: ratingsData } = await supabase
         .from('property_ratings')
-        .select('session_property_id, rating')
+        .select('session_property_id, rating, feedback')
         .in('session_property_id', (propertiesData || []).map(p => p.id));
 
-      const ratingsMap: Record<string, number> = {};
+      const ratingsMap: Record<string, PropertyRating> = {};
       ratingsData?.forEach(r => {
-        ratingsMap[r.session_property_id] = r.rating || 0;
+        let parsedFeedback: FeedbackData = {};
+        if (r.feedback) {
+          try {
+            parsedFeedback = JSON.parse(r.feedback);
+          } catch {
+            parsedFeedback = {};
+          }
+        }
+        ratingsMap[r.session_property_id] = {
+          rating: r.rating || 5,
+          feedback: parsedFeedback,
+        };
       });
       setRatings(ratingsMap);
 
@@ -114,32 +147,39 @@ const PublicSession = () => {
     }
   };
 
-  const handleRate = async (propertyId: string, rating: number) => {
-    try {
-      // Check if rating exists
-      const { data: existing } = await supabase
-        .from('property_ratings')
-        .select('id')
-        .eq('session_property_id', propertyId)
-        .single();
+  const handleOpenFeedback = (property: SessionProperty) => {
+    setActiveProperty(property);
+    setFeedbackOpen(true);
+  };
 
-      if (existing) {
-        await supabase
-          .from('property_ratings')
-          .update({ rating })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('property_ratings').insert({
-          session_property_id: propertyId,
-          rating,
-        });
+  const handleFeedbackSaved = () => {
+    // Refetch ratings after save
+    fetchRatings();
+  };
+
+  const fetchRatings = async () => {
+    if (!properties.length) return;
+    const { data: ratingsData } = await supabase
+      .from('property_ratings')
+      .select('session_property_id, rating, feedback')
+      .in('session_property_id', properties.map(p => p.id));
+
+    const ratingsMap: Record<string, PropertyRating> = {};
+    ratingsData?.forEach(r => {
+      let parsedFeedback: FeedbackData = {};
+      if (r.feedback) {
+        try {
+          parsedFeedback = JSON.parse(r.feedback);
+        } catch {
+          parsedFeedback = {};
+        }
       }
-
-      setRatings(prev => ({ ...prev, [propertyId]: rating }));
-      toast.success('Rating saved!');
-    } catch (error) {
-      toast.error('Failed to save rating');
-    }
+      ratingsMap[r.session_property_id] = {
+        rating: r.rating || 5,
+        feedback: parsedFeedback,
+      };
+    });
+    setRatings(ratingsMap);
   };
 
   const formatPrice = (price: number | null) => {
@@ -317,26 +357,39 @@ const PublicSession = () => {
                     </div>
                   )}
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Your rating:</span>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => handleRate(property.id, star)}
-                          className="focus:outline-none"
-                        >
-                          <Star
-                            className={`w-5 h-5 transition-colors ${
-                              star <= (ratings[property.id] || 0)
-                                ? 'fill-gold text-gold'
-                                : 'text-muted-foreground hover:text-gold'
-                            }`}
-                          />
-                        </button>
-                      ))}
+                  {/* Rating Summary & Button */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Rating:</span>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const rating = ratings[property.id]?.rating || 0;
+                          const filled = star <= Math.round(rating / 2);
+                          return (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                filled ? 'fill-gold text-gold' : 'text-muted-foreground'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+                      {ratings[property.id]?.rating && (
+                        <span className="text-xs text-muted-foreground">
+                          ({ratings[property.id].rating}/10)
+                        </span>
+                      )}
                     </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenFeedback(property)}
+                      className="gap-1.5"
+                    >
+                      <Star className="w-3.5 h-3.5" />
+                      {ratings[property.id] ? 'Edit' : 'Rate'}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -363,6 +416,18 @@ const PublicSession = () => {
           </p>
         </div>
       </footer>
+      {/* Feedback Dialog */}
+      {activeProperty && (
+        <PropertyFeedbackDialog
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          propertyId={activeProperty.id}
+          propertyAddress={activeProperty.address}
+          existingRating={ratings[activeProperty.id]?.rating || 5}
+          existingFeedback={ratings[activeProperty.id]?.feedback}
+          onSaved={handleFeedbackSaved}
+        />
+      )}
     </div>
   );
 };
