@@ -131,6 +131,14 @@ const SessionDetail = () => {
     sqft?: number;
   }) => {
     try {
+      // Verify user is authenticated before insert
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to add properties');
+        navigate('/auth');
+        return;
+      }
+
       const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
       
       const { error } = await supabase.from('session_properties').insert({
@@ -152,6 +160,7 @@ const SessionDetail = () => {
       toast.success('Property added!');
       fetchProperties();
     } catch (error: any) {
+      console.error('Add property error:', error);
       toast.error(error.message || 'Failed to add property');
     }
   };
@@ -168,6 +177,14 @@ const SessionDetail = () => {
     sqft?: number;
   }>) => {
     try {
+      // Verify user is authenticated before insert
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to add properties');
+        navigate('/auth');
+        return;
+      }
+
       const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
       
       const insertData = propertiesData.map((data, index) => ({
@@ -191,6 +208,7 @@ const SessionDetail = () => {
       toast.success(`${propertiesData.length} properties added!`);
       fetchProperties();
     } catch (error: any) {
+      console.error('Add multiple properties error:', error);
       toast.error(error.message || 'Failed to add properties');
     }
   };
