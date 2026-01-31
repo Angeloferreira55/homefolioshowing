@@ -22,7 +22,7 @@ const HeroSection = () => {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 mb-8 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="text-primary-foreground/90 text-sm font-medium">
-              A smarter way to curate homes
+              Homefolio — Your Showing Hub
             </span>
           </div>
 
