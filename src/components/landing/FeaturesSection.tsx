@@ -1,4 +1,4 @@
-import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route } from 'lucide-react';
+import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route, Columns } from 'lucide-react';
 
 const features = [
   {
@@ -35,6 +35,11 @@ const features = [
     icon: Route,
     title: 'Route Optimization',
     description: 'Plan efficient showing routes for multiple properties. Save time and maximize your client visits.',
+  },
+  {
+    icon: Columns,
+    title: 'Property Comparisons',
+    description: 'Let clients compare homes side by side. View price, size, and features at a glance to make decisions easier.',
   },
 ];
 
