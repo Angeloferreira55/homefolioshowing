@@ -19,6 +19,7 @@ import {
   Upload,
   Star,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -89,6 +90,7 @@ const SessionDetail = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -340,6 +342,55 @@ const SessionDetail = () => {
     }).format(price);
   };
 
+  const handleOptimizeRoute = async () => {
+    if (properties.length < 2) {
+      toast.info('Need at least 2 properties to optimize route');
+      return;
+    }
+
+    setIsOptimizing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('optimize-route', {
+        body: {
+          properties: properties.map(p => ({
+            id: p.id,
+            address: p.address,
+            city: p.city,
+            state: p.state,
+            zip_code: p.zip_code,
+          })),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      const optimizedOrder: string[] = data.optimizedOrder;
+      
+      // Update order_index for each property based on optimized order
+      const updates = optimizedOrder.map((propId, newIndex) => 
+        supabase
+          .from('session_properties')
+          .update({ order_index: newIndex })
+          .eq('id', propId)
+      );
+
+      await Promise.all(updates);
+      
+      toast.success('Route optimized for efficient driving!');
+      fetchProperties();
+    } catch (error: any) {
+      console.error('Route optimization error:', error);
+      toast.error(error.message || 'Failed to optimize route');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -433,9 +484,18 @@ const SessionDetail = () => {
             Properties ({properties.length})
           </h2>
           <div className="flex gap-3">
-            <Button variant="outline" className="gap-2">
-              <Route className="w-4 h-4" />
-              Optimize Route
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleOptimizeRoute}
+              disabled={isOptimizing || properties.length < 2}
+            >
+              {isOptimizing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Route className="w-4 h-4" />
+              )}
+              {isOptimizing ? 'Optimizing...' : 'Optimize Route'}
             </Button>
             <Button variant="outline" className="gap-2">
               <Upload className="w-4 h-4" />
