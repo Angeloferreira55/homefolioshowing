@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Home, MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Fix for default marker icons in Leaflet with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -81,57 +82,65 @@ const PropertyMap = ({ properties }: PropertyMapProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Geocode addresses using OpenStreetMap Nominatim
+  // Geocode addresses using Edge Function
   useEffect(() => {
     const geocodeProperties = async () => {
       setIsLoading(true);
       setError(null);
       
-      const results: GeocodedProperty[] = [];
-      
-      for (const property of properties) {
-        const fullAddress = [property.address, property.city, property.state, property.zip_code]
-          .filter(Boolean)
-          .join(', ');
+      try {
+        // Prepare addresses for geocoding
+        const addressData = properties.map(property => ({
+          id: property.id,
+          address: [property.address, property.city, property.state, property.zip_code]
+            .filter(Boolean)
+            .join(', '),
+        }));
         
-        try {
-          // Add delay to respect rate limits (1 request per second for Nominatim)
-          if (results.length > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-          
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1`,
-            {
-              headers: {
-                'User-Agent': 'HomeFolio App (contact@example.com)',
-              },
-            }
-          );
-          
-          const data = await response.json();
-          
-          if (data && data.length > 0) {
-            results.push({
-              id: property.id,
-              address: property.address,
-              fullAddress,
-              lat: parseFloat(data[0].lat),
-              lng: parseFloat(data[0].lon),
-              order_index: property.order_index,
-              price: property.price,
-            });
-          }
-        } catch (err) {
-          console.error(`Failed to geocode: ${fullAddress}`, err);
+        const { data, error: fnError } = await supabase.functions.invoke('geocode-address', {
+          body: { addresses: addressData },
+        });
+        
+        if (fnError) {
+          console.error('Geocoding function error:', fnError);
+          setError('Failed to locate properties');
+          setIsLoading(false);
+          return;
         }
-      }
-      
-      setGeocodedProperties(results);
-      setIsLoading(false);
-      
-      if (results.length === 0 && properties.length > 0) {
-        setError('Could not locate any properties on the map');
+        
+        const results: GeocodedProperty[] = [];
+        
+        if (data?.results) {
+          for (const geocoded of data.results) {
+            const property = properties.find(p => p.id === geocoded.id);
+            if (property) {
+              const fullAddress = [property.address, property.city, property.state, property.zip_code]
+                .filter(Boolean)
+                .join(', ');
+              
+              results.push({
+                id: property.id,
+                address: property.address,
+                fullAddress,
+                lat: geocoded.lat,
+                lng: geocoded.lng,
+                order_index: property.order_index,
+                price: property.price,
+              });
+            }
+          }
+        }
+        
+        setGeocodedProperties(results);
+        
+        if (results.length === 0 && properties.length > 0) {
+          setError('Could not locate any properties on the map');
+        }
+      } catch (err) {
+        console.error('Geocoding error:', err);
+        setError('Failed to locate properties');
+      } finally {
+        setIsLoading(false);
       }
     };
     
