@@ -1,10 +1,29 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Home } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const scrollToSection = (sectionId: string) => {
+    setIsOpen(false);
+    
+    // If not on home page, navigate there first
+    if (location.pathname !== '/') {
+      navigate('/');
+      // Wait for navigation then scroll
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      element?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -22,15 +41,24 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+            <button
+              onClick={() => scrollToSection('features')}
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
               Features
-            </Link>
-            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+            </button>
+            <button
+              onClick={() => scrollToSection('pricing')}
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
               Pricing
-            </Link>
-            <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-              About
-            </Link>
+            </button>
+            <button
+              onClick={() => scrollToSection('faq')}
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+            >
+              FAQ
+            </button>
           </div>
 
           {/* CTA Buttons */}
@@ -61,27 +89,24 @@ const Navbar = () => {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
             <div className="flex flex-col gap-4">
-              <Link
-                to="/features"
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2"
-                onClick={() => setIsOpen(false)}
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
               >
                 Features
-              </Link>
-              <Link
-                to="/pricing"
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2"
-                onClick={() => setIsOpen(false)}
+              </button>
+              <button
+                onClick={() => scrollToSection('pricing')}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
               >
                 Pricing
-              </Link>
-              <Link
-                to="/about"
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2"
-                onClick={() => setIsOpen(false)}
+              </button>
+              <button
+                onClick={() => scrollToSection('faq')}
+                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
               >
-                About
-              </Link>
+                FAQ
+              </button>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Button variant="outline" asChild className="w-full">
                   <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
