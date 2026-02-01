@@ -91,7 +91,7 @@ const PublicSession = () => {
       // Fetch agent profile
       const { data: agentData } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url, slogan, bio, phone, email, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url')
+        .select('full_name, avatar_url, slogan, bio, phone, email, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url')
         .eq('user_id', sessionData.admin_id)
         .maybeSingle();
 

@@ -26,13 +26,19 @@ export type Database = {
           company: string | null
           created_at: string
           email: string
+          facebook_url: string | null
           full_name: string | null
           id: string
+          instagram_url: string | null
           license_number: string | null
+          linkedin_url: string | null
           phone: string | null
           slogan: string | null
+          twitter_url: string | null
           updated_at: string
           user_id: string
+          website_url: string | null
+          youtube_url: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -45,13 +51,19 @@ export type Database = {
           company?: string | null
           created_at?: string
           email: string
+          facebook_url?: string | null
           full_name?: string | null
           id?: string
+          instagram_url?: string | null
           license_number?: string | null
+          linkedin_url?: string | null
           phone?: string | null
           slogan?: string | null
+          twitter_url?: string | null
           updated_at?: string
           user_id: string
+          website_url?: string | null
+          youtube_url?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -64,13 +76,19 @@ export type Database = {
           company?: string | null
           created_at?: string
           email?: string
+          facebook_url?: string | null
           full_name?: string | null
           id?: string
+          instagram_url?: string | null
           license_number?: string | null
+          linkedin_url?: string | null
           phone?: string | null
           slogan?: string | null
+          twitter_url?: string | null
           updated_at?: string
           user_id?: string
+          website_url?: string | null
+          youtube_url?: string | null
         }
         Relationships: []
       }
