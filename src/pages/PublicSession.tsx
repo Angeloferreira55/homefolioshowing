@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -25,7 +25,17 @@ interface FeedbackData {
 }
 
 type PropertyDocument = PublicPropertyDocument;
-type SessionProperty = PublicSessionProperty & { order_index: number };
+type SessionProperty = PublicSessionProperty & { 
+  order_index: number;
+  client_photos?: ClientPhoto[];
+};
+
+interface ClientPhoto {
+  id: string;
+  file_url: string;
+  caption: string | null;
+  created_at: string;
+}
 
 interface ShowingSession {
   id: string;
@@ -57,6 +67,10 @@ const PublicSession = () => {
   // Detail dialog state
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailProperty, setDetailProperty] = useState<SessionProperty | null>(null);
+
+  // Photo upload state
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
+  const photoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (token) {
@@ -102,26 +116,50 @@ const PublicSession = () => {
 
       // Fetch documents for all properties
       const propertyIds = (propertiesData || []).map(p => p.id);
-      const { data: docsData } = await supabase
-        .from('property_documents')
-        .select('id, name, doc_type, file_url, session_property_id')
-        .in('session_property_id', propertyIds);
+      
+      // Fetch documents and client photos in parallel
+      const [docsResult, photosResult] = await Promise.all([
+        supabase
+          .from('property_documents')
+          .select('id, name, doc_type, file_url, session_property_id')
+          .in('session_property_id', propertyIds),
+        supabase
+          .from('client_photos')
+          .select('id, file_url, caption, created_at, session_property_id')
+          .in('session_property_id', propertyIds)
+          .order('created_at', { ascending: false })
+      ]);
 
       // Group documents by property
       const docsByProperty: Record<string, PropertyDocument[]> = {};
-      docsData?.forEach(doc => {
+      docsResult.data?.forEach(doc => {
         if (!docsByProperty[doc.session_property_id]) {
           docsByProperty[doc.session_property_id] = [];
         }
         docsByProperty[doc.session_property_id].push(doc);
       });
 
-      // Attach documents to properties
-      const propertiesWithDocs = (propertiesData || []).map(p => ({
+      // Group client photos by property
+      const photosByProperty: Record<string, ClientPhoto[]> = {};
+      photosResult.data?.forEach(photo => {
+        if (!photosByProperty[photo.session_property_id]) {
+          photosByProperty[photo.session_property_id] = [];
+        }
+        photosByProperty[photo.session_property_id].push({
+          id: photo.id,
+          file_url: photo.file_url,
+          caption: photo.caption,
+          created_at: photo.created_at,
+        });
+      });
+
+      // Attach documents and photos to properties
+      const propertiesWithExtras = (propertiesData || []).map(p => ({
         ...p,
         documents: docsByProperty[p.id] || [],
+        client_photos: photosByProperty[p.id] || [],
       }));
-      setProperties(propertiesWithDocs);
+      setProperties(propertiesWithExtras);
 
       // Fetch existing ratings with feedback
       const { data: ratingsData } = await supabase
@@ -217,7 +255,81 @@ const PublicSession = () => {
 
       window.open(data.signedUrl, '_blank');
     } catch (error) {
+      console.error('Document error:', error);
       toast.error('Failed to open document');
+    }
+  };
+
+  const handlePhotoUpload = async (propertyId: string, file: File) => {
+    if (!file || !token) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be less than 10MB');
+      return;
+    }
+
+    setUploadingPhotoFor(propertyId);
+
+    try {
+      // Upload to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${propertyId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('client-photos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-photos')
+        .getPublicUrl(fileName);
+
+      // Save to database
+      const { error: dbError } = await supabase
+        .from('client_photos')
+        .insert({
+          session_property_id: propertyId,
+          file_url: publicUrl,
+        });
+
+      if (dbError) throw dbError;
+
+      // Update local state
+      setProperties(prev => prev.map(p => {
+        if (p.id === propertyId) {
+          return {
+            ...p,
+            client_photos: [
+              { id: Date.now().toString(), file_url: publicUrl, caption: null, created_at: new Date().toISOString() },
+              ...(p.client_photos || []),
+            ],
+          };
+        }
+        return p;
+      }));
+
+      toast.success('Photo uploaded!');
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhotoFor(null);
+    }
+  };
+
+  const triggerPhotoUpload = (propertyId: string) => {
+    const input = photoInputRefs.current[propertyId];
+    if (input) {
+      input.click();
     }
   };
 
@@ -379,32 +491,79 @@ const PublicSession = () => {
 
                   {/* Documents */}
                   {property.documents && property.documents.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mb-4 gap-2"
-                      onClick={() => {
-                        // Show first document for now
-                        if (property.documents && property.documents[0]) {
-                          handleViewDocument(property.documents[0]);
-                        }
-                      }}
-                    >
-                      <FileText className="w-4 h-4" />
-                      DOCS ({property.documents.length})
-                    </Button>
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                        <FileText className="w-3 h-3" />
+                        Documents ({property.documents.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {property.documents.map((doc) => (
+                          <Button
+                            key={doc.id}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-xs"
+                            onClick={() => handleViewDocument(doc)}
+                          >
+                            <FileText className="w-3 h-3" />
+                            {doc.name.length > 20 ? doc.name.substring(0, 20) + '...' : doc.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {/* My Photos section */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Image className="w-4 h-4" />
-                      <span className="text-sm">My Photos</span>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Image className="w-4 h-4" />
+                        <span className="text-sm">My Photos {property.client_photos?.length ? `(${property.client_photos.length})` : ''}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={(el) => { photoInputRefs.current[property.id] = el; }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handlePhotoUpload(property.id, file);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-1.5"
+                        onClick={() => triggerPhotoUpload(property.id)}
+                        disabled={uploadingPhotoFor === property.id}
+                      >
+                        {uploadingPhotoFor === property.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4" />
+                        )}
+                        {uploadingPhotoFor === property.id ? 'UPLOADING...' : 'ADD PHOTO'}
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" className="gap-1.5">
-                      <Plus className="w-4 h-4" />
-                      ADD PHOTO
-                    </Button>
+
+                    {/* Display uploaded photos */}
+                    {property.client_photos && property.client_photos.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {property.client_photos.map((photo) => (
+                          <div key={photo.id} className="relative flex-shrink-0">
+                            <img
+                              src={photo.file_url}
+                              alt="Client photo"
+                              className="w-20 h-20 rounded-lg object-cover"
+                              onClick={() => window.open(photo.file_url, '_blank')}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
