@@ -23,7 +23,7 @@ const plans = [
   {
     name: 'Pro',
     monthlyPrice: 9.99,
-    yearlyPrice: 95,
+    yearlyPrice: 96,
     description: 'For busy agents who want to impress clients',
     features: [
       'Unlimited clients',
@@ -40,7 +40,7 @@ const plans = [
   {
     name: 'Team',
     monthlyPrice: 49,
-    yearlyPrice: 485,
+    yearlyPrice: 470,
     description: 'For brokerages and real estate teams',
     features: [
       'Everything in Pro',
