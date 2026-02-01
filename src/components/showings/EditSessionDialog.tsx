@@ -33,8 +33,6 @@ interface EditSessionDialogProps {
   onSave: (data: {
     title: string;
     clientName: string;
-    clientEmail?: string;
-    clientPhone?: string;
     sessionDate?: Date;
     notes?: string;
   }) => Promise<void>;
@@ -43,8 +41,6 @@ interface EditSessionDialogProps {
 const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
   const [sessionDate, setSessionDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -53,8 +49,6 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
     if (session) {
       setTitle(session.title || '');
       setClientName(session.client_name || '');
-      setClientEmail(session.client_email || '');
-      setClientPhone(session.client_phone || '');
       setSessionDate(session.session_date ? new Date(session.session_date) : undefined);
       setNotes(session.notes || '');
     }
@@ -69,8 +63,6 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
       await onSave({
         title: title.trim(),
         clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
         sessionDate,
         notes: notes.trim() || undefined,
       });
@@ -138,27 +130,6 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-client-email">Client Email</Label>
-            <Input
-              id="edit-client-email"
-              type="email"
-              value={clientEmail}
-              onChange={(e) => setClientEmail(e.target.value)}
-              placeholder="client@example.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-client-phone">Client Phone</Label>
-            <Input
-              id="edit-client-phone"
-              type="tel"
-              value={clientPhone}
-              onChange={(e) => setClientPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-            />
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="edit-notes">Notes</Label>

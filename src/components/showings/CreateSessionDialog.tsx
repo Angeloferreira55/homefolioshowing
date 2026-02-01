@@ -22,8 +22,6 @@ interface CreateSessionDialogProps {
     title: string;
     sessionDate?: Date;
     clientName: string;
-    clientEmail?: string;
-    clientPhone?: string;
     notes?: string;
   }) => void;
 }
@@ -32,8 +30,6 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
   const [title, setTitle] = useState('');
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
   const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -43,8 +39,6 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
         title: title.trim(),
         sessionDate,
         clientName: clientName.trim(),
-        clientEmail: clientEmail.trim() || undefined,
-        clientPhone: clientPhone.trim() || undefined,
         notes: notes.trim() || undefined,
       });
       resetForm();
@@ -56,8 +50,6 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
     setTitle('');
     setSessionDate(undefined);
     setClientName('');
-    setClientEmail('');
-    setClientPhone('');
     setNotes('');
   };
 
@@ -122,28 +114,6 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientEmail">Client Email</Label>
-              <Input
-                id="clientEmail"
-                type="email"
-                placeholder="client@email.com"
-                value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clientPhone">Client Phone</Label>
-              <Input
-                id="clientPhone"
-                type="tel"
-                placeholder="505-555-1234"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-              />
-            </div>
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Session Notes (visible to client)</Label>
