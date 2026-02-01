@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
 
 const plans = [
   {
     name: 'Starter',
-    price: 'Free',
-    period: '',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     description: 'Perfect for agents just getting started',
     features: [
       'Up to 3 active clients',
@@ -20,8 +22,8 @@ const plans = [
   },
   {
     name: 'Pro',
-    price: '$29',
-    period: '/month',
+    monthlyPrice: 29,
+    yearlyPrice: 290,
     description: 'For busy agents who want to impress clients',
     features: [
       'Unlimited clients',
@@ -37,8 +39,8 @@ const plans = [
   },
   {
     name: 'Team',
-    price: '$79',
-    period: '/month',
+    monthlyPrice: 79,
+    yearlyPrice: 790,
     description: 'For brokerages and real estate teams',
     features: [
       'Everything in Pro',
@@ -55,11 +57,31 @@ const plans = [
 ];
 
 const PricingSection = () => {
+  const [isYearly, setIsYearly] = useState(false);
+
+  const formatPrice = (plan: typeof plans[0]) => {
+    if (plan.monthlyPrice === 0) return 'Free';
+    const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+    return `$${price}`;
+  };
+
+  const getPeriod = (plan: typeof plans[0]) => {
+    if (plan.monthlyPrice === 0) return '';
+    return isYearly ? '/year' : '/month';
+  };
+
+  const getSavings = (plan: typeof plans[0]) => {
+    if (plan.monthlyPrice === 0) return null;
+    const yearlyIfMonthly = plan.monthlyPrice * 12;
+    const savings = yearlyIfMonthly - plan.yearlyPrice;
+    return savings;
+  };
+
   return (
     <section className="py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="max-w-3xl mx-auto text-center mb-16">
+        <div className="max-w-3xl mx-auto text-center mb-12">
           <span className="text-accent font-medium text-sm uppercase tracking-wider">
             Pricing
           </span>
@@ -69,6 +91,24 @@ const PricingSection = () => {
           <p className="text-muted-foreground text-lg">
             Choose the plan that fits your business. Upgrade or downgrade anytime.
           </p>
+        </div>
+
+        {/* Billing Toggle */}
+        <div className="flex items-center justify-center gap-4 mb-12">
+          <span className={`text-sm font-medium ${!isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Monthly
+          </span>
+          <Switch
+            checked={isYearly}
+            onCheckedChange={setIsYearly}
+            className="data-[state=checked]:bg-accent"
+          />
+          <span className={`text-sm font-medium ${isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
+            Yearly
+          </span>
+          <span className="ml-2 bg-accent/10 text-accent text-xs font-medium px-2.5 py-1 rounded-full">
+            Save 2 months
+          </span>
         </div>
 
         {/* Pricing Cards */}
@@ -98,12 +138,17 @@ const PricingSection = () => {
                 </h3>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="font-display text-4xl font-bold text-foreground">
-                    {plan.price}
+                    {formatPrice(plan)}
                   </span>
-                  {plan.period && (
-                    <span className="text-muted-foreground">{plan.period}</span>
+                  {getPeriod(plan) && (
+                    <span className="text-muted-foreground">{getPeriod(plan)}</span>
                   )}
                 </div>
+                {isYearly && getSavings(plan) && (
+                  <p className="text-accent text-sm font-medium mt-1">
+                    Save ${getSavings(plan)} per year
+                  </p>
+                )}
                 <p className="text-muted-foreground text-sm mt-2">
                   {plan.description}
                 </p>
