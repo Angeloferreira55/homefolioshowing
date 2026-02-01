@@ -222,6 +222,14 @@ const SessionDetail = () => {
     sqft?: number;
     description?: string;
     summary?: string;
+    yearBuilt?: number;
+    lotSize?: string;
+    propertyType?: string;
+    hoaFee?: number;
+    garage?: string;
+    heating?: string;
+    cooling?: string;
+    features?: string[];
   }) => {
     try {
       // Verify user is authenticated before insert
@@ -247,6 +255,14 @@ const SessionDetail = () => {
         sqft: data.sqft || null,
         description: data.description || null,
         summary: data.summary || null,
+        year_built: data.yearBuilt || null,
+        lot_size: data.lotSize || null,
+        property_type: data.propertyType || null,
+        hoa_fee: data.hoaFee || null,
+        garage: data.garage || null,
+        heating: data.heating || null,
+        cooling: data.cooling || null,
+        features: data.features || null,
         order_index: maxOrder + 1,
       });
 

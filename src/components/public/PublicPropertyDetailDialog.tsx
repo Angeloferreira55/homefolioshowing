@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, ExternalLink, FileText, MapPin, X, MessageSquare, Sparkles, Home } from 'lucide-react';
+import { Calendar, ExternalLink, FileText, MapPin, X, MessageSquare, Sparkles, Home, Building, Thermometer, Wind, Car, DollarSign, Ruler, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import PropertyDocumentsDrawer from './PropertyDocumentsDrawer';
 
@@ -27,6 +27,14 @@ export interface PublicSessionProperty {
   agent_notes?: string | null;
   summary?: string | null;
   description?: string | null;
+  year_built?: number | null;
+  lot_size?: string | null;
+  property_type?: string | null;
+  hoa_fee?: number | null;
+  garage?: string | null;
+  heating?: string | null;
+  cooling?: string | null;
+  features?: string[] | null;
 }
 
 function formatPrice(price: number | null) {
@@ -145,6 +153,89 @@ export default function PublicPropertyDetailDialog({
                       {property.sqft ? property.sqft.toLocaleString() : '—'}
                     </p>
                     <p className="text-xs text-muted-foreground">Sq Ft</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Property Details Grid */}
+              {(property.year_built || property.lot_size || property.property_type || property.hoa_fee || property.garage || property.heating || property.cooling) && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Building className="w-4 h-4 text-primary" />
+                    Property Details
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {property.property_type && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground">Type</p>
+                        <p className="text-sm font-medium text-foreground">{property.property_type}</p>
+                      </div>
+                    )}
+                    {property.year_built && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="w-3 h-3" /> Year Built
+                        </p>
+                        <p className="text-sm font-medium text-foreground">{property.year_built}</p>
+                      </div>
+                    )}
+                    {property.lot_size && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Ruler className="w-3 h-3" /> Lot Size
+                        </p>
+                        <p className="text-sm font-medium text-foreground">{property.lot_size}</p>
+                      </div>
+                    )}
+                    {property.garage && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Car className="w-3 h-3" /> Garage
+                        </p>
+                        <p className="text-sm font-medium text-foreground">{property.garage}</p>
+                      </div>
+                    )}
+                    {property.heating && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Thermometer className="w-3 h-3" /> Heating
+                        </p>
+                        <p className="text-sm font-medium text-foreground">{property.heating}</p>
+                      </div>
+                    )}
+                    {property.cooling && (
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Wind className="w-3 h-3" /> Cooling
+                        </p>
+                        <p className="text-sm font-medium text-foreground">{property.cooling}</p>
+                      </div>
+                    )}
+                    {property.hoa_fee && (
+                      <div className="bg-muted/50 rounded-lg p-3 col-span-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" /> HOA Fee
+                        </p>
+                        <p className="text-sm font-medium text-foreground">${property.hoa_fee.toLocaleString()}/month</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Features */}
+              {property.features && property.features.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Features & Amenities</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {property.features.map((feature, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full"
+                      >
+                        {feature}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}

@@ -198,17 +198,25 @@ export type Database = {
           baths: number | null
           beds: number | null
           city: string | null
+          cooling: string | null
           created_at: string
           description: string | null
+          features: string[] | null
+          garage: string | null
+          heating: string | null
+          hoa_fee: number | null
           id: string
+          lot_size: string | null
           order_index: number
           photo_url: string | null
           price: number | null
+          property_type: string | null
           session_id: string
           sqft: number | null
           state: string | null
           summary: string | null
           updated_at: string
+          year_built: number | null
           zip_code: string | null
         }
         Insert: {
@@ -217,17 +225,25 @@ export type Database = {
           baths?: number | null
           beds?: number | null
           city?: string | null
+          cooling?: string | null
           created_at?: string
           description?: string | null
+          features?: string[] | null
+          garage?: string | null
+          heating?: string | null
+          hoa_fee?: number | null
           id?: string
+          lot_size?: string | null
           order_index?: number
           photo_url?: string | null
           price?: number | null
+          property_type?: string | null
           session_id: string
           sqft?: number | null
           state?: string | null
           summary?: string | null
           updated_at?: string
+          year_built?: number | null
           zip_code?: string | null
         }
         Update: {
@@ -236,17 +252,25 @@ export type Database = {
           baths?: number | null
           beds?: number | null
           city?: string | null
+          cooling?: string | null
           created_at?: string
           description?: string | null
+          features?: string[] | null
+          garage?: string | null
+          heating?: string | null
+          hoa_fee?: number | null
           id?: string
+          lot_size?: string | null
           order_index?: number
           photo_url?: string | null
           price?: number | null
+          property_type?: string | null
           session_id?: string
           sqft?: number | null
           state?: string | null
           summary?: string | null
           updated_at?: string
+          year_built?: number | null
           zip_code?: string | null
         }
         Relationships: [
