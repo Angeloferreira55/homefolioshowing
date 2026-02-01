@@ -1,12 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Link2, RefreshCw, Users, Route } from 'lucide-react';
-import { DemoVideoDialog } from './DemoVideoDialog';
 
 const HeroSection = () => {
-  const [showDemo, setShowDemo] = useState(false);
-
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
@@ -57,8 +53,8 @@ const HeroSection = () => {
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
-            <Button variant="hero-outline" size="xl" onClick={() => setShowDemo(true)}>
-              See It In Action
+            <Button variant="hero-outline" size="xl" asChild>
+              <Link to="/demo">See It In Action</Link>
             </Button>
           </div>
 
@@ -86,9 +82,6 @@ const HeroSection = () => {
 
       {/* Bottom fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
-
-      {/* Demo Video Dialog */}
-      <DemoVideoDialog open={showDemo} onOpenChange={setShowDemo} />
     </section>
   );
 };
