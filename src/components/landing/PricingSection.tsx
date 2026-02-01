@@ -39,12 +39,12 @@ const plans = [
   },
   {
     name: 'Team',
-    monthlyPrice: 79,
-    yearlyPrice: 790,
+    monthlyPrice: 49,
+    yearlyPrice: 490,
     description: 'For brokerages and real estate teams',
     features: [
       'Everything in Pro',
-      'Up to 10 team members',
+      'Up to 10 brokers',
       'Team analytics dashboard',
       'Client handoff between agents',
       'Custom branding',
