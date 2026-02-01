@@ -31,6 +31,7 @@ import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 import PropertyMap from '@/components/showings/PropertyMap';
+import AdminLayout from '@/components/layout/AdminLayout';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -440,9 +441,11 @@ const SessionDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -451,24 +454,8 @@ const SessionDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Home className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-semibold text-foreground">
-                HomeFolio
-              </span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AdminLayout>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Link */}
         <Link
           to="/admin/showings"
@@ -809,7 +796,7 @@ const SessionDetail = () => {
             </Button>
           </div>
         )}
-      </main>
+      </div>
 
       <AddPropertyDialog
         open={isAddPropertyOpen}
@@ -857,7 +844,7 @@ const SessionDetail = () => {
         propertyId={docsPropertyId || ''}
         propertyAddress={docsPropertyAddress}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
