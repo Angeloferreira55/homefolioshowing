@@ -23,6 +23,7 @@ import {
   Loader2,
   List,
   Map,
+  Navigation,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -344,6 +345,40 @@ const SessionDetail = () => {
     }
   };
 
+  const getGoogleMapsUrl = () => {
+    if (properties.length === 0) return '#';
+    
+    // Build full addresses for each property in order
+    const addresses = properties.map(p => {
+      return [p.address, p.city, p.state, p.zip_code]
+        .filter(Boolean)
+        .join(', ');
+    });
+    
+    // Google Maps directions URL format:
+    // https://www.google.com/maps/dir/origin/waypoint1/waypoint2/.../destination
+    const encodedAddresses = addresses.map(addr => encodeURIComponent(addr));
+    
+    // If there's a starting point, use it as origin
+    if (startingPoint.trim()) {
+      const origin = encodeURIComponent(startingPoint.trim());
+      // All properties become waypoints, last one is destination
+      if (encodedAddresses.length === 1) {
+        return `https://www.google.com/maps/dir/${origin}/${encodedAddresses[0]}`;
+      }
+      const waypoints = encodedAddresses.slice(0, -1).join('/');
+      const destination = encodedAddresses[encodedAddresses.length - 1];
+      return `https://www.google.com/maps/dir/${origin}/${waypoints}/${destination}`;
+    }
+    
+    // No starting point: first property is origin, rest are waypoints/destination
+    if (encodedAddresses.length === 1) {
+      return `https://www.google.com/maps/search/${encodedAddresses[0]}`;
+    }
+    
+    return `https://www.google.com/maps/dir/${encodedAddresses.join('/')}`;
+  };
+
   const formatPrice = (price: number | null) => {
     if (!price) return null;
     return new Intl.NumberFormat('en-US', {
@@ -551,6 +586,22 @@ const SessionDetail = () => {
                 </div>
               </PopoverContent>
             </Popover>
+            {properties.length >= 1 && (
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                asChild
+              >
+                <a
+                  href={getGoogleMapsUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Navigation className="w-4 h-4" />
+                  Directions
+                </a>
+              </Button>
+            )}
             <Button variant="outline" className="gap-2">
               <Upload className="w-4 h-4" />
               Bulk Import
