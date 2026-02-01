@@ -242,6 +242,8 @@ const PublicSession = () => {
         return;
       }
 
+      toast.loading('Opening document...', { id: 'doc-loading' });
+
       const { data, error } = await supabase.functions.invoke('public-doc-url', {
         body: {
           token,
@@ -250,12 +252,23 @@ const PublicSession = () => {
         },
       });
 
+      toast.dismiss('doc-loading');
+
       if (error) throw error;
       if (!data?.signedUrl) throw new Error('Failed to open document');
 
-      window.open(data.signedUrl, '_blank');
+      // Use direct navigation for better mobile compatibility
+      // Create a temporary link and click it - this bypasses popup blockers
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error('Document error:', error);
+      toast.dismiss('doc-loading');
       toast.error('Failed to open document');
     }
   };
