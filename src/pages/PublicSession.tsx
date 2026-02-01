@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, User } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -34,6 +34,9 @@ interface SessionProperty {
   state: string | null;
   zip_code: string | null;
   price: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
   photo_url: string | null;
   order_index: number;
   documents?: PropertyDocument[];
@@ -303,14 +306,14 @@ const PublicSession = () => {
         </h2>
 
         {properties.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="max-w-3xl mx-auto space-y-8">
             {properties.map((property, index) => (
               <div
                 key={property.id}
                 className="bg-card rounded-2xl overflow-hidden card-elevated"
               >
-                {/* Image */}
-                <div className="relative aspect-[4/3] bg-muted">
+                {/* Large Image */}
+                <div className="relative aspect-[16/10] bg-muted">
                   {property.photo_url ? (
                     <img
                       src={property.photo_url}
@@ -319,97 +322,103 @@ const PublicSession = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Home className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                  )}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-3 py-1 bg-card/90 backdrop-blur-sm rounded-lg text-sm font-semibold">
-                      #{index + 1}
-                    </span>
-                  </div>
-                  {property.price && (
-                    <div className="absolute bottom-3 left-3">
-                      <span className="px-3 py-1.5 bg-card/90 backdrop-blur-sm rounded-lg font-semibold text-accent">
-                        {formatPrice(property.price)}
-                      </span>
+                      <Home className="w-16 h-16 text-muted-foreground" />
                     </div>
                   )}
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
-                  <h3 className="font-display font-semibold text-foreground mb-1">
-                    {property.address}
-                  </h3>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mb-4">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {[property.city, property.state, property.zip_code]
-                      .filter(Boolean)
-                      .join(', ') || 'Location TBD'}
-                  </p>
-
-                  {/* Documents */}
-                  {property.documents && property.documents.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5" />
-                        Documents ({property.documents.length})
-                      </h4>
-                      <div className="space-y-1.5">
-                        {property.documents.map((doc) => (
-                          <button
-                            key={doc.id}
-                            onClick={() => handleViewDocument(doc.file_url, doc.name)}
-                            className="w-full flex items-center justify-between p-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm text-foreground truncate">{doc.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-                                {getDocTypeLabel(doc.doc_type)}
-                              </span>
-                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rating Summary & Button */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Rating:</span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const rating = ratings[property.id]?.rating || 0;
-                          const filled = star <= Math.round(rating / 2);
-                          return (
-                            <Star
-                              key={star}
-                              className={`w-4 h-4 ${
-                                filled ? 'fill-gold text-gold' : 'text-muted-foreground'
-                              }`}
-                            />
-                          );
-                        })}
-                      </div>
-                      {ratings[property.id]?.rating && (
-                        <span className="text-xs text-muted-foreground">
-                          ({ratings[property.id].rating}/10)
+                <div className="p-5">
+                  {/* Header row: Badge, Date, Price */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+                        #{index + 1}
+                      </span>
+                      {session.session_date && (
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          {format(new Date(session.session_date), 'MMM d · h:mm a')}
                         </span>
                       )}
                     </div>
+                    {property.price && (
+                      <span className="text-2xl font-display font-bold text-foreground">
+                        {formatPrice(property.price)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex items-start gap-2 mb-4">
+                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <p className="font-display font-semibold text-foreground">
+                      {property.address}
+                      {property.city && `, ${property.city}`}
+                      {property.state && `, ${property.state}`}
+                      {property.zip_code && ` ${property.zip_code}`}
+                    </p>
+                  </div>
+
+                  {/* Property Stats */}
+                  {(property.beds || property.baths || property.sqft) && (
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                      {property.beds && <span>{property.beds} Bd</span>}
+                      {property.baths && <span>• {property.baths} Ba</span>}
+                      {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
+                    </div>
+                  )}
+
+                  {/* Agent's Note */}
+                  {session.notes && (
+                    <div className="bg-secondary rounded-xl p-4 mb-4">
+                      <p className="text-xs text-muted-foreground mb-1">{agent?.full_name || 'Agent'}'s note</p>
+                      <p className="text-sm text-foreground">{session.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Documents */}
+                  {property.documents && property.documents.length > 0 && (
                     <Button
-                      size="sm"
                       variant="outline"
-                      onClick={() => handleOpenFeedback(property)}
-                      className="gap-1.5"
+                      size="sm"
+                      className="mb-4 gap-2"
+                      onClick={() => {
+                        // Show first document for now
+                        if (property.documents && property.documents[0]) {
+                          handleViewDocument(property.documents[0].file_url, property.documents[0].name);
+                        }
+                      }}
                     >
-                      <Star className="w-3.5 h-3.5" />
-                      {ratings[property.id] ? 'Edit' : 'Rate this home'}
+                      <FileText className="w-4 h-4" />
+                      DOCS ({property.documents.length})
+                    </Button>
+                  )}
+
+                  {/* My Photos section */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Image className="w-4 h-4" />
+                      <span className="text-sm">My Photos</span>
+                    </div>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Plus className="w-4 h-4" />
+                      ADD PHOTO
+                    </Button>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" className="gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      VIEW DETAILS
+                    </Button>
+                    <Button
+                      className="gap-2 bg-primary text-primary-foreground"
+                      onClick={() => handleOpenFeedback(property)}
+                    >
+                      <Star className="w-4 h-4" />
+                      {ratings[property.id] ? 'EDIT RATING' : 'RATE THIS HOME'}
                     </Button>
                   </div>
                 </div>
