@@ -409,7 +409,7 @@ const PublicSession = () => {
                       className="gap-1.5"
                     >
                       <Star className="w-3.5 h-3.5" />
-                      {ratings[property.id] ? 'Edit' : 'Rate'}
+                      {ratings[property.id] ? 'Edit' : 'Rate this home'}
                     </Button>
                   </div>
                 </div>
