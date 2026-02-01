@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,8 +6,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Play, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import demoVideo from '@/assets/homefolio-demo.mp4';
 
 interface DemoVideoDialogProps {
   open: boolean;
@@ -16,10 +16,33 @@ interface DemoVideoDialogProps {
 
 export function DemoVideoDialog({ open, onOpenChange }: DemoVideoDialogProps) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleClose = () => {
     setIsPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
     onOpenChange(false);
+  };
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
   };
 
   return (
@@ -33,68 +56,42 @@ export function DemoVideoDialog({ open, onOpenChange }: DemoVideoDialogProps) {
         
         <div className="p-6">
           <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg overflow-hidden">
-            {/* Placeholder video area - replace with actual video */}
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 relative">
-              {!isPlaying ? (
-                <>
-                  {/* Animated background elements */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-                    <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-accent/10 rounded-full blur-3xl animate-pulse delay-700" />
-                  </div>
-                  
-                  {/* Play button */}
-                  <button
-                    onClick={() => setIsPlaying(true)}
-                    className="relative z-10 w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-lg hover:scale-110 transition-transform group"
-                  >
-                    <Play className="w-8 h-8 text-primary-foreground ml-1 group-hover:scale-110 transition-transform" />
-                  </button>
-                  
-                  <p className="relative z-10 mt-6 text-muted-foreground text-center max-w-md px-4">
-                    Watch how HomeFolio transforms your client experience
-                  </p>
-                </>
-              ) : (
-                /* Video placeholder - replace src with actual video URL */
-                <div className="w-full h-full flex flex-col items-center justify-center text-center p-8">
-                  <div className="space-y-6 max-w-lg animate-fade-in">
-                    <h3 className="text-xl font-semibold text-foreground">
-                      🎬 Demo Video Coming Soon
-                    </h3>
-                    <div className="space-y-4 text-left text-muted-foreground">
-                      <p className="flex items-start gap-3">
-                        <span className="text-primary font-bold">1.</span>
-                        <span><strong>One Link Per Client</strong> — Create a private, shareable link for each buyer</span>
-                      </p>
-                      <p className="flex items-start gap-3">
-                        <span className="text-primary font-bold">2.</span>
-                        <span><strong>Real-Time Updates</strong> — Add or remove properties instantly, no re-sending</span>
-                      </p>
-                      <p className="flex items-start gap-3">
-                        <span className="text-primary font-bold">3.</span>
-                        <span><strong>Route Optimization</strong> — Plan efficient showing tours automatically</span>
-                      </p>
-                      <p className="flex items-start gap-3">
-                        <span className="text-primary font-bold">4.</span>
-                        <span><strong>Client Feedback</strong> — Capture ratings and notes after each showing</span>
-                      </p>
-                    </div>
-                    <p className="text-sm text-primary font-medium pt-4">
-                      Save time. Impress buyers. Close faster.
-                    </p>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setIsPlaying(false)}
-                    className="mt-6"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Close Preview
-                  </Button>
-                </div>
-              )}
+            <div className="w-full h-full relative group">
+              <video
+                ref={videoRef}
+                src={demoVideo}
+                className="w-full h-full object-cover"
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onEnded={() => setIsPlaying(false)}
+                playsInline
+              />
+              
+              {/* Play/Pause overlay */}
+              <div 
+                className={`absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity cursor-pointer ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
+                onClick={togglePlay}
+              >
+                <button className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+                  {isPlaying ? (
+                    <Pause className="w-8 h-8 text-primary-foreground" />
+                  ) : (
+                    <Play className="w-8 h-8 text-primary-foreground ml-1" />
+                  )}
+                </button>
+              </div>
+
+              {/* Mute button */}
+              <button
+                onClick={toggleMute}
+                className="absolute bottom-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+              >
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
+              </button>
             </div>
           </AspectRatio>
           
