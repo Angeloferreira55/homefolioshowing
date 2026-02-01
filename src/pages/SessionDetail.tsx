@@ -40,6 +40,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -95,6 +101,7 @@ const SessionDetail = () => {
   const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [startingPoint, setStartingPoint] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -363,6 +370,7 @@ const SessionDetail = () => {
             state: p.state,
             zip_code: p.zip_code,
           })),
+          startingPoint: startingPoint.trim() || undefined,
         },
       });
 
@@ -488,19 +496,61 @@ const SessionDetail = () => {
             Properties ({properties.length})
           </h2>
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={handleOptimizeRoute}
-              disabled={isOptimizing || properties.length < 2}
-            >
-              {isOptimizing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Route className="w-4 h-4" />
-              )}
-              {isOptimizing ? 'Optimizing...' : 'Optimize Route'}
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="gap-2"
+                  disabled={isOptimizing || properties.length < 2}
+                >
+                  {isOptimizing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Route className="w-4 h-4" />
+                  )}
+                  {isOptimizing ? 'Optimizing...' : 'Optimize Route'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-foreground">Route Optimization</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Reorder properties for the most efficient driving route.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="startingPoint">Starting Location (optional)</Label>
+                    <Input
+                      id="startingPoint"
+                      placeholder="e.g., 123 Main St, City, State"
+                      value={startingPoint}
+                      onChange={(e) => setStartingPoint(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty to optimize based on property locations only.
+                    </p>
+                  </div>
+                  <Button 
+                    className="w-full gap-2" 
+                    onClick={handleOptimizeRoute}
+                    disabled={isOptimizing}
+                  >
+                    {isOptimizing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Optimizing...
+                      </>
+                    ) : (
+                      <>
+                        <Route className="w-4 h-4" />
+                        Optimize Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" className="gap-2">
               <Upload className="w-4 h-4" />
               Bulk Import
