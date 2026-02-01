@@ -1,4 +1,4 @@
-import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route, Columns } from 'lucide-react';
+import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route, Columns, TreePine } from 'lucide-react';
 
 const features = [
   {
@@ -40,6 +40,11 @@ const features = [
     icon: Columns,
     title: 'Property Comparisons',
     description: 'Let clients compare homes side by side. View price, size, and features at a glance to make decisions easier.',
+  },
+  {
+    icon: TreePine,
+    title: 'Save a Tree, Save Money',
+    description: 'Go paperless with digital documents and links. No more printing stacks of MLS sheets for every showing.',
   },
 ];
 
