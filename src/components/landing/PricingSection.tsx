@@ -22,8 +22,8 @@ const plans = [
   },
   {
     name: 'Pro',
-    monthlyPrice: 29,
-    yearlyPrice: 290,
+    monthlyPrice: 9.99,
+    yearlyPrice: 99.90,
     description: 'For busy agents who want to impress clients',
     features: [
       'Unlimited clients',
