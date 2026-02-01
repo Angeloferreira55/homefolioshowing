@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
@@ -29,6 +39,7 @@ const ShowingHub = () => {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<ShowingSession | null>(null);
+  const [deletingSession, setDeletingSession] = useState<ShowingSession | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -134,6 +145,31 @@ const ShowingHub = () => {
   const handleEditSession = (session: ShowingSession, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingSession(session);
+  };
+
+  const handleDeleteClick = (session: ShowingSession, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingSession(session);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingSession) return;
+
+    try {
+      const { error } = await supabase
+        .from('showing_sessions')
+        .delete()
+        .eq('id', deletingSession.id);
+
+      if (error) throw error;
+
+      toast.success('Session deleted');
+      fetchSessions();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete session');
+    } finally {
+      setDeletingSession(null);
+    }
   };
 
   const handleSaveSession = async (data: {
@@ -249,6 +285,15 @@ const ShowingHub = () => {
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDeleteClick(session, e)}
+                      className="text-muted-foreground hover:text-destructive"
+                      title="Delete session"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </div>
@@ -286,6 +331,26 @@ const ShowingHub = () => {
         onOpenChange={(open) => !open && setEditingSession(null)}
         onSave={handleSaveSession}
       />
+
+      <AlertDialog open={!!deletingSession} onOpenChange={(open) => !open && setDeletingSession(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingSession?.title}"? This will also remove all properties and ratings associated with this session. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
