@@ -787,7 +787,7 @@ const SessionDetail = () => {
                     }}
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    Details
+                    Edit Notes
                   </Button>
                   <Button
                     variant="outline"
