@@ -13,6 +13,8 @@ interface PropertyData {
   baths?: number;
   sqft?: number;
   photoUrl?: string;
+  description?: string;
+  summary?: string;
 }
 
 Deno.serve(async (req) => {
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
           schema: {
             type: 'object',
             properties: {
-              address: { type: 'string', description: 'Street address of the property' },
+              address: { type: 'string', description: 'Street address of the property (without city, state, zip)' },
               city: { type: 'string', description: 'City name' },
               state: { type: 'string', description: 'State abbreviation (e.g. CA, TX, NY)' },
               zipCode: { type: 'string', description: 'ZIP code' },
@@ -69,6 +71,8 @@ Deno.serve(async (req) => {
               beds: { type: 'number', description: 'Number of bedrooms' },
               baths: { type: 'number', description: 'Number of bathrooms' },
               sqft: { type: 'number', description: 'Square footage' },
+              description: { type: 'string', description: 'Full property description or "About This Home" text. Clean text only, no links or branding.' },
+              summary: { type: 'string', description: 'Property highlights or key features as a short summary (2-3 sentences max). Do not include any website branding or links.' },
             },
             required: ['address'],
           },
@@ -94,6 +98,17 @@ Deno.serve(async (req) => {
     // Try to get an image from metadata if available
     const photoUrl = metadata.ogImage || metadata.image || null;
 
+    // Clean function to remove Redfin branding/links from text
+    const cleanText = (text: string | undefined): string | undefined => {
+      if (!text) return undefined;
+      return text
+        .replace(/redfin\.com/gi, '')
+        .replace(/redfin/gi, '')
+        .replace(/https?:\/\/[^\s]+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim() || undefined;
+    };
+
     const propertyData: PropertyData = {
       address: extractedData.address || undefined,
       city: extractedData.city || undefined,
@@ -104,6 +119,8 @@ Deno.serve(async (req) => {
       baths: extractedData.baths ? Number(extractedData.baths) : undefined,
       sqft: extractedData.sqft ? Number(extractedData.sqft) : undefined,
       photoUrl: photoUrl || undefined,
+      description: cleanText(extractedData.description),
+      summary: cleanText(extractedData.summary),
     };
 
     console.log('Extracted property data:', propertyData);
