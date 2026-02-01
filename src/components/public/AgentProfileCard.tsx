@@ -49,9 +49,13 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
         <div className="flex flex-col sm:flex-row gap-6">
           {/* Agent Avatar & Basic Info */}
           <div className="flex flex-col items-center sm:items-start gap-4">
-            <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
-              <AvatarImage src={agent.avatar_url || undefined} alt={agent.full_name || 'Agent'} />
-              <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+            <Avatar className="w-32 h-32 border-4 border-background shadow-lg">
+              <AvatarImage 
+                src={agent.avatar_url || undefined} 
+                alt={agent.full_name || 'Agent'} 
+                className="object-cover"
+              />
+              <AvatarFallback className="text-3xl bg-primary/10 text-primary">
                 {getInitials(agent.full_name)}
               </AvatarFallback>
             </Avatar>
@@ -69,17 +73,23 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
               </p>
             )}
 
-            {agent.license_number && (
-              <p className="text-sm text-muted-foreground mt-1 flex items-center justify-center sm:justify-start gap-1.5">
-                <Award className="w-3.5 h-3.5" />
-                {agent.license_number}
-              </p>
-            )}
-
             {agent.bio && (
               <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                 {agent.bio}
               </p>
+            )}
+
+            {/* Website Link */}
+            {agent.website_url && (
+              <a 
+                href={agent.website_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm text-accent hover:underline"
+              >
+                <Globe className="w-4 h-4" />
+                {agent.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+              </a>
             )}
 
             {/* Contact Info */}
