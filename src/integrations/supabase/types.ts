@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          file_url: string
+          id: string
+          session_property_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          file_url: string
+          id?: string
+          session_property_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          file_url?: string
+          id?: string
+          session_property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_photos_session_property_id_fkey"
+            columns: ["session_property_id"]
+            isOneToOne: false
+            referencedRelation: "session_properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
