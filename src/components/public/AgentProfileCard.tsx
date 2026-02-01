@@ -79,19 +79,6 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
               </p>
             )}
 
-            {/* Website Link */}
-            {agent.website_url && (
-              <a 
-                href={agent.website_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mt-3 text-sm text-accent hover:underline"
-              >
-                <Globe className="w-4 h-4" />
-                {agent.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-              </a>
-            )}
-
             {/* Contact Info */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4 text-sm">
               {agent.phone && (
