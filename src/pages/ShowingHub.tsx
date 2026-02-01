@@ -86,8 +86,6 @@ const ShowingHub = () => {
     title: string;
     sessionDate?: Date;
     clientName: string;
-    clientEmail?: string;
-    clientPhone?: string;
     notes?: string;
   }) => {
     try {
@@ -99,8 +97,6 @@ const ShowingHub = () => {
         title: data.title,
         session_date: data.sessionDate?.toISOString().split('T')[0] || null,
         client_name: data.clientName,
-        client_email: data.clientEmail || null,
-        client_phone: data.clientPhone || null,
         notes: data.notes || null,
       });
 
@@ -143,8 +139,6 @@ const ShowingHub = () => {
   const handleSaveSession = async (data: {
     title: string;
     clientName: string;
-    clientEmail?: string;
-    clientPhone?: string;
     sessionDate?: Date;
     notes?: string;
   }) => {
@@ -156,8 +150,6 @@ const ShowingHub = () => {
         .update({
           title: data.title,
           client_name: data.clientName,
-          client_email: data.clientEmail || null,
-          client_phone: data.clientPhone || null,
           session_date: data.sessionDate?.toISOString().split('T')[0] || null,
           notes: data.notes || null,
         })
