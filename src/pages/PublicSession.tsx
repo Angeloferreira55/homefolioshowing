@@ -7,6 +7,10 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
 import { AgentProfileCard, AgentProfile } from '@/components/public/AgentProfileCard';
+import PublicPropertyDetailDialog, {
+  PublicPropertyDocument,
+  PublicSessionProperty,
+} from '@/components/public/PublicPropertyDetailDialog';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -20,27 +24,8 @@ interface FeedbackData {
   investigateRequest?: string;
 }
 
-interface PropertyDocument {
-  id: string;
-  name: string;
-  doc_type: string | null;
-  file_url: string;
-}
-
-interface SessionProperty {
-  id: string;
-  address: string;
-  city: string | null;
-  state: string | null;
-  zip_code: string | null;
-  price: number | null;
-  beds: number | null;
-  baths: number | null;
-  sqft: number | null;
-  photo_url: string | null;
-  order_index: number;
-  documents?: PropertyDocument[];
-}
+type PropertyDocument = PublicPropertyDocument;
+type SessionProperty = PublicSessionProperty & { order_index: number };
 
 interface ShowingSession {
   id: string;
@@ -68,6 +53,10 @@ const PublicSession = () => {
   // Feedback dialog state
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [activeProperty, setActiveProperty] = useState<SessionProperty | null>(null);
+
+  // Detail dialog state
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailProperty, setDetailProperty] = useState<SessionProperty | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -208,13 +197,24 @@ const PublicSession = () => {
     }).format(price);
   };
 
-  const handleViewDocument = async (fileUrl: string, docName: string) => {
+  const handleViewDocument = async (doc: PropertyDocument) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('property-documents')
-        .createSignedUrl(fileUrl, 3600);
+      if (!token) {
+        toast.error('Invalid link');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('public-doc-url', {
+        body: {
+          token,
+          docId: doc.id,
+          expiresInSeconds: 3600,
+        },
+      });
 
       if (error) throw error;
+      if (!data?.signedUrl) throw new Error('Failed to open document');
+
       window.open(data.signedUrl, '_blank');
     } catch (error) {
       toast.error('Failed to open document');
@@ -386,7 +386,7 @@ const PublicSession = () => {
                       onClick={() => {
                         // Show first document for now
                         if (property.documents && property.documents[0]) {
-                          handleViewDocument(property.documents[0].file_url, property.documents[0].name);
+                          handleViewDocument(property.documents[0]);
                         }
                       }}
                     >
@@ -409,7 +409,14 @@ const PublicSession = () => {
 
                   {/* Action Buttons */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="gap-2">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => {
+                        setDetailProperty(property);
+                        setDetailOpen(true);
+                      }}
+                    >
                       <ExternalLink className="w-4 h-4" />
                       VIEW DETAILS
                     </Button>
@@ -458,6 +465,14 @@ const PublicSession = () => {
           onSaved={handleFeedbackSaved}
         />
       )}
+
+      <PublicPropertyDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        property={detailProperty}
+        sessionDate={session.session_date}
+        onOpenDocument={handleViewDocument}
+      />
     </div>
   );
 };
