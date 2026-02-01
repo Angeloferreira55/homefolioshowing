@@ -194,10 +194,12 @@ export type Database = {
       session_properties: {
         Row: {
           address: string
+          agent_notes: string | null
           baths: number | null
           beds: number | null
           city: string | null
           created_at: string
+          description: string | null
           id: string
           order_index: number
           photo_url: string | null
@@ -205,15 +207,18 @@ export type Database = {
           session_id: string
           sqft: number | null
           state: string | null
+          summary: string | null
           updated_at: string
           zip_code: string | null
         }
         Insert: {
           address: string
+          agent_notes?: string | null
           baths?: number | null
           beds?: number | null
           city?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           order_index?: number
           photo_url?: string | null
@@ -221,15 +226,18 @@ export type Database = {
           session_id: string
           sqft?: number | null
           state?: string | null
+          summary?: string | null
           updated_at?: string
           zip_code?: string | null
         }
         Update: {
           address?: string
+          agent_notes?: string | null
           baths?: number | null
           beds?: number | null
           city?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           order_index?: number
           photo_url?: string | null
@@ -237,6 +245,7 @@ export type Database = {
           session_id?: string
           sqft?: number | null
           state?: string | null
+          summary?: string | null
           updated_at?: string
           zip_code?: string | null
         }

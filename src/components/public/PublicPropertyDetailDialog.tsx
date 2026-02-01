@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, ExternalLink, FileText, MapPin, X } from 'lucide-react';
+import { Calendar, ExternalLink, FileText, MapPin, X, MessageSquare, Sparkles, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import PropertyDocumentsDrawer from './PropertyDocumentsDrawer';
 
@@ -24,6 +24,9 @@ export interface PublicSessionProperty {
   sqft: number | null;
   photo_url: string | null;
   documents?: PublicPropertyDocument[];
+  agent_notes?: string | null;
+  summary?: string | null;
+  description?: string | null;
 }
 
 function formatPrice(price: number | null) {
@@ -143,6 +146,45 @@ export default function PublicPropertyDetailDialog({
                     </p>
                     <p className="text-xs text-muted-foreground">Sq Ft</p>
                   </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {property.summary && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Summary</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {property.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* About This Home */}
+              {property.description && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Home className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">About This Home</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {property.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Agent's Notes */}
+              {property.agent_notes && (
+                <div className="mb-5 p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">Agent's Notes</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {property.agent_notes}
+                  </p>
                 </div>
               )}
 

@@ -24,10 +24,12 @@ import {
   List,
   Map,
   Navigation,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
+import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetailsDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 import PropertyMap from '@/components/showings/PropertyMap';
@@ -105,6 +107,8 @@ const SessionDetail = () => {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startingPoint, setStartingPoint] = useState('');
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
+  const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
+  const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -768,6 +772,20 @@ const SessionDetail = () => {
                     size="sm"
                     className="gap-1"
                     onClick={() => {
+                      setEditDetailsPropertyId(property.id);
+                      setEditDetailsPropertyAddress(
+                        `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
+                      );
+                    }}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => {
                       setDocsPropertyId(property.id);
                       setDocsPropertyAddress(
                         `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
@@ -865,6 +883,18 @@ const SessionDetail = () => {
         }}
         propertyId={docsPropertyId || ''}
         propertyAddress={docsPropertyAddress}
+      />
+
+      <EditPropertyDetailsDialog
+        open={!!editDetailsPropertyId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditDetailsPropertyId(null);
+          }
+        }}
+        propertyId={editDetailsPropertyId || ''}
+        propertyAddress={editDetailsPropertyAddress}
+        onSaved={fetchProperties}
       />
     </AdminLayout>
   );
