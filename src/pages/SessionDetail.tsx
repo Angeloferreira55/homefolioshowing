@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
   Home,
@@ -20,12 +21,15 @@ import {
   Star,
   MessageSquare,
   Loader2,
+  List,
+  Map,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
+import PropertyMap from '@/components/showings/PropertyMap';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -512,9 +516,21 @@ const SessionDetail = () => {
           </div>
         </div>
 
-        {/* Properties List */}
+        {/* Properties List/Map Tabs */}
         {properties.length > 0 ? (
-          <div className="space-y-4">
+          <Tabs defaultValue="list" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="list" className="gap-2">
+                <List className="w-4 h-4" />
+                List View
+              </TabsTrigger>
+              <TabsTrigger value="map" className="gap-2">
+                <Map className="w-4 h-4" />
+                Map View
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="list" className="space-y-4">
             {properties.map((property, index) => (
               <div
                 key={property.id}
@@ -666,7 +682,12 @@ const SessionDetail = () => {
                 </div>
               </div>
             ))}
-          </div>
+            </TabsContent>
+            
+            <TabsContent value="map">
+              <PropertyMap properties={properties} />
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="text-center py-16 bg-card rounded-xl">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
