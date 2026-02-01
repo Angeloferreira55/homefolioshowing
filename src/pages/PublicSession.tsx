@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
+import { AgentProfileCard, AgentProfile } from '@/components/public/AgentProfileCard';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -44,6 +45,7 @@ interface ShowingSession {
   client_name: string;
   session_date: string | null;
   notes: string | null;
+  admin_id: string;
 }
 
 interface PropertyRating {
@@ -55,6 +57,7 @@ const PublicSession = () => {
   const { token } = useParams<{ token: string }>();
   const [session, setSession] = useState<ShowingSession | null>(null);
   const [properties, setProperties] = useState<SessionProperty[]>([]);
+  const [agent, setAgent] = useState<AgentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [ratings, setRatings] = useState<Record<string, PropertyRating>>({});
@@ -71,10 +74,10 @@ const PublicSession = () => {
 
   const fetchSession = async () => {
     try {
-      // Fetch session by share token
+      // Fetch session by share token (include admin_id)
       const { data: sessionData, error: sessionError } = await supabase
         .from('showing_sessions')
-        .select('id, title, client_name, session_date, notes')
+        .select('id, title, client_name, session_date, notes, admin_id')
         .eq('share_token', token)
         .single();
 
@@ -84,6 +87,17 @@ const PublicSession = () => {
       }
 
       setSession(sessionData);
+
+      // Fetch agent profile
+      const { data: agentData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url, slogan, bio, phone, email, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url')
+        .eq('user_id', sessionData.admin_id)
+        .maybeSingle();
+
+      if (agentData) {
+        setAgent(agentData as unknown as AgentProfile);
+      }
 
       // Fetch properties
       const { data: propertiesData, error: propsError } = await supabase
@@ -274,6 +288,13 @@ const PublicSession = () => {
           )}
         </div>
       </header>
+
+      {/* Agent Profile */}
+      {agent && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+          <AgentProfileCard agent={agent} />
+        </div>
+      )}
 
       {/* Properties */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
