@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -24,9 +25,20 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle }: QRCodeDi
 
   useEffect(() => {
     if (open && canvasRef.current && shareToken) {
-      generateQRCode();
+      // Small delay to ensure canvas is mounted
+      const timer = setTimeout(() => {
+        generateQRCode();
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [open, shareToken]);
+
+  // Force regeneration when shareToken changes
+  useEffect(() => {
+    if (shareToken) {
+      setError(null);
+    }
+  }, [shareToken]);
 
   const generateQRCode = async () => {
     const canvas = canvasRef.current;
@@ -72,6 +84,9 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle }: QRCodeDi
           <DialogTitle className="font-display text-xl text-center">
             Share Session
           </DialogTitle>
+          <DialogDescription className="text-center text-sm text-muted-foreground">
+            Scan QR code or copy the link to share "{sessionTitle}" with your client
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center py-6">
