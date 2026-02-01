@@ -19,9 +19,19 @@ import {
   Award,
   Save,
   Loader2,
-  ArrowLeft,
-  ImagePlus
+  Linkedin,
+  Instagram,
+  Facebook,
+  Youtube,
+  Globe
 } from 'lucide-react';
+
+// X/Twitter icon (not in lucide-react)
+const XIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 import AdminLayout from '@/components/layout/AdminLayout';
 
 const Profile = () => {
@@ -58,6 +68,12 @@ const Profile = () => {
         brokerage_address: profile.brokerage_address || '',
         brokerage_phone: profile.brokerage_phone || '',
         brokerage_email: profile.brokerage_email || '',
+        linkedin_url: profile.linkedin_url || '',
+        instagram_url: profile.instagram_url || '',
+        facebook_url: profile.facebook_url || '',
+        twitter_url: profile.twitter_url || '',
+        youtube_url: profile.youtube_url || '',
+        website_url: profile.website_url || '',
       });
       setAvatarPreview(profile.avatar_url);
       setLogoPreview(profile.brokerage_logo_url);
@@ -358,6 +374,99 @@ const Profile = () => {
                       value={formData.brokerage_address || ''}
                       onChange={(e) => handleInputChange('brokerage_address', e.target.value)}
                       placeholder="123 Main St, Suite 100, City, State"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Social Media Links */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Social Media & Website
+              </CardTitle>
+              <CardDescription>Connect with clients on social media</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin_url">LinkedIn</Label>
+                  <div className="relative">
+                    <Linkedin className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="linkedin_url"
+                      value={formData.linkedin_url || ''}
+                      onChange={(e) => handleInputChange('linkedin_url', e.target.value)}
+                      placeholder="https://linkedin.com/in/yourprofile"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram_url">Instagram</Label>
+                  <div className="relative">
+                    <Instagram className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="instagram_url"
+                      value={formData.instagram_url || ''}
+                      onChange={(e) => handleInputChange('instagram_url', e.target.value)}
+                      placeholder="https://instagram.com/yourprofile"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facebook_url">Facebook</Label>
+                  <div className="relative">
+                    <Facebook className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="facebook_url"
+                      value={formData.facebook_url || ''}
+                      onChange={(e) => handleInputChange('facebook_url', e.target.value)}
+                      placeholder="https://facebook.com/yourpage"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="twitter_url">X (Twitter)</Label>
+                  <div className="relative">
+                    <XIcon className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="twitter_url"
+                      value={formData.twitter_url || ''}
+                      onChange={(e) => handleInputChange('twitter_url', e.target.value)}
+                      placeholder="https://x.com/yourhandle"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="youtube_url">YouTube</Label>
+                  <div className="relative">
+                    <Youtube className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="youtube_url"
+                      value={formData.youtube_url || ''}
+                      onChange={(e) => handleInputChange('youtube_url', e.target.value)}
+                      placeholder="https://youtube.com/@yourchannel"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="website_url">Personal Website</Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="website_url"
+                      value={formData.website_url || ''}
+                      onChange={(e) => handleInputChange('website_url', e.target.value)}
+                      placeholder="https://yourwebsite.com"
                       className="pl-10"
                     />
                   </div>

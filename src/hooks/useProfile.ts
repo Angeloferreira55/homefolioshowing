@@ -18,6 +18,12 @@ export interface Profile {
   brokerage_phone: string | null;
   brokerage_email: string | null;
   brokerage_logo_url: string | null;
+  linkedin_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  twitter_url: string | null;
+  youtube_url: string | null;
+  website_url: string | null;
 }
 
 export interface ProfileUpdate {
@@ -33,6 +39,12 @@ export interface ProfileUpdate {
   brokerage_phone?: string;
   brokerage_email?: string;
   brokerage_logo_url?: string;
+  linkedin_url?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  twitter_url?: string;
+  youtube_url?: string;
+  website_url?: string;
 }
 
 export function useProfile() {

@@ -1,6 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Phone, Mail, MapPin, Award } from 'lucide-react';
+import { Building2, Phone, Mail, MapPin, Award, Linkedin, Instagram, Facebook, Youtube, Globe } from 'lucide-react';
+
+// X/Twitter icon (not in lucide-react)
+const XIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
 export interface AgentProfile {
   full_name: string | null;
@@ -15,6 +22,12 @@ export interface AgentProfile {
   brokerage_phone: string | null;
   brokerage_email: string | null;
   brokerage_logo_url: string | null;
+  linkedin_url?: string | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  twitter_url?: string | null;
+  youtube_url?: string | null;
+  website_url?: string | null;
 }
 
 interface AgentProfileCardProps {
@@ -28,6 +41,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
   };
 
   const hasBrokerageInfo = agent.brokerage_name || agent.brokerage_logo_url;
+  const hasSocialLinks = agent.linkedin_url || agent.instagram_url || agent.facebook_url || agent.twitter_url || agent.youtube_url || agent.website_url;
 
   return (
     <Card className="overflow-hidden">
@@ -89,6 +103,78 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                 </a>
               )}
             </div>
+
+            {/* Social Links */}
+            {hasSocialLinks && (
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
+                {agent.linkedin_url && (
+                  <a 
+                    href={agent.linkedin_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.instagram_url && (
+                  <a 
+                    href={agent.instagram_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.facebook_url && (
+                  <a 
+                    href={agent.facebook_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Facebook"
+                  >
+                    <Facebook className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.twitter_url && (
+                  <a 
+                    href={agent.twitter_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="X (Twitter)"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.youtube_url && (
+                  <a 
+                    href={agent.youtube_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="YouTube"
+                  >
+                    <Youtube className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.website_url && (
+                  <a 
+                    href={agent.website_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Website"
+                  >
+                    <Globe className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Brokerage Info */}
