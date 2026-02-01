@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus, Loader2, X } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
 import { AgentProfileCard, AgentProfile } from '@/components/public/AgentProfileCard';
+import PropertyDocumentsDrawer from '@/components/public/PropertyDocumentsDrawer';
 import PublicPropertyDetailDialog, {
   PublicPropertyDocument,
   PublicSessionProperty,
@@ -67,6 +68,10 @@ const PublicSession = () => {
   // Detail dialog state
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailProperty, setDetailProperty] = useState<SessionProperty | null>(null);
+
+  // Documents drawer state
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [docsProperty, setDocsProperty] = useState<SessionProperty | null>(null);
 
   // Photo upload state
   const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
@@ -257,19 +262,47 @@ const PublicSession = () => {
       if (error) throw error;
       if (!data?.signedUrl) throw new Error('Failed to open document');
 
-      // Use direct navigation for better mobile compatibility
-      // Create a temporary link and click it - this bypasses popup blockers
-      const link = document.createElement('a');
-      link.href = data.signedUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Prefer same-tab navigation (most reliable on iOS) and avoid popup blockers.
+      window.location.assign(data.signedUrl);
     } catch (error) {
       console.error('Document error:', error);
       toast.dismiss('doc-loading');
       toast.error('Failed to open document');
+    }
+  };
+
+  const handleDownloadDocument = async (doc: PropertyDocument) => {
+    try {
+      if (!token) {
+        toast.error('Invalid link');
+        return;
+      }
+
+      toast.loading('Preparing download...', { id: 'doc-dl' });
+      const { data, error } = await supabase.functions.invoke('public-doc-url', {
+        body: {
+          token,
+          docId: doc.id,
+          expiresInSeconds: 3600,
+        },
+      });
+      toast.dismiss('doc-dl');
+
+      if (error) throw error;
+      if (!data?.signedUrl) throw new Error('Failed to download document');
+
+      // Download hint (works on many browsers; iOS may still open in viewer)
+      const a = document.createElement('a');
+      a.href = data.signedUrl;
+      a.download = doc.name || 'document';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download document error:', error);
+      toast.dismiss('doc-dl');
+      toast.error('Failed to download document');
     }
   };
 
@@ -505,24 +538,22 @@ const PublicSession = () => {
                   {/* Documents */}
                   {property.documents && property.documents.length > 0 && (
                     <div className="mb-4">
-                      <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                        <FileText className="w-3 h-3" />
-                        Documents ({property.documents.length})
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {property.documents.map((doc) => (
-                          <Button
-                            key={doc.id}
-                            variant="outline"
-                            size="sm"
-                            className="gap-2 text-xs"
-                            onClick={() => handleViewDocument(doc)}
-                          >
-                            <FileText className="w-3 h-3" />
-                            {doc.name.length > 20 ? doc.name.substring(0, 20) + '...' : doc.name}
-                          </Button>
-                        ))}
-                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between"
+                        onClick={() => {
+                          setDocsProperty(property);
+                          setDocsOpen(true);
+                        }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Property Documents
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {property.documents.length}
+                        </span>
+                      </Button>
                     </div>
                   )}
 
@@ -637,6 +668,15 @@ const PublicSession = () => {
           onSaved={handleFeedbackSaved}
         />
       )}
+
+      <PropertyDocumentsDrawer
+        open={docsOpen}
+        onOpenChange={setDocsOpen}
+        propertyAddress={docsProperty?.address || ''}
+        documents={docsProperty?.documents || []}
+        onOpen={handleViewDocument}
+        onDownload={handleDownloadDocument}
+      />
 
       <PublicPropertyDetailDialog
         open={detailOpen}
