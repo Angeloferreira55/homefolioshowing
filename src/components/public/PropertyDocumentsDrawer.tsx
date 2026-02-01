@@ -7,7 +7,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, X } from 'lucide-react';
+import { FileText, Download, ChevronRight } from 'lucide-react';
 
 export type PublicDoc = {
   id: string;
@@ -73,68 +73,58 @@ export default function PropertyDocumentsDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-2"
-            onClick={() => onOpenChange(false)}
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+      <DrawerContent className="max-h-[85vh]">
+        <DrawerHeader className="pb-2 text-left">
+          <DrawerTitle className="text-lg font-semibold">
+            Property Documents
+          </DrawerTitle>
+          <DrawerDescription className="text-sm text-muted-foreground line-clamp-1">
+            {propertyAddress}
+          </DrawerDescription>
+        </DrawerHeader>
 
-          <DrawerHeader className="pb-3">
-            <DrawerTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Property Documents
-            </DrawerTitle>
-            <DrawerDescription className="text-balance">
-              {propertyAddress}
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <div className="px-4 pb-6">
-            <div className="space-y-2">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3"
+        <div className="px-4 pb-6 overflow-y-auto">
+          <div className="divide-y divide-border">
+            {documents.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 py-3"
+              >
+                {/* Tap entire row to open */}
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-3 text-left min-w-0"
+                  onClick={() => handleOpen(doc)}
+                  disabled={busyId === doc.id}
                 >
-                  <button
-                    type="button"
-                    className="flex flex-1 items-center gap-3 text-left"
-                    onClick={() => handleOpen(doc)}
-                    disabled={busyId === doc.id}
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-foreground">
-                        {truncateMiddle(doc.name, 42)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {getDocTypeLabel(doc.doc_type)}
-                      </div>
-                    </div>
-                  </button>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {truncateMiddle(doc.name, 36)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {getDocTypeLabel(doc.doc_type)}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => handleDownload(doc)}
-                    disabled={busyId === doc.id}
-                    aria-label="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                {/* Separate download button */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 shrink-0"
+                  onClick={() => handleDownload(doc)}
+                  disabled={busyId === doc.id}
+                  aria-label="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
       </DrawerContent>
