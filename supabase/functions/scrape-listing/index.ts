@@ -15,6 +15,14 @@ interface PropertyData {
   photoUrl?: string;
   description?: string;
   summary?: string;
+  yearBuilt?: number;
+  lotSize?: string;
+  propertyType?: string;
+  hoaFee?: number;
+  garage?: string;
+  heating?: string;
+  cooling?: string;
+  features?: string[];
 }
 
 Deno.serve(async (req) => {
@@ -69,10 +77,22 @@ Deno.serve(async (req) => {
               zipCode: { type: 'string', description: 'ZIP code' },
               price: { type: 'number', description: 'Listing price in dollars (just the number, no symbols)' },
               beds: { type: 'number', description: 'Number of bedrooms' },
-              baths: { type: 'number', description: 'Number of bathrooms' },
-              sqft: { type: 'number', description: 'Square footage' },
-              description: { type: 'string', description: 'Full property description or "About This Home" text. Clean text only, no links or branding.' },
+              baths: { type: 'number', description: 'Number of bathrooms (can be decimal like 2.5)' },
+              sqft: { type: 'number', description: 'Square footage of living space' },
+              description: { type: 'string', description: 'Full property description or "About This Home" text. Extract ALL paragraphs. Clean text only, no links or branding.' },
               summary: { type: 'string', description: 'Property highlights or key features as a short summary (2-3 sentences max). Do not include any website branding or links.' },
+              yearBuilt: { type: 'number', description: 'Year the property was built (e.g. 1995, 2020)' },
+              lotSize: { type: 'string', description: 'Lot size (e.g. "0.25 acres", "10,890 sqft")' },
+              propertyType: { type: 'string', description: 'Type of property (e.g. Single Family, Condo, Townhouse, Multi-Family)' },
+              hoaFee: { type: 'number', description: 'Monthly HOA fee in dollars (just the number)' },
+              garage: { type: 'string', description: 'Garage information (e.g. "2-car attached", "1-car detached", "None")' },
+              heating: { type: 'string', description: 'Heating type (e.g. "Forced Air", "Central", "Radiant")' },
+              cooling: { type: 'string', description: 'Cooling/AC type (e.g. "Central AC", "Window Unit", "None")' },
+              features: { 
+                type: 'array', 
+                items: { type: 'string' },
+                description: 'List of property features and amenities (e.g. ["Pool", "Hardwood Floors", "Stainless Steel Appliances", "Fireplace", "Updated Kitchen"]). Extract key features mentioned in the listing.'
+              },
             },
             required: ['address'],
           },
@@ -104,6 +124,9 @@ Deno.serve(async (req) => {
       return text
         .replace(/redfin\.com/gi, '')
         .replace(/redfin/gi, '')
+        .replace(/zillow\.com/gi, '')
+        .replace(/zillow/gi, '')
+        .replace(/realtor\.com/gi, '')
         .replace(/https?:\/\/[^\s]+/g, '')
         .replace(/\s+/g, ' ')
         .trim() || undefined;
@@ -121,6 +144,14 @@ Deno.serve(async (req) => {
       photoUrl: photoUrl || undefined,
       description: cleanText(extractedData.description),
       summary: cleanText(extractedData.summary),
+      yearBuilt: extractedData.yearBuilt ? Number(extractedData.yearBuilt) : undefined,
+      lotSize: extractedData.lotSize || undefined,
+      propertyType: extractedData.propertyType || undefined,
+      hoaFee: extractedData.hoaFee ? Number(extractedData.hoaFee) : undefined,
+      garage: extractedData.garage || undefined,
+      heating: extractedData.heating || undefined,
+      cooling: extractedData.cooling || undefined,
+      features: Array.isArray(extractedData.features) ? extractedData.features.filter(Boolean) : undefined,
     };
 
     console.log('Extracted property data:', propertyData);

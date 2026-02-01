@@ -25,6 +25,14 @@ interface PropertyData {
   sqft?: number;
   description?: string;
   summary?: string;
+  yearBuilt?: number;
+  lotSize?: string;
+  propertyType?: string;
+  hoaFee?: number;
+  garage?: string;
+  heating?: string;
+  cooling?: string;
+  features?: string[];
 }
 
 interface AddPropertyDialogProps {
