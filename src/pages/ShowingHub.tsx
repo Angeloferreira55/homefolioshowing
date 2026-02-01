@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight } from 'lucide-react';
+import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil } from 'lucide-react';
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
+import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -12,9 +13,12 @@ interface ShowingSession {
   id: string;
   title: string;
   client_name: string;
+  client_email?: string | null;
+  client_phone?: string | null;
   session_date: string | null;
   share_token: string;
   created_at: string;
+  notes?: string | null;
   property_count?: number;
   rating_count?: number;
 }
@@ -24,6 +28,7 @@ const ShowingHub = () => {
   const [sessions, setSessions] = useState<ShowingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<ShowingSession | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -37,8 +42,11 @@ const ShowingHub = () => {
           id,
           title,
           client_name,
+          client_email,
+          client_phone,
           session_date,
           share_token,
+          notes,
           created_at
         `)
         .order('created_at', { ascending: false });
@@ -127,6 +135,44 @@ const ShowingHub = () => {
     }
   };
 
+  const handleEditSession = (session: ShowingSession, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSession(session);
+  };
+
+  const handleSaveSession = async (data: {
+    title: string;
+    clientName: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    sessionDate?: Date;
+    notes?: string;
+  }) => {
+    if (!editingSession) return;
+
+    try {
+      const { error } = await supabase
+        .from('showing_sessions')
+        .update({
+          title: data.title,
+          client_name: data.clientName,
+          client_email: data.clientEmail || null,
+          client_phone: data.clientPhone || null,
+          session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+          notes: data.notes || null,
+        })
+        .eq('id', editingSession.id);
+
+      if (error) throw error;
+
+      toast.success('Session updated!');
+      fetchSessions();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update session');
+      throw error;
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -196,8 +242,18 @@ const ShowingHub = () => {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={(e) => handleEditSession(session, e)}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Edit session"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={(e) => handleDuplicate(session, e)}
                       className="text-muted-foreground hover:text-foreground"
+                      title="Duplicate session"
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -230,6 +286,13 @@ const ShowingHub = () => {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
+      />
+
+      <EditSessionDialog
+        session={editingSession}
+        open={!!editingSession}
+        onOpenChange={(open) => !open && setEditingSession(null)}
+        onSave={handleSaveSession}
       />
     </AdminLayout>
   );
