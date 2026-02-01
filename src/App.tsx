@@ -12,6 +12,7 @@ import ShowingHub from "./pages/ShowingHub";
 import SessionDetail from "./pages/SessionDetail";
 import PublicSession from "./pages/PublicSession";
 import ProfileOptionsDemo from "./pages/ProfileOptionsDemo";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/admin/session/:id" element={<SessionDetail />} />
           <Route path="/s/:token" element={<PublicSession />} />
           <Route path="/profile-options" element={<ProfileOptionsDemo />} />
+          <Route path="/admin/profile" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

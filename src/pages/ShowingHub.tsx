@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Home, LogOut, Users, Calendar, Star, Copy, ChevronRight } from 'lucide-react';
+import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight } from 'lucide-react';
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
+import AdminLayout from '@/components/layout/AdminLayout';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -23,27 +24,10 @@ const ShowingHub = () => {
   const [sessions, setSessions] = useState<ShowingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
-    checkAuth();
     fetchSessions();
   }, []);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate('/auth');
-      return;
-    }
-    setUserEmail(session.user.email || '');
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate('/auth');
-      }
-    });
-  };
 
   const fetchSessions = async () => {
     try {
@@ -121,11 +105,6 @@ const ShowingHub = () => {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  };
-
   const handleDuplicate = async (session: ShowingSession, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -149,29 +128,8 @@ const ShowingHub = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Home className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-display text-xl font-semibold text-foreground">
-                HomeFolio
-              </span>
-            </Link>
-
-            <Button variant="ghost" onClick={handleLogout} className="gap-2">
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AdminLayout>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -179,7 +137,7 @@ const ShowingHub = () => {
               Showing Hub
             </h1>
             <p className="text-muted-foreground">
-              Logged in as {userEmail}
+              Manage your showing sessions
             </p>
           </div>
         </div>
@@ -266,14 +224,14 @@ const ShowingHub = () => {
             </Button>
           </div>
         )}
-      </main>
+      </div>
 
       <CreateSessionDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
       />
-    </div>
+    </AdminLayout>
   );
 };
 

@@ -17,34 +17,58 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          brokerage_address: string | null
+          brokerage_email: string | null
+          brokerage_logo_url: string | null
+          brokerage_name: string | null
+          brokerage_phone: string | null
           company: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
+          license_number: string | null
           phone: string | null
+          slogan: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          brokerage_phone?: string | null
           company?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id?: string
+          license_number?: string | null
           phone?: string | null
+          slogan?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          brokerage_phone?: string | null
           company?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
+          license_number?: string | null
           phone?: string | null
+          slogan?: string | null
           updated_at?: string
           user_id?: string
         }
