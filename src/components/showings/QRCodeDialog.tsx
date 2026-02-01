@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import {
   Dialog,
   DialogContent,
@@ -18,10 +19,11 @@ interface QRCodeDialogProps {
 
 const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle }: QRCodeDialogProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState<string | null>(null);
   const shareUrl = `${window.location.origin}/s/${shareToken}`;
 
   useEffect(() => {
-    if (open && canvasRef.current) {
+    if (open && canvasRef.current && shareToken) {
       generateQRCode();
     }
   }, [open, shareToken]);
@@ -30,52 +32,21 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle }: QRCodeDi
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Simple QR-like pattern (placeholder - in production use a QR library)
-    const size = 200;
-    canvas.width = size;
-    canvas.height = size;
-
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, size, size);
-
-    ctx.fillStyle = 'black';
-    const cellSize = 10;
-    const margin = 20;
-
-    // Draw a placeholder pattern
-    const data = shareToken;
-    for (let i = 0; i < (size - margin * 2) / cellSize; i++) {
-      for (let j = 0; j < (size - margin * 2) / cellSize; j++) {
-        const charCode = data.charCodeAt((i * j) % data.length);
-        if ((charCode + i + j) % 3 === 0) {
-          ctx.fillRect(
-            margin + i * cellSize,
-            margin + j * cellSize,
-            cellSize - 1,
-            cellSize - 1
-          );
-        }
-      }
+    try {
+      setError(null);
+      await QRCode.toCanvas(canvas, shareUrl, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      });
+    } catch (err) {
+      console.error('QR generation error:', err);
+      setError('Failed to generate QR code');
     }
-
-    // Corner patterns
-    const corners = [
-      [margin, margin],
-      [size - margin - 30, margin],
-      [margin, size - margin - 30],
-    ];
-    
-    corners.forEach(([x, y]) => {
-      ctx.fillStyle = 'black';
-      ctx.fillRect(x, y, 30, 30);
-      ctx.fillStyle = 'white';
-      ctx.fillRect(x + 5, y + 5, 20, 20);
-      ctx.fillStyle = 'black';
-      ctx.fillRect(x + 10, y + 10, 10, 10);
-    });
   };
 
   const handleCopyLink = () => {
@@ -105,7 +76,13 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle }: QRCodeDi
 
         <div className="flex flex-col items-center py-6">
           <div className="bg-white p-4 rounded-xl shadow-md mb-4">
-            <canvas ref={canvasRef} className="w-[200px] h-[200px]" />
+            {error ? (
+              <div className="w-[200px] h-[200px] flex items-center justify-center text-destructive text-sm">
+                {error}
+              </div>
+            ) : (
+              <canvas ref={canvasRef} className="w-[200px] h-[200px]" />
+            )}
           </div>
 
           <p className="text-sm text-muted-foreground text-center mb-4 px-4 break-all">
