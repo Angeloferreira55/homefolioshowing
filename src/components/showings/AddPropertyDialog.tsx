@@ -23,6 +23,8 @@ interface PropertyData {
   beds?: number;
   baths?: number;
   sqft?: number;
+  description?: string;
+  summary?: string;
 }
 
 interface AddPropertyDialogProps {
@@ -42,6 +44,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [beds, setBeds] = useState('');
   const [baths, setBaths] = useState('');
   const [sqft, setSqft] = useState('');
+  const [description, setDescription] = useState('');
+  const [summary, setSummary] = useState('');
 
   const [listingUrl, setListingUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -83,7 +87,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       if (property.beds) setBeds(property.beds.toString());
       if (property.baths) setBaths(property.baths.toString());
       if (property.sqft) setSqft(property.sqft.toString());
-
+      if (property.description) setDescription(property.description);
+      if (property.summary) setSummary(property.summary);
       toast.success('Listing data imported! Review and submit.');
     } catch (error: any) {
       console.error('Import error:', error);
@@ -201,6 +206,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         beds: beds ? parseInt(beds) : undefined,
         baths: baths ? parseFloat(baths) : undefined,
         sqft: sqft ? parseInt(sqft) : undefined,
+        description: description.trim() || undefined,
+        summary: summary.trim() || undefined,
       });
       resetForm();
       onOpenChange(false);
@@ -217,6 +224,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setBeds('');
     setBaths('');
     setSqft('');
+    setDescription('');
+    setSummary('');
     setListingUrl('');
     setSelectedFile(null);
     setParsedProperties([]);

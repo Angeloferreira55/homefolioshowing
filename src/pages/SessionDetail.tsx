@@ -220,6 +220,8 @@ const SessionDetail = () => {
     beds?: number;
     baths?: number;
     sqft?: number;
+    description?: string;
+    summary?: string;
   }) => {
     try {
       // Verify user is authenticated before insert
@@ -243,6 +245,8 @@ const SessionDetail = () => {
         beds: data.beds || null,
         baths: data.baths || null,
         sqft: data.sqft || null,
+        description: data.description || null,
+        summary: data.summary || null,
         order_index: maxOrder + 1,
       });
 
@@ -266,6 +270,8 @@ const SessionDetail = () => {
     beds?: number;
     baths?: number;
     sqft?: number;
+    description?: string;
+    summary?: string;
   }>) => {
     try {
       // Verify user is authenticated before insert
@@ -289,6 +295,8 @@ const SessionDetail = () => {
         beds: data.beds || null,
         baths: data.baths || null,
         sqft: data.sqft || null,
+        description: data.description || null,
+        summary: data.summary || null,
         order_index: maxOrder + 1 + index,
       }));
 
