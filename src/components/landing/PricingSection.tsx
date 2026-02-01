@@ -23,7 +23,7 @@ const plans = [
   {
     name: 'Pro',
     monthlyPrice: 9.99,
-    yearlyPrice: 99.90,
+    yearlyPrice: 95,
     description: 'For busy agents who want to impress clients',
     features: [
       'Unlimited clients',
@@ -40,7 +40,7 @@ const plans = [
   {
     name: 'Team',
     monthlyPrice: 49,
-    yearlyPrice: 490,
+    yearlyPrice: 485,
     description: 'For brokerages and real estate teams',
     features: [
       'Everything in Pro',
@@ -73,7 +73,7 @@ const PricingSection = () => {
   const getSavings = (plan: typeof plans[0]) => {
     if (plan.monthlyPrice === 0) return null;
     const yearlyIfMonthly = plan.monthlyPrice * 12;
-    const savings = yearlyIfMonthly - plan.yearlyPrice;
+    const savings = Math.round((yearlyIfMonthly - plan.yearlyPrice) * 100) / 100;
     return savings;
   };
 
