@@ -684,6 +684,7 @@ const PublicSession = () => {
         property={detailProperty}
         sessionDate={session.session_date}
         onOpenDocument={handleViewDocument}
+        onDownloadDocument={handleDownloadDocument}
       />
     </div>
   );
