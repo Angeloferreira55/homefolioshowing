@@ -177,15 +177,23 @@ const PropertyDocumentsDialog = ({
 
   const handleView = async (doc: PropertyDocument) => {
     try {
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('property-documents')
         .createSignedUrl(doc.file_url, 3600); // 1 hour expiry
 
+      if (error) {
+        console.error('Signed URL error:', error);
+        throw error;
+      }
+
       if (data?.signedUrl) {
         window.open(data.signedUrl, '_blank');
+      } else {
+        throw new Error('No signed URL returned');
       }
-    } catch (error) {
-      toast.error('Failed to open document');
+    } catch (error: any) {
+      console.error('View document error:', error);
+      toast.error(error.message || 'Failed to open document');
     }
   };
 
