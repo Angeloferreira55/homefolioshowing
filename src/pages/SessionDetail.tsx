@@ -104,13 +104,34 @@ const SessionDetail = () => {
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startingPoint, setStartingPoint] = useState('');
+  const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
       fetchSession();
       fetchProperties();
+      fetchAgentLogo();
     }
   }, [id]);
+
+  const fetchAgentLogo = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('brokerage_logo_url')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data?.brokerage_logo_url) {
+        setBrokerageLogo(data.brokerage_logo_url);
+      }
+    } catch (error) {
+      console.log('Could not fetch agent logo');
+    }
+  };
 
   const fetchSession = async () => {
     try {
@@ -810,6 +831,7 @@ const SessionDetail = () => {
         onOpenChange={setIsQROpen}
         shareToken={session.share_token}
         sessionTitle={session.title}
+        logoUrl={brokerageLogo}
       />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
