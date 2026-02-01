@@ -70,11 +70,11 @@ const PricingSection = () => {
     return isYearly ? '/year' : '/month';
   };
 
-  const getSavings = (plan: typeof plans[0]) => {
+  const getSavingsPercent = (plan: typeof plans[0]) => {
     if (plan.monthlyPrice === 0) return null;
     const yearlyIfMonthly = plan.monthlyPrice * 12;
-    const savings = Math.round((yearlyIfMonthly - plan.yearlyPrice) * 100) / 100;
-    return savings;
+    const savings = ((yearlyIfMonthly - plan.yearlyPrice) / yearlyIfMonthly) * 100;
+    return Math.round(savings);
   };
 
   return (
@@ -144,9 +144,9 @@ const PricingSection = () => {
                     <span className="text-muted-foreground">{getPeriod(plan)}</span>
                   )}
                 </div>
-                {isYearly && getSavings(plan) && (
+                {isYearly && getSavingsPercent(plan) && (
                   <p className="text-accent text-sm font-medium mt-1">
-                    Save ${getSavings(plan)} per year
+                    Save {getSavingsPercent(plan)}%
                   </p>
                 )}
                 <p className="text-muted-foreground text-sm mt-2">
