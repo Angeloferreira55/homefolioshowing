@@ -85,6 +85,13 @@ const FeaturesSection = () => {
             </div>
           ))}
         </div>
+
+        {/* Bottom CTA text */}
+        <div className="max-w-2xl mx-auto text-center mt-16">
+          <p className="text-lg text-muted-foreground">
+            Get started in minutes and transform how you share listings and organize your showings.
+          </p>
+        </div>
       </div>
     </section>
   );
