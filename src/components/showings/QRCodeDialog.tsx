@@ -31,6 +31,10 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
+// Higher resolution for better quality - displayed at 200px but rendered at 400px
+const QR_RENDER_SIZE = 400;
+const QR_DISPLAY_SIZE = 200;
+
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
   { name: 'Terracotta', fg: '#c75d3a', bg: '#ffffff' },
@@ -73,9 +77,9 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl }:
     try {
       setError(null);
       
-      // Generate QR code with higher error correction for logo overlay
+      // Generate QR code at higher resolution for better quality
       await QRCode.toCanvas(canvas, shareUrl, {
-        width: 200,
+        width: QR_RENDER_SIZE,
         margin: 2,
         color: {
           dark: fgColor,
@@ -197,7 +201,10 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl }:
                 {error}
               </div>
             ) : (
-              <canvas ref={canvasRef} className="w-[200px] h-[200px]" />
+              <canvas 
+                ref={canvasRef} 
+                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px` }}
+              />
             )}
           </div>
 
