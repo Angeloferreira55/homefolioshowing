@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { LogIn, Home, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Home, Eye, EyeOff, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import SEO from '@/components/SEO';
@@ -14,9 +14,15 @@ const authSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const emailSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+type AuthMode = 'login' | 'signup' | 'forgot';
+
 const Auth = () => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -48,7 +54,11 @@ const Auth = () => {
 
   const validateForm = () => {
     try {
-      authSchema.parse({ email, password });
+      if (mode === 'forgot') {
+        emailSchema.parse({ email });
+      } else {
+        authSchema.parse({ email, password });
+      }
       setErrors({});
       return true;
     } catch (error) {
@@ -71,7 +81,15 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (mode === 'forgot') {
+        const redirectUrl = `${window.location.origin}/reset-password`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: redirectUrl,
+        });
+        if (error) throw error;
+        toast.success('Check your email for a password reset link!');
+        setMode('login');
+      } else if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -106,10 +124,49 @@ const Auth = () => {
     }
   };
 
+  const getTitle = () => {
+    switch (mode) {
+      case 'login': return 'Sign In';
+      case 'signup': return 'Sign Up';
+      case 'forgot': return 'Reset Password';
+    }
+  };
+
+  const getHeading = () => {
+    switch (mode) {
+      case 'login': return 'Admin Login';
+      case 'signup': return 'Create Account';
+      case 'forgot': return 'Forgot Password';
+    }
+  };
+
+  const getSubheading = () => {
+    switch (mode) {
+      case 'login': return 'Sign in to manage your showings';
+      case 'signup': return 'Register to start managing showings';
+      case 'forgot': return 'Enter your email to receive a reset link';
+    }
+  };
+
+  const getButtonText = () => {
+    if (loading) return 'Please wait...';
+    switch (mode) {
+      case 'login': return 'Sign In';
+      case 'signup': return 'Sign Up';
+      case 'forgot': return 'Send Reset Link';
+    }
+  };
+
+  const getIcon = () => {
+    return mode === 'forgot' ? Mail : LogIn;
+  };
+
+  const Icon = getIcon();
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <SEO
-        title={isLogin ? 'Sign In' : 'Sign Up'}
+        title={getTitle()}
         description="Sign in or create an account to manage your property showings with HomeFolio."
         url="https://homefolio-central-link.lovable.app/auth"
       />
@@ -118,23 +175,23 @@ const Auth = () => {
           {/* Icon */}
           <div className="flex justify-center mb-6">
             <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center">
-              <LogIn className="w-6 h-6 text-muted-foreground" />
+              <Icon className="w-6 h-6 text-muted-foreground" />
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="font-display text-2xl font-semibold text-foreground mb-2">
-              {isLogin ? 'Admin Login' : 'Create Account'}
+              {getHeading()}
             </h1>
             <p className="text-muted-foreground">
-              {isLogin ? 'Sign in to manage your showings' : 'Register to start managing showings'}
+              {getSubheading()}
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {!isLogin && (
+            {mode === 'signup' && (
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
@@ -164,60 +221,92 @@ const Auth = () => {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 pr-12"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
+            {mode !== 'forgot' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot');
+                        setErrors({});
+                      }}
+                      className="text-sm text-accent hover:underline"
+                    >
+                      Forgot password?
+                    </button>
                   )}
-                </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pr-12"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
+            )}
 
             <Button
               type="submit"
               className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
               disabled={loading}
             >
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Sign Up'}
+              {getButtonText()}
             </Button>
           </form>
 
           {/* Toggle */}
-          <div className="mt-6 text-center">
-            <p className="text-muted-foreground">
-              {isLogin ? "Need an account? " : "Already have an account? "}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="text-accent hover:underline font-medium"
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
+          <div className="mt-6 text-center space-y-2">
+            {mode === 'forgot' ? (
+              <p className="text-muted-foreground">
+                Remember your password?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrors({});
+                  }}
+                  className="text-accent hover:underline font-medium"
+                >
+                  Sign in
+                </button>
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                {mode === 'login' ? "Need an account? " : "Already have an account? "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'login' ? 'signup' : 'login');
+                    setErrors({});
+                  }}
+                  className="text-accent hover:underline font-medium"
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            )}
           </div>
         </div>
 

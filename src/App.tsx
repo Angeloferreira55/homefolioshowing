@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import HomefolioEdit from "./pages/HomefolioEdit";
 import ClientView from "./pages/ClientView";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import ShowingHub from "./pages/ShowingHub";
 import SessionDetail from "./pages/SessionDetail";
 import PublicSession from "./pages/PublicSession";
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/view/:link" element={<ClientView />} />
           {/* Showing Sessions Routes */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin/showings" element={<ShowingHub />} />
           <Route path="/admin/session/:id" element={<SessionDetail />} />
           <Route path="/s/:token" element={<PublicSession />} />
