@@ -33,6 +33,7 @@ interface PropertyFeedbackDialogProps {
   propertyId: string;
   propertyAddress: string;
   sessionId: string;
+  shareToken: string;
   existingRating?: number;
   existingFeedback?: FeedbackData;
   onSaved: () => void;
@@ -44,6 +45,7 @@ const PropertyFeedbackDialog = ({
   propertyId,
   propertyAddress,
   sessionId,
+  shareToken,
   existingRating = 5,
   existingFeedback,
   onSaved,
@@ -60,26 +62,18 @@ const PropertyFeedbackDialog = ({
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      // Check if rating exists
-      const { data: existing } = await supabase
-        .from('property_ratings')
-        .select('id')
-        .eq('session_property_id', propertyId)
-        .single();
-
       const feedbackJson = JSON.stringify(feedback);
 
-      if (existing) {
-        await supabase
-          .from('property_ratings')
-          .update({ rating, feedback: feedbackJson })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('property_ratings').insert({
-          session_property_id: propertyId,
-          rating,
-          feedback: feedbackJson,
-        });
+      // Use secure RPC function that validates share token
+      const { error } = await supabase.rpc('submit_property_rating', {
+        p_session_property_id: propertyId,
+        p_share_token: shareToken,
+        p_rating: rating,
+        p_feedback: feedbackJson,
+      });
+
+      if (error) {
+        throw error;
       }
 
       toast.success('Feedback saved!');

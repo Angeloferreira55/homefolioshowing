@@ -385,6 +385,15 @@ export type Database = {
       }
       is_session_admin: { Args: { session_id: string }; Returns: boolean }
       is_valid_share_token: { Args: { token: string }; Returns: boolean }
+      submit_property_rating: {
+        Args: {
+          p_feedback: string
+          p_rating: number
+          p_session_property_id: string
+          p_share_token: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
