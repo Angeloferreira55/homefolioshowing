@@ -5,3 +5,15 @@ verify_jwt = false
 
 [functions.parse-mls-file]
 verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false
+
+[functions.geocode-address]
+verify_jwt = false
+
+[functions.optimize-route]
+verify_jwt = false
+
+[functions.public-doc-url]
+verify_jwt = false

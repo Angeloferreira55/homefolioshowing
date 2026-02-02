@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Star } from 'lucide-react';
+import { sendNotificationEmail } from '@/hooks/useNotifications';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -31,6 +32,7 @@ interface PropertyFeedbackDialogProps {
   onOpenChange: (open: boolean) => void;
   propertyId: string;
   propertyAddress: string;
+  sessionId: string;
   existingRating?: number;
   existingFeedback?: FeedbackData;
   onSaved: () => void;
@@ -41,6 +43,7 @@ const PropertyFeedbackDialog = ({
   onOpenChange,
   propertyId,
   propertyAddress,
+  sessionId,
   existingRating = 5,
   existingFeedback,
   onSaved,
@@ -82,6 +85,15 @@ const PropertyFeedbackDialog = ({
       toast.success('Feedback saved!');
       onSaved();
       onOpenChange(false);
+
+      // Send email notification (fire and forget)
+      sendNotificationEmail({
+        type: 'feedback_submitted',
+        sessionId,
+        propertyAddress,
+        rating,
+        feedback: feedback as unknown as Record<string, unknown>,
+      });
     } catch (error) {
       toast.error('Failed to save feedback');
     } finally {

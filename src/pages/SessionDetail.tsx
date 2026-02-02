@@ -36,6 +36,7 @@ import PropertyMap from '@/components/showings/PropertyMap';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import { trackEvent } from '@/hooks/useAnalytics';
+import { sendNotificationEmail } from '@/hooks/useNotifications';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -272,6 +273,13 @@ const SessionDetail = () => {
 
       toast.success('Property added!');
       fetchProperties();
+
+      // Send email notification (fire and forget)
+      sendNotificationEmail({
+        type: 'property_added',
+        sessionId: id!,
+        propertyAddress: data.address,
+      });
     } catch (error: any) {
       console.error('Add property error:', error);
       toast.error(error.message || 'Failed to add property');
@@ -388,6 +396,13 @@ const SessionDetail = () => {
         sessionId: session.id,
         adminId: user.id,
         metadata: { client_name: session.client_name },
+      });
+
+      // Send email notification (fire and forget)
+      sendNotificationEmail({
+        type: 'session_shared',
+        sessionId: session.id,
+        shareLink: link,
       });
     }
   };
