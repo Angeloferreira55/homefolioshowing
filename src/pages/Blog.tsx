@@ -1,5 +1,6 @@
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,11 @@ const blogPosts = [
 const Blog = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Blog"
+        description="Tips, strategies, and industry insights to help real estate agents grow their business and better serve clients."
+        url="https://homefolio-central-link.lovable.app/blog"
+      />
       <Navbar />
       
       {/* Hero Section */}

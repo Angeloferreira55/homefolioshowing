@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { Check, Leaf, Home } from 'lucide-react';
 
 const plans = [
@@ -65,6 +66,11 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Pricing"
+        description="Simple, transparent pricing for HomeFolio. Start free, upgrade when you need more. 14-day free trial on all paid plans."
+        url="https://homefolio-central-link.lovable.app/pricing"
+      />
       <Navbar />
 
       {/* Hero */}

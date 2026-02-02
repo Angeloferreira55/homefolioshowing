@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { Home, Heart, Target, Users, Leaf, Zap } from 'lucide-react';
 
 const values = [
@@ -34,6 +35,11 @@ const values = [
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="About Us"
+        description="HomeFolio was built by agents, for agents. Learn about our mission to simplify real estate showings."
+        url="https://homefolio-central-link.lovable.app/about"
+      />
       <Navbar />
 
       {/* Hero */}

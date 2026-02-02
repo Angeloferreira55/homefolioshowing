@@ -1,11 +1,16 @@
-import { Link } from 'react-router-dom';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { FileText } from 'lucide-react';
 
 const Terms = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Terms of Service"
+        description="Read the terms and conditions for using HomeFolio's platform and services."
+        url="https://homefolio-central-link.lovable.app/terms"
+      />
       <Navbar />
 
       {/* Hero */}

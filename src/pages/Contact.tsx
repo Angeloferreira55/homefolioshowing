@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +33,11 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Contact Us"
+        description="Get in touch with the HomeFolio team. We'd love to hear from you about questions, feedback, or support."
+        url="https://homefolio-central-link.lovable.app/contact"
+      />
       <Navbar />
 
       {/* Hero */}
