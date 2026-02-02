@@ -73,9 +73,28 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [parsedProperties, setParsedProperties] = useState<PropertyData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Check if URL is from a blocklisted site
+  const isBlocklistedUrl = (url: string): { blocked: boolean; site?: string } => {
+    const lowercaseUrl = url.toLowerCase();
+    if (lowercaseUrl.includes('redfin.com')) {
+      return { blocked: true, site: 'Redfin' };
+    }
+    return { blocked: false };
+  };
+
   const handleImportFromUrl = async () => {
     if (!listingUrl.trim()) {
       toast.error('Please enter a listing URL');
+      return;
+    }
+
+    // Check for blocklisted sites before making API call
+    const blockCheck = isBlocklistedUrl(listingUrl);
+    if (blockCheck.blocked) {
+      toast.error(
+        `${blockCheck.site} listings cannot be imported automatically due to their terms of service. Please use Zillow or Realtor.com URLs instead, or enter the property details manually.`,
+        { duration: 6000 }
+      );
       return;
     }
 
@@ -90,6 +109,10 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       }
 
       if (!data.success) {
+        // Check if the error is about blocklisting
+        if (data.error?.includes('blocklisted')) {
+          throw new Error('This website cannot be scraped. Please use Zillow or Realtor.com URLs instead.');
+        }
         throw new Error(data.error || 'Failed to import listing');
       }
 
@@ -301,7 +324,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
               <div className="flex gap-2">
                 <Input
                   id="listingUrl"
-                  placeholder="https://redfin.com/... or flexmls.com/..."
+                  placeholder="https://zillow.com/... or realtor.com/..."
                   value={listingUrl}
                   onChange={(e) => setListingUrl(e.target.value)}
                   className="flex-1"
@@ -321,7 +344,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Works best with Redfin. Paste any MLS listing URL.
+                Paste a Zillow or Realtor.com listing URL. Redfin is not supported.
               </p>
             </div>
 
