@@ -26,18 +26,46 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Validate authentication - this function can be called by authenticated users
+    // or internally via service role for feedback notifications
+    const authHeader = req.headers.get('Authorization');
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error("Missing Supabase environment variables");
     }
 
+    // Check if called with service role (internal) or user token
+    let isAuthorized = false;
+    let userId: string | null = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Try to validate as user token
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+      if (!claimsError && claims?.claims) {
+        isAuthorized = true;
+        userId = claims.claims.sub as string;
+        console.log('Authenticated user:', userId);
+      }
+    }
+
+    if (!isAuthorized) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Create service role client to access profiles
-    const supabase = createClient(
-      SUPABASE_URL,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { type, sessionId, propertyAddress, rating, feedback, shareLink }: NotificationRequest = await req.json();
 
@@ -61,6 +89,14 @@ const handler = async (req: Request): Promise<Response> => {
       if (sessionError2) {
         console.error('Session fetch error:', sessionError2);
         throw new Error(`Failed to fetch session: ${sessionError2.message}`);
+      }
+
+      // Verify the authenticated user owns this session (if not service role)
+      if (userId && sessionData.admin_id !== userId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       // Get agent profile separately
@@ -132,6 +168,14 @@ const handler = async (req: Request): Promise<Response> => {
     const agentName = profile?.full_name || 'Agent';
     const clientName = session.client_name;
     const sessionTitle = session.title;
+
+    // Verify the authenticated user owns this session
+    if (userId && session.admin_id !== userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!agentEmail) {
       throw new Error('Agent email not found');
