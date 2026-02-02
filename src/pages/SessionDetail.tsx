@@ -34,6 +34,7 @@ import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 import PropertyMap from '@/components/showings/PropertyMap';
 import AdminLayout from '@/components/layout/AdminLayout';
+import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -489,13 +490,7 @@ const SessionDetail = () => {
   };
 
   if (loading) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      </AdminLayout>
-    );
+    return <SessionDetailSkeleton />;
   }
 
   if (!session) {
@@ -504,7 +499,7 @@ const SessionDetail = () => {
 
   return (
     <AdminLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <>
         {/* Back Link */}
         <Link
           to="/admin/showings"
@@ -859,7 +854,7 @@ const SessionDetail = () => {
             </Button>
           </div>
         )}
-      </div>
+      </>
 
       <AddPropertyDialog
         open={isAddPropertyOpen}
