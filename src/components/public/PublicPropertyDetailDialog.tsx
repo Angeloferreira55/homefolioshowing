@@ -13,9 +13,10 @@ import {
   DollarSign, 
   Car,
   Sparkles,
-  ScrollText
+  ZoomIn
 } from 'lucide-react';
 import PropertyDocumentsDrawer from './PropertyDocumentsDrawer';
+import { ImageGallery } from '@/components/ui/image-gallery';
 
 export interface PublicPropertyDocument {
   id: string;
@@ -35,6 +36,7 @@ export interface PublicSessionProperty {
   baths: number | null;
   sqft: number | null;
   photo_url: string | null;
+  photo_urls?: string[] | null;
   documents?: PublicPropertyDocument[];
   agent_notes?: string | null;
   summary?: string | null;
@@ -103,6 +105,7 @@ export default function PublicPropertyDetailDialog({
   agentInfo,
 }: PublicPropertyDetailDialogProps) {
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   if (!property) return null;
 
@@ -120,6 +123,12 @@ export default function PublicPropertyDetailDialog({
     property.baths ? `${property.baths} Ba` : null,
     property.sqft ? `${property.sqft.toLocaleString()} Sq Ft` : null,
   ].filter(Boolean).join('  •  ');
+
+  // Collect all available images
+  const images = [
+    property.photo_url,
+    ...(property.photo_urls || []),
+  ].filter(Boolean) as string[];
 
   return (
     <>
@@ -140,15 +149,32 @@ export default function PublicPropertyDetailDialog({
 
           {/* Scrollable content */}
           <div className="overflow-y-auto max-h-[90vh]">
-            {/* Hero Photo */}
-            <div className="relative w-full h-48 sm:h-64 bg-muted">
+            {/* Hero Photo - Clickable to open gallery */}
+            <div 
+              className="relative w-full h-48 sm:h-64 bg-muted cursor-pointer group"
+              onClick={() => images.length > 0 && setGalleryOpen(true)}
+            >
               {property.photo_url ? (
-                <img
-                  src={property.photo_url}
-                  alt={property.address}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                <>
+                  <img
+                    src={property.photo_url}
+                    alt={property.address}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  {/* Zoom overlay on hover */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="bg-white/90 rounded-full p-3">
+                      <ZoomIn className="w-6 h-6 text-foreground" />
+                    </div>
+                  </div>
+                  {/* Photo count badge */}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
+                      1/{images.length}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                   No photo
@@ -338,6 +364,13 @@ export default function PublicPropertyDetailDialog({
         documents={property.documents || []}
         onOpen={(doc) => onOpenDocument?.({ ...doc, file_url: '' })}
         onDownload={(doc) => onDownloadDocument?.({ ...doc, file_url: '' })}
+      />
+
+      <ImageGallery
+        images={images}
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        alt={fullAddress}
       />
     </>
   );
