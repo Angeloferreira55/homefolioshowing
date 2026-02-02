@@ -16,6 +16,9 @@ import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2 }
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
+import SessionListSkeleton from '@/components/skeletons/SessionListSkeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -203,18 +206,12 @@ const ShowingHub = () => {
 
   return (
     <AdminLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground mb-1">
-              Showing Hub
-            </h1>
-            <p className="text-muted-foreground">
-              Manage your showing sessions
-            </p>
-          </div>
-        </div>
+      <>
+        <PageHeader 
+          title="Showing Hub" 
+          description="Manage your showing sessions"
+          icon={Calendar}
+        />
 
         {/* New Session Button */}
         <Button
@@ -227,9 +224,7 @@ const ShowingHub = () => {
 
         {/* Sessions List */}
         {loading ? (
-          <div className="text-center py-16 text-muted-foreground">
-            Loading sessions...
-          </div>
+          <SessionListSkeleton count={4} />
         ) : sessions.length > 0 ? (
           <div className="space-y-4">
             {sessions.map((session) => (
@@ -301,23 +296,17 @@ const ShowingHub = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-              No sessions yet
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Create your first showing session to get started
-            </p>
-            <Button onClick={() => setIsCreateOpen(true)} variant="accent">
-              <Plus className="w-4 h-4 mr-2" />
-              Create First Session
-            </Button>
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="No sessions yet"
+            description="Create your first showing session to start organizing property tours for your clients."
+            action={{
+              label: "Create First Session",
+              onClick: () => setIsCreateOpen(true),
+            }}
+          />
         )}
-      </div>
+      </>
 
       <CreateSessionDialog
         open={isCreateOpen}

@@ -12,6 +12,7 @@ import PublicPropertyDetailDialog, {
   PublicPropertyDocument,
   PublicSessionProperty,
 } from '@/components/public/PublicPropertyDetailDialog';
+import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -318,11 +319,7 @@ const PublicSession = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <PublicSessionSkeleton />;
   }
 
   if (notFound || !session) {

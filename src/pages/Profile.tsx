@@ -33,6 +33,7 @@ const XIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 import AdminLayout from '@/components/layout/AdminLayout';
+import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -138,16 +139,14 @@ const Profile = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
+        <ProfileSkeleton />
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
