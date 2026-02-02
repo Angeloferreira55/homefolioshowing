@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { LogIn, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import SEO from '@/components/SEO';
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -106,6 +107,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <SEO
+        title={isLogin ? 'Sign In' : 'Sign Up'}
+        description="Sign in or create an account to manage your property showings with HomeFolio."
+        url="https://homefolio-central-link.lovable.app/auth"
+      />
       <div className="w-full max-w-md">
         <div className="bg-card rounded-2xl p-8 card-elevated">
           {/* Icon */}

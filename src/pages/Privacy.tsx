@@ -1,11 +1,16 @@
-import { Link } from 'react-router-dom';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import { Shield } from 'lucide-react';
 
 const Privacy = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Privacy Policy"
+        description="Learn how HomeFolio collects, uses, and protects your personal information."
+        url="https://homefolio-central-link.lovable.app/privacy"
+      />
       <Navbar />
 
       {/* Hero */}

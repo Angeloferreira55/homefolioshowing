@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 import {
   Home,
   Link2,
@@ -100,6 +101,11 @@ const features = [
 const Features = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Features"
+        description="Discover all the features HomeFolio offers: AI route optimization, document management, client feedback, analytics, and more."
+        url="https://homefolio-central-link.lovable.app/features"
+      />
       <Navbar />
 
       {/* Hero */}

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
+import SEO from '@/components/SEO';
 
 interface DemoStep {
   id: number;
@@ -272,6 +273,11 @@ const Demo = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Demo"
+        description="See how HomeFolio works with our interactive demo. Walk through the complete workflow from profile setup to client feedback."
+        url="https://homefolio-central-link.lovable.app/demo"
+      />
       <Navbar />
       
       <main className="pt-24 pb-16">
