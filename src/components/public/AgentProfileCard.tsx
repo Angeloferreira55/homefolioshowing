@@ -164,10 +164,15 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.website_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Website"
                   >
-                    <Globe className="w-4 h-4" />
+                    <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
+                      <Globe className="w-4 h-4" />
+                    </span>
+                    <span className="text-sm underline underline-offset-2">
+                      {agent.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </span>
                   </a>
                 )}
               </div>
