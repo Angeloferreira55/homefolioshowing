@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
     console.log('Scraping listing URL:', formattedUrl);
 
     // Use Firecrawl with extract format for structured property data
+    // Include 'links' format to capture image URLs from the page
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ['markdown', 'extract'],
+        formats: ['markdown', 'links', 'extract'],
         extract: {
           schema: {
             type: 'object',
@@ -93,11 +94,12 @@ Deno.serve(async (req) => {
                 items: { type: 'string' },
                 description: 'List of property features and amenities (e.g. ["Pool", "Hardwood Floors", "Stainless Steel Appliances", "Fireplace", "Updated Kitchen"]). Extract key features mentioned in the listing.'
               },
+              mainPhotoUrl: { type: 'string', description: 'URL of the main property photo or hero image. Look for the largest/primary listing photo.' },
             },
             required: ['address'],
           },
         },
-        onlyMainContent: true,
+        onlyMainContent: false, // Need full page to get images
       }),
     });
 
@@ -114,9 +116,41 @@ Deno.serve(async (req) => {
     // Extract property data from the response
     const extractedData = data.data?.extract || data.extract || {};
     const metadata = data.data?.metadata || data.metadata || {};
+    const links = data.data?.links || data.links || [];
     
-    // Try to get an image from metadata if available
-    const photoUrl = metadata.ogImage || metadata.image || null;
+    // Try multiple sources for the property photo
+    // 1. AI-extracted main photo URL from the page
+    // 2. Open Graph image from metadata
+    // 3. Find a Zillow/Realtor photo from links
+    let photoUrl = extractedData.mainPhotoUrl || metadata.ogImage || metadata.image || null;
+    
+    // If no photo found yet, search links for property images
+    if (!photoUrl && Array.isArray(links)) {
+      // Look for Zillow photo CDN URLs
+      const zillowPhotoPattern = /photos\.zillowstatic\.com/i;
+      const realtorPhotoPattern = /ar\.rdcpix\.com/i;
+      const genericImagePattern = /\.(jpg|jpeg|png|webp)(\?|$)/i;
+      
+      for (const link of links) {
+        if (typeof link === 'string') {
+          if (zillowPhotoPattern.test(link) || realtorPhotoPattern.test(link)) {
+            // Prefer high-res versions
+            if (link.includes('1536') || link.includes('1024') || link.includes('uncropped')) {
+              photoUrl = link;
+              break;
+            }
+            if (!photoUrl) {
+              photoUrl = link;
+            }
+          } else if (!photoUrl && genericImagePattern.test(link) && link.includes('http')) {
+            // Fallback to any image link
+            photoUrl = link;
+          }
+        }
+      }
+    }
+    
+    console.log('Photo URL found:', photoUrl);
 
     // Clean function to remove Redfin branding/links from text
     const cleanText = (text: string | undefined): string | undefined => {
