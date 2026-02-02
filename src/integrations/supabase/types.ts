@@ -54,6 +54,13 @@ export type Database = {
             foreignKeyName: "analytics_events_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "public_session_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "showing_sessions"
             referencedColumns: ["id"]
           },
@@ -323,6 +330,13 @@ export type Database = {
             foreignKeyName: "session_properties_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "public_session_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_properties_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "showing_sessions"
             referencedColumns: ["id"]
           },
@@ -372,12 +386,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_session_view: {
+        Row: {
+          admin_id: string | null
+          client_name: string | null
+          created_at: string | null
+          id: string | null
+          notes: string | null
+          session_date: string | null
+          share_token: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          notes?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          id?: string | null
+          notes?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_admin_id_from_session: {
         Args: { p_session_id: string }
         Returns: string
+      }
+      get_public_session: {
+        Args: { p_share_token: string }
+        Returns: {
+          admin_id: string
+          client_name: string
+          created_at: string
+          id: string
+          notes: string
+          session_date: string
+          share_token: string
+          title: string
+          updated_at: string
+        }[]
       }
       get_session_id_from_property: {
         Args: { property_id: string }
