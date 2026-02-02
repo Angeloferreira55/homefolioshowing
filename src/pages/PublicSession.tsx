@@ -595,6 +595,7 @@ const PublicSession = () => {
           propertyId={activeProperty.id}
           propertyAddress={activeProperty.address}
           sessionId={session.id}
+          shareToken={token || ''}
           existingRating={ratings[activeProperty.id]?.rating || 5}
           existingFeedback={ratings[activeProperty.id]?.feedback}
           onSaved={handleFeedbackSaved}
