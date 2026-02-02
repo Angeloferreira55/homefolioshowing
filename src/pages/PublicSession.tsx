@@ -588,12 +588,13 @@ const PublicSession = () => {
         </div>
       </footer>
       {/* Feedback Dialog */}
-      {activeProperty && (
+      {activeProperty && session && (
         <PropertyFeedbackDialog
           open={feedbackOpen}
           onOpenChange={setFeedbackOpen}
           propertyId={activeProperty.id}
           propertyAddress={activeProperty.address}
+          sessionId={session.id}
           existingRating={ratings[activeProperty.id]?.rating || 5}
           existingFeedback={ratings[activeProperty.id]?.feedback}
           onSaved={handleFeedbackSaved}
