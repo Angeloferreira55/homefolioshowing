@@ -54,6 +54,16 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [sqft, setSqft] = useState('');
   const [description, setDescription] = useState('');
   const [summary, setSummary] = useState('');
+  
+  // Extra scraped fields
+  const [yearBuilt, setYearBuilt] = useState<number | undefined>();
+  const [lotSize, setLotSize] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [hoaFee, setHoaFee] = useState<number | undefined>();
+  const [garage, setGarage] = useState('');
+  const [heating, setHeating] = useState('');
+  const [cooling, setCooling] = useState('');
+  const [features, setFeatures] = useState<string[]>([]);
 
   const [listingUrl, setListingUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -97,6 +107,17 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       if (property.sqft) setSqft(property.sqft.toString());
       if (property.description) setDescription(property.description);
       if (property.summary) setSummary(property.summary);
+      
+      // Extra scraped fields
+      if (property.yearBuilt) setYearBuilt(property.yearBuilt);
+      if (property.lotSize) setLotSize(property.lotSize);
+      if (property.propertyType) setPropertyType(property.propertyType);
+      if (property.hoaFee) setHoaFee(property.hoaFee);
+      if (property.garage) setGarage(property.garage);
+      if (property.heating) setHeating(property.heating);
+      if (property.cooling) setCooling(property.cooling);
+      if (property.features) setFeatures(property.features);
+      
       toast.success('Listing data imported! Review and submit.');
     } catch (error: any) {
       console.error('Import error:', error);
@@ -216,6 +237,14 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         sqft: sqft ? parseInt(sqft) : undefined,
         description: description.trim() || undefined,
         summary: summary.trim() || undefined,
+        yearBuilt: yearBuilt,
+        lotSize: lotSize.trim() || undefined,
+        propertyType: propertyType.trim() || undefined,
+        hoaFee: hoaFee,
+        garage: garage.trim() || undefined,
+        heating: heating.trim() || undefined,
+        cooling: cooling.trim() || undefined,
+        features: features.length > 0 ? features : undefined,
       });
       resetForm();
       onOpenChange(false);
@@ -234,6 +263,14 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setSqft('');
     setDescription('');
     setSummary('');
+    setYearBuilt(undefined);
+    setLotSize('');
+    setPropertyType('');
+    setHoaFee(undefined);
+    setGarage('');
+    setHeating('');
+    setCooling('');
+    setFeatures([]);
     setListingUrl('');
     setSelectedFile(null);
     setParsedProperties([]);
