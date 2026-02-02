@@ -17,6 +17,7 @@ interface NotificationRequest {
   rating?: number;
   feedback?: Record<string, unknown>;
   shareLink?: string;
+  shareToken?: string; // For public client feedback
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -26,125 +27,67 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Validate authentication - this function can be called by authenticated users
-    // or internally via service role for feedback notifications
-    const authHeader = req.headers.get('Authorization');
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Missing Supabase environment variables");
     }
 
-    // Check if called with service role (internal) or user token
-    let isAuthorized = false;
-    let userId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
-      
-      // Try to validate as user token
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: authHeader } }
-      });
-      
-      const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-      if (!claimsError && claims?.claims) {
-        isAuthorized = true;
-        userId = claims.claims.sub as string;
-        console.log('Authenticated user:', userId);
-      }
-    }
-
-    if (!isAuthorized) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Create service role client to access profiles
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY!);
-
-    const { type, sessionId, propertyAddress, rating, feedback, shareLink }: NotificationRequest = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const body: NotificationRequest = await req.json();
+    const { type, sessionId, propertyAddress, rating, feedback, shareLink, shareToken } = body;
 
     console.log(`Processing ${type} notification for session ${sessionId}`);
 
-    // Get session info including agent
-    const { data: session, error: sessionError } = await supabase
-      .from('showing_sessions')
-      .select('*, profiles!showing_sessions_admin_id_fkey(*)')
-      .eq('id', sessionId)
-      .single();
+    // Create service role client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    if (sessionError) {
-      // Try without the join - the foreign key might not exist
-      const { data: sessionData, error: sessionError2 } = await supabase
+    // For feedback_submitted with shareToken, validate token instead of auth
+    if (type === 'feedback_submitted' && shareToken) {
+      // Validate share token matches session
+      const { data: sessionData, error: sessionError } = await supabase
         .from('showing_sessions')
-        .select('*')
+        .select('id, admin_id, client_name, title')
         .eq('id', sessionId)
+        .eq('share_token', shareToken)
         .single();
 
-      if (sessionError2) {
-        console.error('Session fetch error:', sessionError2);
-        throw new Error(`Failed to fetch session: ${sessionError2.message}`);
-      }
-
-      // Verify the authenticated user owns this session (if not service role)
-      if (userId && sessionData.admin_id !== userId) {
+      if (sessionError || !sessionData) {
+        console.error('Invalid share token for feedback notification');
         return new Response(
-          JSON.stringify({ success: false, error: 'Forbidden' }),
+          JSON.stringify({ success: false, error: 'Invalid share token' }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Get agent profile separately
+      // Get agent profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('email, full_name')
         .eq('user_id', sessionData.admin_id)
         .single();
 
-      if (profileError || !profile) {
-        console.error('Profile fetch error:', profileError);
-        throw new Error('Failed to fetch agent profile');
+      if (profileError || !profile?.email) {
+        console.error('Agent profile not found');
+        throw new Error('Agent profile not found');
       }
 
-      const agentEmail = profile.email;
-      const agentName = profile.full_name || 'Agent';
-      const clientName = sessionData.client_name;
-      const sessionTitle = sessionData.title;
+      const subject = `⭐ ${sessionData.client_name} rated a property ${rating}/10`;
+      const html = buildFeedbackSubmittedEmail(
+        profile.full_name || 'Agent',
+        sessionData.client_name,
+        propertyAddress || 'Unknown property',
+        rating || 0,
+        feedback
+      );
 
-      // Build email content based on type
-      let subject = '';
-      let html = '';
-
-      switch (type) {
-        case 'session_shared':
-          subject = `🏠 Session "${sessionTitle}" link copied`;
-          html = buildSessionSharedEmail(agentName, clientName, sessionTitle, shareLink || '');
-          break;
-
-        case 'property_added':
-          subject = `🏡 New property added to "${sessionTitle}"`;
-          html = buildPropertyAddedEmail(agentName, clientName, sessionTitle, propertyAddress || 'Unknown address');
-          break;
-
-        case 'feedback_submitted':
-          subject = `⭐ ${clientName} rated a property ${rating}/10`;
-          html = buildFeedbackSubmittedEmail(agentName, clientName, propertyAddress || 'Unknown property', rating || 0, feedback);
-          break;
-
-        default:
-          throw new Error(`Unknown notification type: ${type}`);
-      }
-
-      console.log(`Sending ${type} email to ${agentEmail}`);
+      console.log(`Sending feedback email to ${profile.email}`);
 
       const { data: emailData, error: emailError } = await resend.emails.send({
         from: "Homefolio <notifications@resend.dev>",
-        to: [agentEmail],
+        to: [profile.email],
         subject,
         html,
       });
@@ -162,54 +105,90 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // If we got here, the join worked
-    const profile = (session as any).profiles;
-    const agentEmail = profile?.email;
-    const agentName = profile?.full_name || 'Agent';
-    const clientName = session.client_name;
-    const sessionTitle = session.title;
+    // For other notification types, require authentication
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Verify the authenticated user owns this session
-    if (userId && session.admin_id !== userId) {
+    // Validate user token
+    const userSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claims, error: claimsError } = await userSupabase.auth.getClaims(token);
+    if (claimsError || !claims?.claims) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claims.claims.sub as string;
+    console.log('Authenticated user:', userId);
+
+    // Get session info
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('showing_sessions')
+      .select('id, admin_id, client_name, title')
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionError || !sessionData) {
+      throw new Error('Session not found');
+    }
+
+    // Verify ownership
+    if (sessionData.admin_id !== userId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Forbidden' }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!agentEmail) {
-      throw new Error('Agent email not found');
+    // Get agent profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError || !profile?.email) {
+      throw new Error('Agent profile not found');
     }
 
-    // Build email content based on type
+    // Build email content
     let subject = '';
     let html = '';
 
     switch (type) {
       case 'session_shared':
-        subject = `🏠 Session "${sessionTitle}" link copied`;
-        html = buildSessionSharedEmail(agentName, clientName, sessionTitle, shareLink || '');
+        subject = `🏠 Session "${sessionData.title}" link copied`;
+        html = buildSessionSharedEmail(profile.full_name || 'Agent', sessionData.client_name, sessionData.title, shareLink || '');
         break;
 
       case 'property_added':
-        subject = `🏡 New property added to "${sessionTitle}"`;
-        html = buildPropertyAddedEmail(agentName, clientName, sessionTitle, propertyAddress || 'Unknown address');
+        subject = `🏡 New property added to "${sessionData.title}"`;
+        html = buildPropertyAddedEmail(profile.full_name || 'Agent', sessionData.client_name, sessionData.title, propertyAddress || 'Unknown address');
         break;
 
       case 'feedback_submitted':
-        subject = `⭐ ${clientName} rated a property ${rating}/10`;
-        html = buildFeedbackSubmittedEmail(agentName, clientName, propertyAddress || 'Unknown property', rating || 0, feedback);
+        subject = `⭐ ${sessionData.client_name} rated a property ${rating}/10`;
+        html = buildFeedbackSubmittedEmail(profile.full_name || 'Agent', sessionData.client_name, propertyAddress || 'Unknown property', rating || 0, feedback);
         break;
 
       default:
         throw new Error(`Unknown notification type: ${type}`);
     }
 
-    console.log(`Sending ${type} email to ${agentEmail}`);
+    console.log(`Sending ${type} email to ${profile.email}`);
 
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: "Homefolio <notifications@resend.dev>",
-      to: [agentEmail],
+      to: [profile.email],
       subject,
       html,
     });

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Star } from 'lucide-react';
-import { sendNotificationEmail } from '@/hooks/useNotifications';
+
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -80,13 +80,16 @@ const PropertyFeedbackDialog = ({
       onSaved();
       onOpenChange(false);
 
-      // Send email notification (fire and forget)
-      sendNotificationEmail({
-        type: 'feedback_submitted',
-        sessionId,
-        propertyAddress,
-        rating,
-        feedback: feedback as unknown as Record<string, unknown>,
+      // Send email notification with share token for public access
+      supabase.functions.invoke('send-notification-email', {
+        body: {
+          type: 'feedback_submitted',
+          sessionId,
+          propertyAddress,
+          rating,
+          feedback: feedback as unknown as Record<string, unknown>,
+          shareToken, // Validates public access
+        },
       });
     } catch (error) {
       toast.error('Failed to save feedback');

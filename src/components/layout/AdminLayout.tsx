@@ -26,6 +26,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const navItems = [
   { title: 'Sessions', url: '/admin/showings', icon: Calendar },
@@ -154,10 +155,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header with trigger */}
-          <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center px-4 safe-area-top">
-            <SidebarTrigger className="mr-4 touch-target flex items-center justify-center">
+          <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 safe-area-top">
+            <SidebarTrigger className="touch-target flex items-center justify-center">
               <Menu className="w-5 h-5" />
             </SidebarTrigger>
+            <ThemeToggle />
           </header>
           <main className="flex-1 overflow-x-hidden">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">

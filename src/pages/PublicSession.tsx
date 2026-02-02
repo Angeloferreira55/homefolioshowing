@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -13,6 +13,7 @@ import PublicPropertyDetailDialog, {
   PublicSessionProperty,
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
+import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
 import { trackEvent } from '@/hooks/useAnalytics';
 
 interface FeedbackData {
@@ -75,7 +76,8 @@ const PublicSession = () => {
   const [docsOpen, setDocsOpen] = useState(false);
   const [docsProperty, setDocsProperty] = useState<SessionProperty | null>(null);
 
-
+  // Compare dialog state
+  const [compareOpen, setCompareOpen] = useState(false);
   useEffect(() => {
     if (token) {
       fetchSession();
@@ -84,12 +86,11 @@ const PublicSession = () => {
 
   const fetchSession = async () => {
     try {
-      // Fetch session by share token (include admin_id)
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('showing_sessions')
-        .select('id, title, client_name, session_date, notes, admin_id')
-        .eq('share_token', token)
-        .single();
+      // Use secure RPC function that excludes client contact info
+      const { data: sessionResult, error: sessionError } = await supabase
+        .rpc('get_public_session', { p_share_token: token });
+
+      const sessionData = sessionResult?.[0];
 
       if (sessionError || !sessionData) {
         setNotFound(true);
@@ -411,9 +412,22 @@ const PublicSession = () => {
 
       {/* Properties */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="font-display text-xl font-semibold text-foreground mb-6">
-          Properties ({properties.length})
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-xl font-semibold text-foreground">
+            Properties ({properties.length})
+          </h2>
+          {properties.length >= 2 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCompareOpen(true)}
+              className="gap-2"
+            >
+              <Scale className="w-4 h-4" />
+              Compare
+            </Button>
+          )}
+        </div>
 
         {properties.length > 0 ? (
           <div className="max-w-3xl mx-auto space-y-8">
@@ -618,6 +632,13 @@ const PublicSession = () => {
         sessionDate={session.session_date}
         onOpenDocument={handleViewDocument}
         onDownloadDocument={handleDownloadDocument}
+      />
+
+      <PropertyCompareDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        properties={properties}
+        ratings={ratings}
       />
     </div>
   );
