@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Plus, Loader2 } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -73,9 +73,6 @@ const PublicSession = () => {
   const [docsOpen, setDocsOpen] = useState(false);
   const [docsProperty, setDocsProperty] = useState<SessionProperty | null>(null);
 
-  // Photo upload state
-  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
-  const photoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (token) {
@@ -306,78 +303,6 @@ const PublicSession = () => {
     }
   };
 
-  const handlePhotoUpload = async (propertyId: string, file: File) => {
-    if (!file || !token) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image must be less than 10MB');
-      return;
-    }
-
-    setUploadingPhotoFor(propertyId);
-
-    try {
-      // Upload to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${propertyId}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('client-photos')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('client-photos')
-        .getPublicUrl(fileName);
-
-      // Save to database
-      const { error: dbError } = await supabase
-        .from('client_photos')
-        .insert({
-          session_property_id: propertyId,
-          file_url: publicUrl,
-        });
-
-      if (dbError) throw dbError;
-
-      // Update local state
-      setProperties(prev => prev.map(p => {
-        if (p.id === propertyId) {
-          return {
-            ...p,
-            client_photos: [
-              { id: Date.now().toString(), file_url: publicUrl, caption: null, created_at: new Date().toISOString() },
-              ...(p.client_photos || []),
-            ],
-          };
-        }
-        return p;
-      }));
-
-      toast.success('Photo uploaded!');
-    } catch (error) {
-      console.error('Photo upload error:', error);
-      toast.error('Failed to upload photo');
-    } finally {
-      setUploadingPhotoFor(null);
-    }
-  };
-
-  const triggerPhotoUpload = (propertyId: string) => {
-    const input = photoInputRefs.current[propertyId];
-    if (input) {
-      input.click();
-    }
-  };
 
   const getDocTypeLabel = (type: string | null) => {
     const labels: Record<string, string> = {
@@ -557,58 +482,27 @@ const PublicSession = () => {
                     </div>
                   )}
 
-                  {/* My Photos section */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                  {/* My Photos section - read only */}
+                  {property.client_photos && property.client_photos.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-3">
                         <Image className="w-4 h-4" />
-                        <span className="text-sm">My Photos {property.client_photos?.length ? `(${property.client_photos.length})` : ''}</span>
+                        <span className="text-sm">Photos ({property.client_photos.length})</span>
                       </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={(el) => { photoInputRefs.current[property.id] = el; }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handlePhotoUpload(property.id, file);
-                            e.target.value = '';
-                          }
-                        }}
-                      />
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1.5"
-                        onClick={() => triggerPhotoUpload(property.id)}
-                        disabled={uploadingPhotoFor === property.id}
-                      >
-                        {uploadingPhotoFor === property.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Plus className="w-4 h-4" />
-                        )}
-                        {uploadingPhotoFor === property.id ? 'UPLOADING...' : 'ADD PHOTO'}
-                      </Button>
-                    </div>
-
-                    {/* Display uploaded photos */}
-                    {property.client_photos && property.client_photos.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto pb-2">
                         {property.client_photos.map((photo) => (
                           <div key={photo.id} className="relative flex-shrink-0">
                             <img
                               src={photo.file_url}
                               alt="Client photo"
-                              className="w-20 h-20 rounded-lg object-cover"
+                              className="w-20 h-20 rounded-lg object-cover cursor-pointer"
                               onClick={() => window.open(photo.file_url, '_blank')}
                             />
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="grid grid-cols-2 gap-3">
