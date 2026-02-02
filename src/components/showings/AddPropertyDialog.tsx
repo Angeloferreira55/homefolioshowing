@@ -79,6 +79,9 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     if (lowercaseUrl.includes('redfin.com')) {
       return { blocked: true, site: 'Redfin' };
     }
+    if (lowercaseUrl.includes('zillow.com')) {
+      return { blocked: true, site: 'Zillow' };
+    }
     return { blocked: false };
   };
 
@@ -324,7 +327,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
               <div className="flex gap-2">
                 <Input
                   id="listingUrl"
-                  placeholder="https://zillow.com/... or realtor.com/..."
+                  placeholder="https://realtor.com/..."
                   value={listingUrl}
                   onChange={(e) => setListingUrl(e.target.value)}
                   className="flex-1"
@@ -344,7 +347,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Paste a Zillow or Realtor.com listing URL. Redfin is not supported.
+                Paste a Realtor.com listing URL. Redfin and Zillow are not supported.
               </p>
             </div>
 
