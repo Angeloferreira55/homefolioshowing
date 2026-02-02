@@ -56,10 +56,13 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl }:
   const effectiveLogoUrl = customLogoUrl || logoUrl;
 
   useEffect(() => {
-    if (open && canvasRef.current && shareToken) {
+    if (open && shareToken) {
+      // Wait for dialog to fully render before generating QR code
       const timer = setTimeout(() => {
-        generateQRCode();
-      }, 50);
+        if (canvasRef.current) {
+          generateQRCode();
+        }
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [open, shareToken, fgColor, bgColor, showLogo, effectiveLogoUrl]);
