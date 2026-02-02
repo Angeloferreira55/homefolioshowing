@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Mail, MessageSquare, MapPin, Phone } from 'lucide-react';
+import { Mail, MessageSquare } from 'lucide-react';
 
 const Contact = () => {
   const [name, setName] = useState('');
@@ -138,49 +138,11 @@ const Contact = () => {
                     </h3>
                     <p className="text-muted-foreground">
                       <a
-                        href="mailto:hello@homefolio.app"
+                        href="mailto:contact@home-folio.net"
                         className="hover:text-accent transition-colors"
                       >
-                        hello@homefolio.app
+                        contact@home-folio.net
                       </a>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">
-                      Phone
-                    </h3>
-                    <p className="text-muted-foreground">
-                      <a
-                        href="tel:+15551234567"
-                        className="hover:text-accent transition-colors"
-                      >
-                        (555) 123-4567
-                      </a>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Mon-Fri, 9am-6pm MST
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">
-                      Office
-                    </h3>
-                    <p className="text-muted-foreground">
-                      123 Central Ave NW
-                      <br />
-                      Albuquerque, NM 87102
                     </p>
                   </div>
                 </div>
