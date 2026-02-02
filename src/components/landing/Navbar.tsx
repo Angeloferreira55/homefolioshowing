@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Home } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,6 +64,7 @@ const Navbar = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle />
             <Button variant="ghost" asChild>
               <Link to="/auth">Sign In</Link>
             </Button>
@@ -108,6 +110,9 @@ const Navbar = () => {
                 FAQ
               </button>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
+                <div className="flex justify-center pb-2">
+                  <ThemeToggle />
+                </div>
                 <Button variant="outline" asChild className="w-full">
                   <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
                 </Button>
