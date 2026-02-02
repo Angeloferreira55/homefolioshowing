@@ -12,7 +12,7 @@ import Auth from "./pages/Auth";
 import ShowingHub from "./pages/ShowingHub";
 import SessionDetail from "./pages/SessionDetail";
 import PublicSession from "./pages/PublicSession";
-
+import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +37,7 @@ const App = () => (
           <Route path="/s/:token" element={<PublicSession />} />
           
           <Route path="/admin/profile" element={<Profile />} />
+          <Route path="/admin/analytics" element={<Analytics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

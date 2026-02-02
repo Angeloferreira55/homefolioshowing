@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          admin_id: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          property_id: string | null
+          session_id: string | null
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "session_properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "showing_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_photos: {
         Row: {
           caption: string | null
@@ -330,6 +375,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_id_from_session: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
       get_session_id_from_property: {
         Args: { property_id: string }
         Returns: string

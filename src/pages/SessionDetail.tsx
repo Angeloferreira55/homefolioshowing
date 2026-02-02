@@ -35,6 +35,7 @@ import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDial
 import PropertyMap from '@/components/showings/PropertyMap';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
+import { trackEvent } from '@/hooks/useAnalytics';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -373,11 +374,22 @@ const SessionDetail = () => {
     }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!session) return;
     const link = `${window.location.origin}/s/${session.share_token}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copied to clipboard!');
+    
+    // Track session share
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      trackEvent({
+        eventType: 'session_share',
+        sessionId: session.id,
+        adminId: user.id,
+        metadata: { client_name: session.client_name },
+      });
+    }
   };
 
   const handleDeleteSession = async () => {
