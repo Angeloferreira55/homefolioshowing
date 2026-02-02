@@ -21,16 +21,15 @@ import {
   Home, 
   Calendar, 
   User, 
-  Settings, 
   LogOut, 
   Menu,
-  PanelLeftClose,
-  PanelLeft
+  BarChart3,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 
 const navItems = [
   { title: 'Sessions', url: '/admin/showings', icon: Calendar },
+  { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
   { title: 'My Profile', url: '/admin/profile', icon: User },
 ];
 

@@ -13,6 +13,7 @@ import PublicPropertyDetailDialog, {
   PublicSessionProperty,
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
+import { trackEvent } from '@/hooks/useAnalytics';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -187,6 +188,14 @@ const PublicSession = () => {
       });
       setRatings(ratingsMap);
 
+      // Track session view
+      trackEvent({
+        eventType: 'session_view',
+        sessionId: sessionData.id,
+        adminId: sessionData.admin_id,
+        metadata: { client_name: sessionData.client_name },
+      });
+
     } catch (error) {
       toast.error('Failed to load session');
     } finally {
@@ -197,6 +206,17 @@ const PublicSession = () => {
   const handleOpenFeedback = (property: SessionProperty) => {
     setActiveProperty(property);
     setFeedbackOpen(true);
+    
+    // Track property rating interaction
+    if (session) {
+      trackEvent({
+        eventType: 'property_rating',
+        sessionId: session.id,
+        propertyId: property.id,
+        adminId: session.admin_id,
+        metadata: { address: property.address },
+      });
+    }
   };
 
   const handleFeedbackSaved = () => {
@@ -243,6 +263,16 @@ const PublicSession = () => {
       if (!token) {
         toast.error('Invalid link');
         return;
+      }
+
+      // Track document view
+      if (session) {
+        trackEvent({
+          eventType: 'document_view',
+          sessionId: session.id,
+          adminId: session.admin_id,
+          metadata: { doc_name: doc.name, doc_type: doc.doc_type },
+        });
       }
 
       toast.loading('Opening document...', { id: 'doc-loading' });
@@ -509,6 +539,16 @@ const PublicSession = () => {
                       onClick={() => {
                         setDetailProperty(property);
                         setDetailOpen(true);
+                        // Track property view
+                        if (session) {
+                          trackEvent({
+                            eventType: 'property_view',
+                            sessionId: session.id,
+                            propertyId: property.id,
+                            adminId: session.admin_id,
+                            metadata: { address: property.address },
+                          });
+                        }
                       }}
                     >
                       <ExternalLink className="w-4 h-4" />
