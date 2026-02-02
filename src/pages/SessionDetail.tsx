@@ -5,6 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
   ArrowLeft,
   Home,
   Edit,
@@ -12,19 +27,13 @@ import {
   QrCode,
   Trash2,
   Plus,
-  FileText,
   ExternalLink,
-  ChevronUp,
-  ChevronDown,
   Route,
   Upload,
-  Star,
-  MessageSquare,
   Loader2,
   List,
   Map,
   Navigation,
-  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -35,6 +44,8 @@ import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDial
 import PropertyMap from '@/components/showings/PropertyMap';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
+import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard';
+import { BulkActionsBar } from '@/components/showings/BulkActionsBar';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { sendNotificationEmail } from '@/hooks/useNotifications';
 import {
@@ -112,6 +123,19 @@ const SessionDetail = () => {
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
+  const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (id) {
@@ -338,31 +362,31 @@ const SessionDetail = () => {
     }
   };
 
-  const handleMoveProperty = async (propertyId: string, direction: 'up' | 'down') => {
-    const currentIndex = properties.findIndex((p) => p.id === propertyId);
-    if (currentIndex === -1) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= properties.length) return;
+    if (over && active.id !== over.id) {
+      const oldIndex = properties.findIndex((p) => p.id === active.id);
+      const newIndex = properties.findIndex((p) => p.id === over.id);
 
-    const currentProperty = properties[currentIndex];
-    const swapProperty = properties[newIndex];
+      // Optimistic update
+      const newProperties = arrayMove(properties, oldIndex, newIndex);
+      setProperties(newProperties);
 
-    try {
-      await Promise.all([
-        supabase
-          .from('session_properties')
-          .update({ order_index: swapProperty.order_index })
-          .eq('id', currentProperty.id),
-        supabase
-          .from('session_properties')
-          .update({ order_index: currentProperty.order_index })
-          .eq('id', swapProperty.id),
-      ]);
+      try {
+        // Update order_index for all affected properties
+        const updates = newProperties.map((prop, idx) =>
+          supabase
+            .from('session_properties')
+            .update({ order_index: idx })
+            .eq('id', prop.id)
+        );
 
-      fetchProperties();
-    } catch (error) {
-      toast.error('Failed to reorder properties');
+        await Promise.all(updates);
+      } catch (error) {
+        toast.error('Failed to reorder properties');
+        fetchProperties(); // Revert on error
+      }
     }
   };
 
@@ -376,10 +400,54 @@ const SessionDetail = () => {
       if (error) throw error;
 
       toast.success('Property removed');
+      setSelectedProperties((prev) => {
+        const next = new Set(prev);
+        next.delete(propertyId);
+        return next;
+      });
       fetchProperties();
     } catch (error) {
       toast.error('Failed to delete property');
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProperties.size === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('session_properties')
+        .delete()
+        .in('id', Array.from(selectedProperties));
+
+      if (error) throw error;
+
+      toast.success(`${selectedProperties.size} properties removed`);
+      setSelectedProperties(new Set());
+      fetchProperties();
+    } catch (error) {
+      toast.error('Failed to delete properties');
+    }
+  };
+
+  const handleSelectProperty = (id: string, selected: boolean) => {
+    setSelectedProperties((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedProperties(new Set(properties.map((p) => p.id)));
+  };
+
+  const handleClearSelection = () => {
+    setSelectedProperties(new Set());
   };
 
   const handleCopyLink = async () => {
@@ -690,171 +758,52 @@ const SessionDetail = () => {
             </TabsList>
             
             <TabsContent value="list" className="space-y-4">
-            {properties.map((property, index) => (
-              <div
-                key={property.id}
-                className="bg-card rounded-xl p-4 card-elevated flex items-center gap-4"
+              {/* Bulk Actions Bar */}
+              <BulkActionsBar
+                selectedCount={selectedProperties.size}
+                onClear={handleClearSelection}
+                onSelectAll={handleSelectAll}
+                onDelete={handleBulkDelete}
+                totalCount={properties.length}
+              />
+
+              {/* Drag and Drop List */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                {/* Reorder Buttons */}
-                <div className="flex flex-col gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    disabled={index === 0}
-                    onClick={() => handleMoveProperty(property.id, 'up')}
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    disabled={index === properties.length - 1}
-                    onClick={() => handleMoveProperty(property.id, 'down')}
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* Photo */}
-                <div className="w-20 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-                  {property.photo_url ? (
-                    <img
-                      src={property.photo_url}
-                      alt={property.address}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Home className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded">
-                      #{index + 1}
-                    </span>
-                    <h3 className="font-semibold text-foreground truncate">
-                      {property.address}
-                      {property.city && `, ${property.city}`}
-                      {property.state && `, ${property.state}`}
-                      {property.zip_code && ` ${property.zip_code}`}
-                    </h3>
-                    {property.rating && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded">
-                        <Star className="w-3 h-3 fill-current" />
-                        {property.rating.rating}/10
-                      </div>
-                    )}
+                <SortableContext
+                  items={properties.map((p) => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {properties.map((property, index) => (
+                      <SortablePropertyCard
+                        key={property.id}
+                        property={property}
+                        index={index}
+                        isSelected={selectedProperties.has(property.id)}
+                        onSelect={handleSelectProperty}
+                        onEditNotes={(prop) => {
+                          setEditDetailsPropertyId(prop.id);
+                          setEditDetailsPropertyAddress(
+                            `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                          );
+                        }}
+                        onManageDocs={(prop) => {
+                          setDocsPropertyId(prop.id);
+                          setDocsPropertyAddress(
+                            `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                          );
+                        }}
+                        onDelete={handleDeleteProperty}
+                        formatPrice={formatPrice}
+                      />
+                    ))}
                   </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    {property.price && (
-                      <span className="text-accent font-medium">
-                        {formatPrice(property.price)}
-                      </span>
-                    )}
-                    {(property.beds || property.baths || property.sqft) && (
-                      <span className="text-muted-foreground text-sm">
-                        {property.beds && `${property.beds} bed`}
-                        {property.beds && property.baths && ' · '}
-                        {property.baths && `${property.baths} bath`}
-                        {(property.beds || property.baths) && property.sqft && ' · '}
-                        {property.sqft && `${property.sqft.toLocaleString()} sqft`}
-                      </span>
-                    )}
-                  </div>
-                  {/* Client Feedback Summary */}
-                  {property.rating?.feedback && Object.keys(property.rating.feedback).length > 0 && (
-                    <div className="mt-2 p-2 bg-muted/50 rounded-lg text-sm space-y-1">
-                      <div className="flex items-center gap-1 text-muted-foreground font-medium">
-                        <MessageSquare className="w-3 h-3" />
-                        Client Feedback
-                      </div>
-                      {property.rating.feedback.nextStep && (
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            property.rating.feedback.nextStep === 'interested' 
-                              ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-                              : property.rating.feedback.nextStep === 'not_interested'
-                              ? 'bg-red-500/20 text-red-700 dark:text-red-400'
-                              : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                          }`}>
-                            {property.rating.feedback.nextStep === 'interested' && '✓ Interested'}
-                            {property.rating.feedback.nextStep === 'not_interested' && '✗ Not Interested'}
-                            {property.rating.feedback.nextStep === 'revisit' && '↻ Wants to Revisit'}
-                          </span>
-                        </div>
-                      )}
-                      {property.rating.feedback.priceFeel && (
-                        <p className="text-muted-foreground">
-                          <span className="font-medium">Price:</span>{' '}
-                          {property.rating.feedback.priceFeel === 'fair' && 'Fair'}
-                          {property.rating.feedback.priceFeel === 'high' && 'Too High'}
-                          {property.rating.feedback.priceFeel === 'low' && 'Great Value'}
-                        </p>
-                      )}
-                      {property.rating.feedback.topThingsLiked && (
-                        <p className="text-muted-foreground truncate">
-                          <span className="font-medium">Liked:</span> {property.rating.feedback.topThingsLiked}
-                        </p>
-                      )}
-                      {property.rating.feedback.concerns && (
-                        <p className="text-muted-foreground truncate">
-                          <span className="font-medium">Concerns:</span> {property.rating.feedback.concerns}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => {
-                      setEditDetailsPropertyId(property.id);
-                      setEditDetailsPropertyAddress(
-                        `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
-                      );
-                    }}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Edit Notes
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1"
-                    onClick={() => {
-                      setDocsPropertyId(property.id);
-                      setDocsPropertyAddress(
-                        `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
-                      );
-                    }}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    Docs{property.doc_count ? ` (${property.doc_count})` : ''}
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteProperty(property.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+                </SortableContext>
+              </DndContext>
             </TabsContent>
             
             <TabsContent value="map">
