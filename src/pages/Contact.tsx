@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Mail, MessageSquare } from 'lucide-react';
+import { contactSchema } from '@/lib/validations';
+import { z } from 'zod';
 
 const Contact = () => {
   const [name, setName] = useState('');
@@ -15,9 +17,28 @@ const Contact = () => {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+
+    // Validate form data
+    try {
+      contactSchema.parse({ name, email, subject, message });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        return;
+      }
+    }
+
     setSending(true);
 
     // Simulate form submission
@@ -74,8 +95,12 @@ const Contact = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
+                    maxLength={100}
                     required
                   />
+                  {errors.name && (
+                    <p className="text-sm text-destructive">{errors.name}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -85,8 +110,12 @@ const Contact = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    maxLength={255}
                     required
                   />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subject">Subject</Label>
@@ -95,8 +124,12 @@ const Contact = () => {
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="How can we help?"
+                    maxLength={200}
                     required
                   />
+                  {errors.subject && (
+                    <p className="text-sm text-destructive">{errors.subject}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message">Message</Label>
@@ -106,8 +139,12 @@ const Contact = () => {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Tell us more..."
                     rows={5}
+                    maxLength={2000}
                     required
                   />
+                  {errors.message && (
+                    <p className="text-sm text-destructive">{errors.message}</p>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={sending}>
                   {sending ? 'Sending...' : 'Send Message'}

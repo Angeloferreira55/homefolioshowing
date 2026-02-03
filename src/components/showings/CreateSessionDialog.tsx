@@ -14,6 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { sessionSchema } from '@/lib/validations';
+import { z } from 'zod';
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -31,19 +33,40 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (title.trim() && clientName.trim()) {
-      onCreate({
+    setErrors({});
+
+    // Validate form data
+    try {
+      sessionSchema.parse({
         title: title.trim(),
-        sessionDate,
         clientName: clientName.trim(),
         notes: notes.trim() || undefined,
       });
-      resetForm();
-      onOpenChange(false);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        return;
+      }
     }
+
+    onCreate({
+      title: title.trim(),
+      sessionDate,
+      clientName: clientName.trim(),
+      notes: notes.trim() || undefined,
+    });
+    resetForm();
+    onOpenChange(false);
   };
 
   const resetForm = () => {
@@ -51,6 +74,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
     setSessionDate(undefined);
     setClientName('');
     setNotes('');
+    setErrors({});
   };
 
   return (
@@ -73,8 +97,12 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
               placeholder="Saturday Home Tour - North Valley"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              maxLength={200}
               required
             />
+            {errors.title && (
+              <p className="text-sm text-destructive">{errors.title}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -110,8 +138,12 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
               placeholder="John & Jane Smith"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
+              maxLength={100}
               required
             />
+            {errors.clientName && (
+              <p className="text-sm text-destructive">{errors.clientName}</p>
+            )}
           </div>
 
 
@@ -123,7 +155,11 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              maxLength={1000}
             />
+            {errors.notes && (
+              <p className="text-sm text-destructive">{errors.notes}</p>
+            )}
           </div>
 
           <Button
