@@ -190,8 +190,8 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="text-center">
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto flex flex-col items-center">
+        <DialogHeader className="w-full text-center">
           <DialogTitle className="font-display text-lg text-center">
             Share Session
           </DialogTitle>
@@ -200,7 +200,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center justify-center py-2 w-full">
+        <div className="flex flex-col items-center justify-center py-2 w-full max-w-[280px] mx-auto">
           {/* QR Code Preview */}
           <div 
             className="p-4 rounded-lg shadow-sm mb-3 flex items-center justify-center mx-auto" 
