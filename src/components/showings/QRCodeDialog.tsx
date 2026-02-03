@@ -114,7 +114,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
       logo.crossOrigin = 'anonymous';
       
       logo.onload = () => {
-        const logoSize = canvas.width * 0.25; // Logo takes 25% of QR code
+        const logoSize = canvas.width * 0.32; // Logo takes 32% of QR code for better visibility
         const x = (canvas.width - logoSize) / 2;
         const y = (canvas.height - logoSize) / 2;
 
@@ -353,12 +353,8 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
                   </div>
                 </div>
               </PopoverContent>
-            </Popover>
+          </Popover>
           </div>
-
-          <p className="text-sm text-muted-foreground text-center mb-4 px-4 break-all">
-            {shareUrl}
-          </p>
 
           {/* Access Code Display */}
           {accessCode && (
