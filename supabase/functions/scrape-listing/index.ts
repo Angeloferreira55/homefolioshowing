@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
 
     // Use Firecrawl with extract format for structured property data
     // Include 'links' format to capture image URLs from the page
+    // Add waitFor to allow JS to render before extracting
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
@@ -97,6 +98,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         url: formattedUrl,
         formats: ['markdown', 'links', 'extract'],
+        waitFor: 5000, // Wait 5 seconds for JS to render
         extract: {
           schema: {
             type: 'object',
@@ -146,6 +148,33 @@ Deno.serve(async (req) => {
     const extractedData = data.data?.extract || data.extract || {};
     const metadata = data.data?.metadata || data.metadata || {};
     const links = data.data?.links || data.links || [];
+    const markdown = data.data?.markdown || data.markdown || '';
+    
+    // Detect if site blocked the request
+    const blockedIndicators = [
+      'request could not be processed',
+      'access denied',
+      'please verify you are human',
+      'captcha',
+      'blocked',
+      'bot detected',
+    ];
+    
+    const isBlocked = blockedIndicators.some(indicator => 
+      markdown.toLowerCase().includes(indicator) ||
+      (extractedData.description?.toLowerCase() || '').includes(indicator)
+    );
+    
+    if (isBlocked) {
+      console.error('Site appears to be blocking scrape request');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'This website is blocking automated requests. Please try a different listing URL or enter the property details manually.' 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Try multiple sources for the property photo
     // 1. AI-extracted main photo URL from the page
