@@ -203,7 +203,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
         <div className="flex flex-col items-center justify-center py-2 w-full max-w-[280px] mx-auto">
           {/* QR Code Preview */}
           <div 
-            className="p-4 rounded-lg shadow-sm mb-3 flex items-center justify-center mx-auto" 
+            className="p-4 rounded-lg shadow-sm mb-3 inline-flex items-center justify-center" 
             style={{ backgroundColor: bgColor }}
           >
             {error ? (
@@ -213,7 +213,8 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
             ) : (
               <canvas 
                 ref={canvasRef} 
-                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px`, display: 'block', margin: '0 auto' }}
+                className="block"
+                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px` }}
               />
             )}
           </div>
