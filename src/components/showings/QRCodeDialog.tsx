@@ -191,7 +191,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="text-center">
           <DialogTitle className="font-display text-lg text-center">
             Share Session
           </DialogTitle>
@@ -200,9 +200,12 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center py-2">
+        <div className="flex flex-col items-center justify-center py-2 w-full">
           {/* QR Code Preview */}
-          <div className="bg-white p-4 rounded-lg shadow-sm mb-3 flex items-center justify-center" style={{ backgroundColor: bgColor }}>
+          <div 
+            className="p-4 rounded-lg shadow-sm mb-3 flex items-center justify-center mx-auto" 
+            style={{ backgroundColor: bgColor }}
+          >
             {error ? (
               <div className="w-[160px] h-[160px] flex items-center justify-center text-destructive text-xs">
                 {error}
@@ -210,7 +213,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
             ) : (
               <canvas 
                 ref={canvasRef} 
-                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px`, display: 'block' }}
+                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px`, display: 'block', margin: '0 auto' }}
               />
             )}
           </div>
