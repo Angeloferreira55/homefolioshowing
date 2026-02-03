@@ -27,7 +27,7 @@ const HeroSection = () => {
             <span className="relative">
               One Link.
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 12" fill="none">
-                <path d="M2 10C50 4 150 4 198 10" stroke="hsl(145 55% 42%)" strokeWidth="4" strokeLinecap="round" />
+                <path d="M2 10C50 4 150 4 198 10" stroke="hsl(210 65% 28%)" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </span>
             <br />
