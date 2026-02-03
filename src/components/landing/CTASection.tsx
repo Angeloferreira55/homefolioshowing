@@ -26,7 +26,7 @@ const CTASection = () => {
               experience they'll love.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button variant="hero" size="xl" asChild className="bg-accent hover:bg-accent/90">
+              <Button size="xl" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg">
                 <Link to="/dashboard" className="gap-2">
                   Get Started Free
                   <ArrowRight className="w-5 h-5" />
