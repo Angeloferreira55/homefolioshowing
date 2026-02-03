@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
+import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetailsDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
@@ -116,6 +117,7 @@ const SessionDetail = () => {
   const [loading, setLoading] = useState(true);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const [isQROpen, setIsQROpen] = useState(false);
+  const [isEditSessionOpen, setIsEditSessionOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
@@ -492,6 +494,34 @@ const SessionDetail = () => {
     }
   };
 
+  const handleEditSession = async (data: {
+    title: string;
+    clientName: string;
+    sessionDate?: Date;
+    notes?: string;
+    accessCode?: string | null;
+  }) => {
+    try {
+      const { error } = await supabase
+        .from('showing_sessions')
+        .update({
+          title: data.title,
+          client_name: data.clientName,
+          session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+          notes: data.notes || null,
+          share_password: data.accessCode,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Session updated');
+      fetchSession();
+    } catch (error) {
+      toast.error('Failed to update session');
+    }
+  };
+
   const getGoogleMapsUrl = () => {
     if (properties.length === 0) return '#';
     
@@ -621,7 +651,11 @@ const SessionDetail = () => {
 
           {/* Actions */}
           <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start gap-2">
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2"
+              onClick={() => setIsEditSessionOpen(true)}
+            >
               <Edit className="w-4 h-4" />
               Edit
             </Button>
@@ -847,6 +881,13 @@ const SessionDetail = () => {
         sessionTitle={session.title}
         logoUrl={brokerageLogo}
         accessCode={session.share_password}
+      />
+
+      <EditSessionDialog
+        session={session}
+        open={isEditSessionOpen}
+        onOpenChange={setIsEditSessionOpen}
+        onSave={handleEditSession}
       />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
