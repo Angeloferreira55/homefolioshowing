@@ -338,6 +338,7 @@ export type Database = {
           id: string
           notes: string | null
           session_date: string | null
+          share_password: string | null
           share_token: string | null
           title: string
           updated_at: string
@@ -351,6 +352,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_date?: string | null
+          share_password?: string | null
           share_token?: string | null
           title: string
           updated_at?: string
@@ -364,6 +366,7 @@ export type Database = {
           id?: string
           notes?: string | null
           session_date?: string | null
+          share_password?: string | null
           share_token?: string | null
           title?: string
           updated_at?: string
@@ -407,6 +410,10 @@ export type Database = {
           p_share_token: string
         }
         Returns: string
+      }
+      verify_share_access: {
+        Args: { p_password: string; p_share_token: string }
+        Returns: boolean
       }
     }
     Enums: {

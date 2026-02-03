@@ -105,6 +105,7 @@ interface ShowingSession {
   session_date: string | null;
   share_token: string;
   notes: string | null;
+  share_password: string | null;
 }
 
 const SessionDetail = () => {
@@ -845,6 +846,7 @@ const SessionDetail = () => {
         shareToken={session.share_token}
         sessionTitle={session.title}
         logoUrl={brokerageLogo}
+        accessCode={session.share_password}
       />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
