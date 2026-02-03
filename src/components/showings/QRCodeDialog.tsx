@@ -32,9 +32,9 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 200px but rendered at 400px
-const QR_RENDER_SIZE = 400;
-const QR_DISPLAY_SIZE = 200;
+// Higher resolution for better quality - displayed at 160px but rendered at 320px
+const QR_RENDER_SIZE = 320;
+const QR_DISPLAY_SIZE = 160;
 
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
@@ -190,21 +190,21 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl text-center">
+          <DialogTitle className="font-display text-lg text-center">
             Share Session
           </DialogTitle>
-          <DialogDescription className="text-center text-sm text-muted-foreground">
-            Customize and share "{sessionTitle}" with your client
+          <DialogDescription className="text-center text-xs text-muted-foreground">
+            Customize and share "{sessionTitle}"
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center py-4">
+        <div className="flex flex-col items-center py-2">
           {/* QR Code Preview */}
-          <div className="bg-white p-6 rounded-xl shadow-md mb-4 flex items-center justify-center" style={{ backgroundColor: bgColor }}>
+          <div className="bg-white p-4 rounded-lg shadow-sm mb-3 flex items-center justify-center" style={{ backgroundColor: bgColor }}>
             {error ? (
-              <div className="w-[200px] h-[200px] flex items-center justify-center text-destructive text-sm">
+              <div className="w-[160px] h-[160px] flex items-center justify-center text-destructive text-xs">
                 {error}
               </div>
             ) : (
@@ -216,16 +216,16 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
           </div>
 
           {/* Customization Options */}
-          <div className="flex gap-2 mb-4 w-full justify-center">
+          <div className="flex gap-2 mb-3 w-full justify-center">
             {/* Color Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Palette className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Palette className="w-3.5 h-3.5" />
                   Colors
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72" align="center">
+              <PopoverContent className="w-64" align="center">
                 <div className="space-y-4">
                   <div className="text-sm font-medium">Preset Colors</div>
                   <div className="grid grid-cols-3 gap-2">
@@ -290,12 +290,12 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
             {/* Logo Toggle */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Image className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                  <Image className="w-3.5 h-3.5" />
                   Logo
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64" align="center">
+              <PopoverContent className="w-56" align="center">
                 <div className="space-y-4">
                   <div className="text-sm font-medium">Add Logo to QR Code</div>
                   
@@ -361,11 +361,11 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
           {/* Access Code Display */}
           {accessCode && (
-            <div className="w-full bg-muted/50 border border-border rounded-lg p-4 mb-4">
+            <div className="w-full bg-muted/50 border border-border rounded-lg p-3 mb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Access Code Required</p>
-                  <p className="font-mono text-xl font-bold tracking-widest text-foreground">
+                  <p className="text-xs text-muted-foreground mb-0.5">Access Code</p>
+                  <p className="font-mono text-lg font-bold tracking-widest text-foreground">
                     {accessCode}
                   </p>
                 </div>
@@ -376,25 +376,22 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
                     navigator.clipboard.writeText(accessCode);
                     toast.success('Access code copied!');
                   }}
-                  className="gap-1.5"
+                  className="gap-1 h-7 text-xs"
                 >
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-3 h-3" />
                   Copy
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Share this code with your client along with the link.
-              </p>
             </div>
           )}
 
-          <div className="flex gap-3 w-full">
-            <Button variant="outline" className="flex-1 gap-2" onClick={handleCopyLink}>
-              <Copy className="w-4 h-4" />
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-9" onClick={handleCopyLink}>
+              <Copy className="w-3.5 h-3.5" />
               Copy Link
             </Button>
-            <Button variant="outline" className="flex-1 gap-2" onClick={handleDownload}>
-              <Download className="w-4 h-4" />
+            <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-9" onClick={handleDownload}>
+              <Download className="w-3.5 h-3.5" />
               Download
             </Button>
           </div>
