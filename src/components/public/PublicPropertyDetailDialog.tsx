@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import PropertyDocumentsDrawer from './PropertyDocumentsDrawer';
 import { ImageGallery } from '@/components/ui/image-gallery';
+import MortgageCalculator from './MortgageCalculator';
 
 export interface PublicPropertyDocument {
   id: string;
@@ -319,6 +320,11 @@ export default function PublicPropertyDetailDialog({
                     {property.description}
                   </p>
                 </ContentCard>
+              )}
+
+              {/* Mortgage Calculator */}
+              {property.price && (
+                <MortgageCalculator propertyPrice={property.price} />
               )}
 
               {/* Agent Card */}
