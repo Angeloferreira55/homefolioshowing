@@ -114,22 +114,25 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
       logo.crossOrigin = 'anonymous';
       
       logo.onload = () => {
-        const logoSize = canvas.width * 0.32; // Logo takes 32% of QR code for better visibility
-        const x = (canvas.width - logoSize) / 2;
-        const y = (canvas.height - logoSize) / 2;
+        const circleSize = canvas.width * 0.32; // Circle takes 32% of QR code
+        const logoSize = circleSize * 0.7; // Logo is 70% of circle size for padding
+        const circleX = canvas.width / 2;
+        const circleY = canvas.height / 2;
+        const logoX = (canvas.width - logoSize) / 2;
+        const logoY = (canvas.height - logoSize) / 2;
 
         // Draw white background circle for logo
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, logoSize / 2 + 4, 0, Math.PI * 2);
+        ctx.arc(circleX, circleY, circleSize / 2 + 4, 0, Math.PI * 2);
         ctx.fillStyle = bgColor;
         ctx.fill();
 
-        // Draw logo (circular clip)
+        // Draw logo (circular clip) - smaller than the circle for padding
         ctx.save();
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, logoSize / 2, 0, Math.PI * 2);
+        ctx.arc(circleX, circleY, circleSize / 2, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(logo, x, y, logoSize, logoSize);
+        ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
         ctx.restore();
 
         resolve();
@@ -199,7 +202,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
         <div className="flex flex-col items-center py-4">
           {/* QR Code Preview */}
-          <div className="bg-white p-4 rounded-xl shadow-md mb-4" style={{ backgroundColor: bgColor }}>
+          <div className="bg-white p-6 rounded-xl shadow-md mb-4 flex items-center justify-center" style={{ backgroundColor: bgColor }}>
             {error ? (
               <div className="w-[200px] h-[200px] flex items-center justify-center text-destructive text-sm">
                 {error}
@@ -207,7 +210,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
             ) : (
               <canvas 
                 ref={canvasRef} 
-                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px` }}
+                style={{ width: `${QR_DISPLAY_SIZE}px`, height: `${QR_DISPLAY_SIZE}px`, display: 'block' }}
               />
             )}
           </div>
