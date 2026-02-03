@@ -56,11 +56,11 @@ function AppSidebar() {
       <SidebarContent className="flex flex-col h-full">
         {/* Logo */}
         <div className="p-4 border-b border-border">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/">
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className={`${collapsed ? 'h-8 w-8 object-contain' : 'h-10 w-auto'} shrink-0`}
+              className={`${collapsed ? 'h-6 w-auto' : 'h-8 w-auto'}`}
             />
           </Link>
         </div>
