@@ -18,7 +18,6 @@ import { NavLink } from '@/components/NavLink';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { 
-  Home, 
   Calendar, 
   User, 
   LogOut, 
@@ -26,6 +25,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const navItems = [
@@ -57,14 +57,11 @@ function AppSidebar() {
         {/* Logo */}
         <div className="p-4 border-b border-border">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <Home className="w-4 h-4 text-primary-foreground" />
-            </div>
-            {!collapsed && (
-              <span className="font-display text-lg font-semibold text-foreground">
-                HomeFolio
-              </span>
-            )}
+            <img 
+              src={logoImage} 
+              alt="HomeFolio" 
+              className={`${collapsed ? 'h-8 w-8 object-contain' : 'h-10 w-auto'} shrink-0`}
+            />
           </Link>
         </div>
 

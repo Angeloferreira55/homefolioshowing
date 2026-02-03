@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Home } from 'lucide-react';
+import logoImage from '@/assets/homefolio-logo.png';
 
 const Footer = () => {
   return (
@@ -9,12 +9,11 @@ const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary-foreground flex items-center justify-center">
-                <Home className="w-4 h-4 text-primary" />
-              </div>
-              <span className="font-display text-xl font-semibold">
-                HomeFolio
-              </span>
+              <img 
+                src={logoImage} 
+                alt="HomeFolio" 
+                className="h-10 w-auto brightness-0 invert"
+              />
             </Link>
             <p className="text-primary-foreground/70 text-sm">
               One client. One link. Every home.
