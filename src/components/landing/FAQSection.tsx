@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     question: 'Is my clients\' information secure?',
-    answer: 'Absolutely. All client links are private and unguessable—they use secure random tokens. Your data is encrypted in transit and at rest. We never share or sell your information, and clients don\'t need to create accounts to view their properties.',
+    answer: 'Absolutely. All client links are private and unguessable—they use secure random tokens. Your data is encrypted in transit and at rest. We never share or sell your information, and clients don\'t need to create accounts to view their properties. Importantly, we do not collect any buyer information—only you, the agent, have access to your client details.',
   },
   {
     question: 'Can I use HomeFolio on my phone?',
