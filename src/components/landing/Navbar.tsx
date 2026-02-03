@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import logoImage from '@/assets/homefolio-logo.png';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,12 +33,11 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Home className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-display text-xl font-semibold text-foreground">
-              HomeFolio
-            </span>
+            <img 
+              src={logoImage} 
+              alt="HomeFolio" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
