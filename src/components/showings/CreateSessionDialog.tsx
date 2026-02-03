@@ -11,11 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, RefreshCw, Lock, LockOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { sessionSchema } from '@/lib/validations';
 import { z } from 'zod';
+import { Switch } from '@/components/ui/switch';
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -25,8 +26,19 @@ interface CreateSessionDialogProps {
     sessionDate?: Date;
     clientName: string;
     notes?: string;
+    sharePassword?: string;
   }) => void;
 }
+
+const generateAccessCode = (): string => {
+  // Generate a 6-character alphanumeric code (easy to read/type)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluded I, O, 0, 1 for clarity
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
 
 const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDialogProps) => {
   const [title, setTitle] = useState('');
@@ -34,6 +46,8 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
   const [clientName, setClientName] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
+  const [sharePassword, setSharePassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +78,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
       sessionDate,
       clientName: clientName.trim(),
       notes: notes.trim() || undefined,
+      sharePassword: passwordEnabled && sharePassword ? sharePassword : undefined,
     });
     resetForm();
     onOpenChange(false);
@@ -75,6 +90,19 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
     setClientName('');
     setNotes('');
     setErrors({});
+    setPasswordEnabled(false);
+    setSharePassword('');
+  };
+
+  const handleGenerateCode = () => {
+    setSharePassword(generateAccessCode());
+  };
+
+  const handlePasswordToggle = (enabled: boolean) => {
+    setPasswordEnabled(enabled);
+    if (enabled && !sharePassword) {
+      handleGenerateCode();
+    }
   };
 
   return (
@@ -159,6 +187,53 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
             />
             {errors.notes && (
               <p className="text-sm text-destructive">{errors.notes}</p>
+            )}
+          </div>
+
+          {/* Password Protection Section */}
+          <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {passwordEnabled ? (
+                  <Lock className="w-4 h-4 text-primary" />
+                ) : (
+                  <LockOpen className="w-4 h-4 text-muted-foreground" />
+                )}
+                <Label htmlFor="password-toggle" className="font-medium cursor-pointer">
+                  Password Protect Link
+                </Label>
+              </div>
+              <Switch
+                id="password-toggle"
+                checked={passwordEnabled}
+                onCheckedChange={handlePasswordToggle}
+              />
+            </div>
+            
+            {passwordEnabled && (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={sharePassword}
+                    onChange={(e) => setSharePassword(e.target.value.toUpperCase())}
+                    placeholder="Access code"
+                    className="font-mono text-center tracking-widest uppercase"
+                    maxLength={20}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleGenerateCode}
+                    title="Generate new code"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this code with your client. They'll need it to access the portfolio.
+                </p>
+              </div>
             )}
           </div>
 

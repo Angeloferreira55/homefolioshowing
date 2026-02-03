@@ -24,6 +24,7 @@ interface QRCodeDialogProps {
   shareToken: string;
   sessionTitle: string;
   logoUrl?: string | null;
+  accessCode?: string | null;
 }
 
 const DEFAULT_COLORS = {
@@ -44,7 +45,7 @@ const PRESET_COLORS = [
   { name: 'Modern', fg: '#333333', bg: '#f5f5f5' },
 ];
 
-const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl }: QRCodeDialogProps) => {
+const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, accessCode }: QRCodeDialogProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [fgColor, setFgColor] = useState(DEFAULT_COLORS.foreground);
@@ -358,6 +359,35 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl }:
           <p className="text-sm text-muted-foreground text-center mb-4 px-4 break-all">
             {shareUrl}
           </p>
+
+          {/* Access Code Display */}
+          {accessCode && (
+            <div className="w-full bg-muted/50 border border-border rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Access Code Required</p>
+                  <p className="font-mono text-xl font-bold tracking-widest text-foreground">
+                    {accessCode}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(accessCode);
+                    toast.success('Access code copied!');
+                  }}
+                  className="gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copy
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Share this code with your client along with the link.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-3 w-full">
             <Button variant="outline" className="flex-1 gap-2" onClick={handleCopyLink}>

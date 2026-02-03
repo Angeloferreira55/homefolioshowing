@@ -14,6 +14,7 @@ import PublicPropertyDetailDialog, {
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
+import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
 
 interface FeedbackData {
@@ -64,6 +65,12 @@ const PublicSession = () => {
   const [notFound, setNotFound] = useState(false);
   const [ratings, setRatings] = useState<Record<string, PropertyRating>>({});
   
+  // Password protection state
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [accessGranted, setAccessGranted] = useState(false);
+  
   // Feedback dialog state
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [activeProperty, setActiveProperty] = useState<SessionProperty | null>(null);
@@ -78,11 +85,66 @@ const PublicSession = () => {
 
   // Compare dialog state
   const [compareOpen, setCompareOpen] = useState(false);
+
   useEffect(() => {
     if (token) {
-      fetchSession();
+      checkPasswordProtection();
     }
   }, [token]);
+
+  const checkPasswordProtection = async () => {
+    try {
+      // First check if session exists and if it has password protection
+      const { data, error } = await supabase
+        .from('showing_sessions')
+        .select('share_password')
+        .eq('share_token', token)
+        .maybeSingle();
+
+      if (error || !data) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      if (data.share_password) {
+        setRequiresPassword(true);
+        setLoading(false);
+      } else {
+        // No password required, fetch the full session
+        setAccessGranted(true);
+        fetchSession();
+      }
+    } catch (error) {
+      setNotFound(true);
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (password: string) => {
+    setIsVerifying(true);
+    setPasswordError(null);
+
+    try {
+      const { data, error } = await supabase
+        .rpc('verify_share_access', { p_share_token: token, p_password: password });
+
+      if (error) throw error;
+
+      if (data) {
+        setAccessGranted(true);
+        setRequiresPassword(false);
+        setLoading(true);
+        fetchSession();
+      } else {
+        setPasswordError('Invalid access code. Please try again.');
+      }
+    } catch (error) {
+      setPasswordError('Something went wrong. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const fetchSession = async () => {
     try {
@@ -348,6 +410,17 @@ const PublicSession = () => {
     };
     return labels[type || 'other'] || 'Document';
   };
+
+  // Show password form if required
+  if (requiresPassword && !accessGranted) {
+    return (
+      <AccessCodeForm
+        onSubmit={handlePasswordSubmit}
+        isLoading={isVerifying}
+        error={passwordError}
+      />
+    );
+  }
 
   if (loading) {
     return <PublicSessionSkeleton />;

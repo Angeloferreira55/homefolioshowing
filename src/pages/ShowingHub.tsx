@@ -101,6 +101,7 @@ const ShowingHub = () => {
     sessionDate?: Date;
     clientName: string;
     notes?: string;
+    sharePassword?: string;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -112,6 +113,7 @@ const ShowingHub = () => {
         session_date: data.sessionDate?.toISOString().split('T')[0] || null,
         client_name: data.clientName,
         notes: data.notes || null,
+        share_password: data.sharePassword || null,
       });
 
       if (error) throw error;
