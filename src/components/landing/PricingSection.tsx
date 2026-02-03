@@ -39,8 +39,8 @@ const plans = [
   },
   {
     name: 'Team',
-    monthlyPrice: 49,
-    yearlyPrice: 470,
+    monthlyPrice: 75,
+    yearlyPrice: 720,
     description: 'For brokerages and real estate teams',
     features: [
       'Everything in Pro',
