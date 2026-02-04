@@ -54,6 +54,13 @@ export type Database = {
             foreignKeyName: "analytics_events_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "public_session_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "showing_sessions"
             referencedColumns: ["id"]
           },
@@ -323,6 +330,13 @@ export type Database = {
             foreignKeyName: "session_properties_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "public_session_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_properties_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "showing_sessions"
             referencedColumns: ["id"]
           },
@@ -375,11 +389,98 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_agent_profile: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          brokerage_logo_url: string | null
+          brokerage_name: string | null
+          company: string | null
+          facebook_url: string | null
+          full_name: string | null
+          id: string | null
+          instagram_url: string | null
+          linkedin_url: string | null
+          slogan: string | null
+          twitter_url: string | null
+          user_id: string | null
+          website_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          company?: string | null
+          facebook_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          linkedin_url?: string | null
+          slogan?: string | null
+          twitter_url?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          company?: string | null
+          facebook_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          linkedin_url?: string | null
+          slogan?: string | null
+          twitter_url?: string | null
+          user_id?: string | null
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      public_session_info: {
+        Row: {
+          admin_id: string | null
+          created_at: string | null
+          id: string | null
+          session_date: string | null
+          share_token: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          session_date?: string | null
+          share_token?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_admin_id_from_session: {
         Args: { p_session_id: string }
+        Returns: string
+      }
+      get_admin_id_from_share_token: {
+        Args: { p_share_token: string }
         Returns: string
       }
       get_public_session: {
@@ -401,6 +502,10 @@ export type Database = {
         Returns: string
       }
       is_session_admin: { Args: { session_id: string }; Returns: boolean }
+      is_valid_property_share_token: {
+        Args: { p_property_id: string; p_share_token: string }
+        Returns: boolean
+      }
       is_valid_share_token: { Args: { token: string }; Returns: boolean }
       submit_property_rating: {
         Args: {
