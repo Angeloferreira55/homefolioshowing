@@ -12,7 +12,7 @@ const Footer = () => {
               <img 
                 src={logoImage} 
                 alt="HomeFolio" 
-                className="h-10 w-auto"
+                className="h-12 w-auto brightness-0 invert"
               />
             </Link>
             <p className="text-primary-foreground/70 text-sm">

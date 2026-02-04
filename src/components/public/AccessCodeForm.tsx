@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, Lock, AlertCircle } from 'lucide-react';
+import { Lock, AlertCircle } from 'lucide-react';
+import logoImage from '@/assets/homefolio-logo.png';
 
 interface AccessCodeFormProps {
   onSubmit: (code: string) => void;
@@ -24,8 +25,12 @@ const AccessCodeForm = ({ onSubmit, isLoading, error }: AccessCodeFormProps) => 
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-primary" />
+          <div className="mb-6">
+            <img 
+              src={logoImage} 
+              alt="HomeFolio" 
+              className="h-12 w-auto mx-auto"
+            />
           </div>
           <h1 className="font-display text-2xl font-semibold text-foreground mb-2">
             Enter Access Code

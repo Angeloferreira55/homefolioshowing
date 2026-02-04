@@ -18,6 +18,7 @@ import CommuteCalculator from '@/components/public/CommuteCalculator';
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { useBuyerFavorites } from '@/hooks/useBuyerFavorites';
+import logoImage from '@/assets/homefolio-logo.png';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -495,9 +496,12 @@ const PublicSession = () => {
       {/* Header */}
       <header className="bg-primary text-primary-foreground py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Home className="w-5 h-5" />
-            <span className="font-display text-lg">HomeFolio</span>
+          <div className="mb-4">
+            <img 
+              src={logoImage} 
+              alt="HomeFolio" 
+              className="h-10 w-auto brightness-0 invert"
+            />
           </div>
           <h1 className="font-display text-3xl font-bold mb-2">
             {session.title}
