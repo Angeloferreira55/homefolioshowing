@@ -500,7 +500,7 @@ const PublicSession = () => {
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-14 w-auto brightness-0 invert"
+              className="h-[72px] w-auto brightness-0 invert"
             />
           </div>
           <h1 className="font-display text-3xl font-bold mb-2">
