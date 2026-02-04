@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2, Upload, FileText, X } from 'lucide-react';
+import { Link2, Loader2, Upload, FileText, X, Database, Search } from 'lucide-react';
 
 interface PropertyData {
   address: string;
@@ -72,6 +72,12 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [isUploading, setIsUploading] = useState(false);
   const [parsedProperties, setParsedProperties] = useState<PropertyData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // MLS import state
+  const [mlsNumber, setMlsNumber] = useState('');
+  const [mlsSearchAddress, setMlsSearchAddress] = useState('');
+  const [isSearchingMls, setIsSearchingMls] = useState(false);
+  const [mlsResults, setMlsResults] = useState<PropertyData[]>([]);
 
   // Check if URL is from a blocklisted site
   const isBlocklistedUrl = (url: string): { blocked: boolean; site?: string } => {
@@ -248,6 +254,114 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     }
   };
 
+  const handleMlsSearch = async (searchType: 'mls' | 'address') => {
+    const searchValue = searchType === 'mls' ? mlsNumber.trim() : mlsSearchAddress.trim();
+    if (!searchValue) {
+      toast.error(`Please enter ${searchType === 'mls' ? 'an MLS number' : 'an address'}`);
+      return;
+    }
+
+    setIsSearchingMls(true);
+    setMlsResults([]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('spark-import', {
+        body: {
+          action: 'search',
+          ...(searchType === 'mls' ? { mlsNumber: searchValue } : { address: searchValue }),
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data.success) throw new Error(data.error || 'MLS search failed');
+
+      const listings = data.data || [];
+      if (listings.length === 0) {
+        toast.info('No listings found');
+        return;
+      }
+
+      // Map Spark data to our PropertyData format
+      const mapped: PropertyData[] = listings.map((l: any) => ({
+        address: l.address,
+        city: l.city,
+        state: l.state,
+        zipCode: l.zipCode,
+        price: l.price,
+        photoUrl: l.photoUrl,
+        beds: l.beds,
+        baths: l.baths,
+        sqft: l.sqft,
+        description: l.description,
+        summary: l.summary,
+        yearBuilt: l.yearBuilt,
+        lotSize: l.lotSize,
+        propertyType: l.propertyType,
+        hoaFee: l.hoaFee,
+        garage: l.garage,
+        heating: l.heating,
+        cooling: l.cooling,
+        features: l.features,
+      }));
+
+      if (mapped.length === 1) {
+        // Single result - auto-fill form
+        const prop = mapped[0];
+        if (prop.address) setAddress(prop.address);
+        if (prop.city) setCity(prop.city);
+        if (prop.state) setState(prop.state);
+        if (prop.zipCode) setZipCode(prop.zipCode);
+        if (prop.price) setPrice(prop.price.toString());
+        if (prop.photoUrl) setPhotoUrl(prop.photoUrl);
+        if (prop.beds) setBeds(prop.beds.toString());
+        if (prop.baths) setBaths(prop.baths.toString());
+        if (prop.sqft) setSqft(prop.sqft.toString());
+        if (prop.description) setDescription(prop.description);
+        if (prop.summary) setSummary(prop.summary);
+        if (prop.yearBuilt) setYearBuilt(prop.yearBuilt);
+        if (prop.lotSize) setLotSize(prop.lotSize);
+        if (prop.propertyType) setPropertyType(prop.propertyType);
+        if (prop.hoaFee) setHoaFee(prop.hoaFee);
+        if (prop.garage) setGarage(prop.garage);
+        if (prop.heating) setHeating(prop.heating);
+        if (prop.cooling) setCooling(prop.cooling);
+        if (prop.features) setFeatures(prop.features);
+        toast.success('Listing imported! Review and submit.');
+      } else {
+        setMlsResults(mapped);
+        toast.success(`Found ${mapped.length} listings`);
+      }
+    } catch (err: any) {
+      console.error('MLS search error:', err);
+      toast.error(err.message || 'Failed to search MLS');
+    } finally {
+      setIsSearchingMls(false);
+    }
+  };
+
+  const handleSelectMlsResult = (prop: PropertyData) => {
+    if (prop.address) setAddress(prop.address);
+    if (prop.city) setCity(prop.city);
+    if (prop.state) setState(prop.state);
+    if (prop.zipCode) setZipCode(prop.zipCode);
+    if (prop.price) setPrice(prop.price.toString());
+    if (prop.photoUrl) setPhotoUrl(prop.photoUrl);
+    if (prop.beds) setBeds(prop.beds.toString());
+    if (prop.baths) setBaths(prop.baths.toString());
+    if (prop.sqft) setSqft(prop.sqft.toString());
+    if (prop.description) setDescription(prop.description);
+    if (prop.summary) setSummary(prop.summary);
+    if (prop.yearBuilt) setYearBuilt(prop.yearBuilt);
+    if (prop.lotSize) setLotSize(prop.lotSize);
+    if (prop.propertyType) setPropertyType(prop.propertyType);
+    if (prop.hoaFee) setHoaFee(prop.hoaFee);
+    if (prop.garage) setGarage(prop.garage);
+    if (prop.heating) setHeating(prop.heating);
+    if (prop.cooling) setCooling(prop.cooling);
+    if (prop.features) setFeatures(prop.features);
+    setMlsResults([]);
+    toast.success('Listing selected! Review and submit.');
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (address.trim()) {
@@ -300,8 +414,10 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setListingUrl('');
     setSelectedFile(null);
     setParsedProperties([]);
+    setMlsNumber('');
+    setMlsSearchAddress('');
+    setMlsResults([]);
   };
-
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) resetForm();
@@ -315,12 +431,15 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         </DialogHeader>
 
         <Tabs defaultValue="manual" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="manual">Manual</TabsTrigger>
             <TabsTrigger value="url">URL</TabsTrigger>
-            <TabsTrigger value="file">File Upload</TabsTrigger>
+            <TabsTrigger value="file">File</TabsTrigger>
+            <TabsTrigger value="mls" className="gap-1">
+              <Database className="w-3 h-3" />
+              MLS
+            </TabsTrigger>
           </TabsList>
-
           <TabsContent value="url" className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="listingUrl">Listing URL</Label>
@@ -463,8 +582,116 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           <TabsContent value="manual" className="mt-4">
             {/* Form is shared between tabs */}
           </TabsContent>
-        </Tabs>
 
+          <TabsContent value="mls" className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="mlsNumber">Search by MLS #</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="mlsNumber"
+                    placeholder="Enter MLS number"
+                    value={mlsNumber}
+                    onChange={(e) => setMlsNumber(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => handleMlsSearch('mls')}
+                    disabled={isSearchingMls}
+                    size="sm"
+                  >
+                    {isSearchingMls ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mlsSearchAddress">Search by Address</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="mlsSearchAddress"
+                    placeholder="123 Main St, City, State"
+                    value={mlsSearchAddress}
+                    onChange={(e) => setMlsSearchAddress(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => handleMlsSearch('address')}
+                    disabled={isSearchingMls}
+                    size="sm"
+                  >
+                    {isSearchingMls ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Configure your Spark API credentials in Profile settings to enable MLS import.
+              </p>
+
+              {mlsResults.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-sm font-medium">
+                    Found {mlsResults.length} listings:
+                  </p>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {mlsResults.map((prop, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => handleSelectMlsResult(prop)}
+                      >
+                        <p className="font-medium">{prop.address}</p>
+                        {prop.city && prop.state && (
+                          <p className="text-muted-foreground text-xs">
+                            {prop.city}, {prop.state} {prop.zipCode}
+                          </p>
+                        )}
+                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                          {prop.beds && <span>{prop.beds} bed</span>}
+                          {prop.baths && <span>{prop.baths} bath</span>}
+                          {prop.sqft && <span>{prop.sqft.toLocaleString()} sqft</span>}
+                        </div>
+                        {prop.price && (
+                          <p className="text-accent font-medium text-sm mt-1">
+                            ${prop.price.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {address && mlsResults.length === 0 && (
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium">Imported: {address}</p>
+                  {city && state && <p className="text-muted-foreground">{city}, {state} {zipCode}</p>}
+                  {price && <p className="text-accent font-medium">${Number(price).toLocaleString()}</p>}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
         <form onSubmit={handleSubmit} className="space-y-5 mt-2">
           <div className="space-y-2">
             <Label htmlFor="address">Street Address *</Label>
