@@ -33,6 +33,18 @@ interface PropertyData {
   heating?: string;
   cooling?: string;
   features?: string[];
+  // Extended MLS fields
+  mlsNumber?: string;
+  daysOnMarket?: number;
+  pricePerSqft?: number;
+  lotSizeAcres?: number;
+  garageSpaces?: number;
+  roof?: string;
+  taxAnnualAmount?: number;
+  hasHoa?: boolean;
+  hoaFeeFrequency?: string;
+  hasPid?: boolean;
+  publicRemarks?: string;
 }
 
 interface AddPropertyDialogProps {
@@ -64,6 +76,18 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [heating, setHeating] = useState('');
   const [cooling, setCooling] = useState('');
   const [features, setFeatures] = useState<string[]>([]);
+  
+  // Extended MLS fields
+  const [mlsNumber, setMlsNumber] = useState('');
+  const [daysOnMarket, setDaysOnMarket] = useState<number | undefined>();
+  const [pricePerSqft, setPricePerSqft] = useState<number | undefined>();
+  const [lotSizeAcres, setLotSizeAcres] = useState<number | undefined>();
+  const [garageSpaces, setGarageSpaces] = useState<number | undefined>();
+  const [roof, setRoof] = useState('');
+  const [taxAnnualAmount, setTaxAnnualAmount] = useState<number | undefined>();
+  const [hasHoa, setHasHoa] = useState<boolean | undefined>();
+  const [hoaFeeFrequency, setHoaFeeFrequency] = useState('');
+  const [hasPid, setHasPid] = useState<boolean | undefined>();
 
   const [listingUrl, setListingUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -72,6 +96,49 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [isUploading, setIsUploading] = useState(false);
   const [parsedProperties, setParsedProperties] = useState<PropertyData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to populate form from extracted property data
+  const populateFormFromProperty = (prop: PropertyData) => {
+    if (prop.address) setAddress(prop.address);
+    if (prop.city) setCity(prop.city);
+    if (prop.state) setState(prop.state);
+    if (prop.zipCode) setZipCode(prop.zipCode);
+    if (prop.price) setPrice(prop.price.toString());
+    if (prop.beds) setBeds(prop.beds.toString());
+    if (prop.baths) setBaths(prop.baths.toString());
+    if (prop.sqft) setSqft(prop.sqft.toString());
+    if (prop.description) setDescription(prop.description);
+    if (prop.summary) setSummary(prop.summary);
+    if (prop.yearBuilt) setYearBuilt(prop.yearBuilt);
+    if (prop.propertyType) setPropertyType(prop.propertyType);
+    if (prop.heating) setHeating(prop.heating);
+    if (prop.cooling) setCooling(prop.cooling);
+    if (prop.features) setFeatures(prop.features);
+    
+    // Extended MLS fields
+    if (prop.mlsNumber) setMlsNumber(prop.mlsNumber);
+    if (prop.daysOnMarket !== undefined) setDaysOnMarket(prop.daysOnMarket);
+    if (prop.pricePerSqft !== undefined) setPricePerSqft(prop.pricePerSqft);
+    if (prop.garageSpaces !== undefined) {
+      setGarageSpaces(prop.garageSpaces);
+      setGarage(prop.garageSpaces.toString());
+    } else if (prop.garage) {
+      setGarage(prop.garage);
+    }
+    if (prop.lotSizeAcres !== undefined) {
+      setLotSizeAcres(prop.lotSizeAcres);
+      setLotSize(`${prop.lotSizeAcres} acres`);
+    } else if (prop.lotSize) {
+      setLotSize(prop.lotSize);
+    }
+    if (prop.roof) setRoof(prop.roof);
+    if (prop.taxAnnualAmount !== undefined) setTaxAnnualAmount(prop.taxAnnualAmount);
+    if (prop.hasHoa !== undefined) setHasHoa(prop.hasHoa);
+    if (prop.hoaFee !== undefined) setHoaFee(prop.hoaFee);
+    if (prop.hoaFeeFrequency) setHoaFeeFrequency(prop.hoaFeeFrequency);
+    if (prop.hasPid !== undefined) setHasPid(prop.hasPid);
+    if (prop.publicRemarks) setDescription(prop.publicRemarks);
+  };
 
 
   // Check if URL is from a blocklisted site
@@ -217,16 +284,9 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       }
 
       if (properties.length === 1) {
-        // Single property - fill the form
+        // Single property - fill the form with all extracted fields
         const prop = properties[0];
-        if (prop.address) setAddress(prop.address);
-        if (prop.city) setCity(prop.city);
-        if (prop.state) setState(prop.state);
-        if (prop.zipCode) setZipCode(prop.zipCode);
-        if (prop.price) setPrice(prop.price.toString());
-        if (prop.beds) setBeds(prop.beds.toString());
-        if (prop.baths) setBaths(prop.baths.toString());
-        if (prop.sqft) setSqft(prop.sqft.toString());
+        populateFormFromProperty(prop);
         toast.success('Property data extracted! Review and submit.');
       } else {
         // Multiple properties - show list
@@ -301,6 +361,17 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setListingUrl('');
     setSelectedFile(null);
     setParsedProperties([]);
+    // Reset extended MLS fields
+    setMlsNumber('');
+    setDaysOnMarket(undefined);
+    setPricePerSqft(undefined);
+    setLotSizeAcres(undefined);
+    setGarageSpaces(undefined);
+    setRoof('');
+    setTaxAnnualAmount(undefined);
+    setHasHoa(undefined);
+    setHoaFeeFrequency('');
+    setHasPid(undefined);
   };
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
