@@ -751,16 +751,15 @@ const SessionDetail = () => {
               <Button 
                 variant="outline" 
                 className="gap-2"
-                asChild
+                onClick={() => {
+                  const url = getGoogleMapsUrl();
+                  if (url !== '#') {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
               >
-                <a
-                  href={getGoogleMapsUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Navigation className="w-4 h-4" />
-                  Directions
-                </a>
+                <Navigation className="w-4 h-4" />
+                Directions
               </Button>
             )}
             <Button variant="outline" className="gap-2">
