@@ -29,7 +29,7 @@ const AccessCodeForm = ({ onSubmit, isLoading, error }: AccessCodeFormProps) => 
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-16 w-auto mx-auto"
+              className="h-20 w-auto mx-auto"
             />
           </div>
           <h1 className="font-display text-2xl font-semibold text-foreground mb-2">
