@@ -493,31 +493,31 @@ const PublicSession = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100dvh] bg-background safe-area-top safe-area-bottom">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground py-8">
+      <header className="bg-primary text-primary-foreground py-6 sm:py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-[72px] w-auto brightness-0 invert"
+              className="h-14 sm:h-[72px] w-auto brightness-0 invert"
             />
           </div>
-          <h1 className="font-display text-3xl font-bold mb-2">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
             {session.title}
           </h1>
-          <p className="text-primary-foreground/80">
+          <p className="text-primary-foreground/80 text-sm sm:text-base">
             Welcome, {session.client_name}
           </p>
           {session.session_date && (
-            <p className="flex items-center gap-2 text-primary-foreground/80 mt-2">
+            <p className="flex items-center gap-2 text-primary-foreground/80 mt-2 text-sm sm:text-base">
               <Calendar className="w-4 h-4" />
               {format(new Date(session.session_date), 'EEEE, MMMM d, yyyy')}
             </p>
           )}
           {session.notes && (
-            <p className="mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-4 rounded-lg">
+            <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
               {session.notes}
             </p>
           )}
@@ -526,15 +526,15 @@ const PublicSession = () => {
 
       {/* Agent Profile */}
       {agent && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 -mt-4 sm:-mt-6 relative z-10">
           <AgentProfileCard agent={agent} />
         </div>
       )}
 
       {/* Properties */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="font-display text-xl font-semibold text-foreground">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between sm:gap-4 mb-5 sm:mb-6">
+          <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
             Properties ({properties.length})
           </h2>
           <div className="flex items-center gap-2">
@@ -543,7 +543,7 @@ const PublicSession = () => {
                 variant={showFavoritesOnly ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className="gap-2"
+                className="gap-2 text-sm"
               >
                 <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
                 Favorites ({getFavoriteCount()})
@@ -554,7 +554,7 @@ const PublicSession = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setCompareOpen(true)}
-                className="gap-2"
+                className="gap-2 text-sm"
               >
                 <Scale className="w-4 h-4" />
                 Compare
@@ -565,13 +565,13 @@ const PublicSession = () => {
 
 
         {properties.length > 0 ? (
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
             {properties
               .filter(p => !showFavoritesOnly || isFavorite(p.id))
               .map((property, index) => (
               <div
                 key={property.id}
-                className="bg-card rounded-2xl overflow-hidden card-elevated"
+                className="bg-card rounded-xl sm:rounded-2xl overflow-hidden card-elevated"
               >
                 {/* Large Image */}
                 <div className="relative aspect-[16/10] bg-muted">
@@ -583,7 +583,7 @@ const PublicSession = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Home className="w-16 h-16 text-muted-foreground" />
+                      <Home className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" />
                     </div>
                   )}
                   {/* Favorite button */}
@@ -592,7 +592,7 @@ const PublicSession = () => {
                       e.stopPropagation();
                       toggleFavorite(property.id);
                     }}
-                    className="absolute top-3 right-3 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                    className="absolute top-3 right-3 w-10 h-10 sm:w-10 sm:h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target"
                     aria-label={isFavorite(property.id) ? "Remove from favorites" : "Add to favorites"}
                   >
                     <Heart 
@@ -606,32 +606,32 @@ const PublicSession = () => {
                 </div>
 
                 {/* Content */}
-                <div className="p-5">
+                <div className="p-4 sm:p-5">
                   {/* Header row: Badge, Date, Price */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="px-2.5 sm:px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-bold">
                         #{index + 1}
                       </span>
                       {session.session_date && (
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Calendar className="w-4 h-4" />
-                          {format(new Date(session.session_date), 'MMM d · h:mm a')}
+                        <span className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          {format(new Date(session.session_date), 'MMM d')}
                         </span>
                       )}
                     </div>
                     {property.price && (
-                      <span className="text-2xl font-display font-bold text-foreground">
+                      <span className="text-xl sm:text-2xl font-display font-bold text-foreground">
                         {formatPrice(property.price)}
                       </span>
                     )}
                   </div>
 
                   {/* Address */}
-                  <div className="flex items-start gap-2 mb-4">
+                  <div className="flex items-start gap-2 mb-3 sm:mb-4">
                     <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-display font-semibold text-foreground">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display font-semibold text-foreground text-sm sm:text-base break-words">
                         {property.address}
                         {property.city && `, ${property.city}`}
                         {property.state && `, ${property.state}`}
@@ -643,10 +643,10 @@ const PublicSession = () => {
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                        className="inline-flex items-center gap-1 text-xs sm:text-sm text-primary hover:underline mt-1 touch-target"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Navigation className="w-3.5 h-3.5" />
+                        <Navigation className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                         Get Directions
                       </a>
                     </div>
@@ -654,7 +654,7 @@ const PublicSession = () => {
 
                   {/* Property Stats */}
                   {(property.beds || property.baths || property.sqft) && (
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                       {property.beds && <span>{property.beds} Bd</span>}
                       {property.baths && <span>• {property.baths} Ba</span>}
                       {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
@@ -663,18 +663,19 @@ const PublicSession = () => {
 
                   {/* Agent's Note */}
                   {session.notes && (
-                    <div className="bg-secondary rounded-xl p-4 mb-4">
+                    <div className="bg-secondary rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
                       <p className="text-xs text-muted-foreground mb-1">{agent?.full_name || 'Agent'}'s note</p>
-                      <p className="text-sm text-foreground">{session.notes}</p>
+                      <p className="text-xs sm:text-sm text-foreground">{session.notes}</p>
                     </div>
                   )}
 
                   {/* Documents */}
                   {property.documents && property.documents.length > 0 && (
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       <Button
                         variant="outline"
-                        className="w-full justify-between"
+                        size="sm"
+                        className="w-full justify-between h-10 sm:h-auto"
                         onClick={() => {
                           setDocsProperty(property);
                           setDocsOpen(true);
@@ -682,7 +683,7 @@ const PublicSession = () => {
                       >
                         <span className="flex items-center gap-2">
                           <FileText className="h-4 w-4" />
-                          Property Documents
+                          <span className="text-sm">Property Documents</span>
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {property.documents.length}
@@ -693,18 +694,18 @@ const PublicSession = () => {
 
                   {/* My Photos section - read only */}
                   {property.client_photos && property.client_photos.length > 0 && (
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                    <div className="mb-3 sm:mb-4">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2 sm:mb-3">
                         <Image className="w-4 h-4" />
-                        <span className="text-sm">Photos ({property.client_photos.length})</span>
+                        <span className="text-xs sm:text-sm">Photos ({property.client_photos.length})</span>
                       </div>
-                      <div className="flex gap-2 overflow-x-auto pb-2">
+                      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
                         {property.client_photos.map((photo) => (
                           <div key={photo.id} className="relative flex-shrink-0">
                             <img
                               src={photo.file_url}
                               alt="Client photo"
-                              className="w-20 h-20 rounded-lg object-cover cursor-pointer"
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover cursor-pointer touch-target"
                               onClick={() => window.open(photo.file_url, '_blank')}
                             />
                           </div>
@@ -714,10 +715,11 @@ const PublicSession = () => {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <Button
                       variant="outline"
-                      className="gap-2"
+                      size="sm"
+                      className="gap-1.5 sm:gap-2 h-11 sm:h-10 text-xs sm:text-sm"
                       onClick={() => {
                         setDetailProperty(property);
                         setDetailOpen(true);
@@ -737,11 +739,12 @@ const PublicSession = () => {
                       VIEW DETAILS
                     </Button>
                     <Button
-                      className="gap-2 bg-primary text-primary-foreground"
+                      size="sm"
+                      className="gap-1.5 sm:gap-2 h-11 sm:h-10 bg-primary text-primary-foreground text-xs sm:text-sm"
                       onClick={() => handleOpenFeedback(property)}
                     >
                       <Star className="w-4 h-4" />
-                      {ratings[property.id] ? 'EDIT RATING' : 'RATE THIS HOME'}
+                      {ratings[property.id] ? 'EDIT RATING' : 'RATE HOME'}
                     </Button>
                   </div>
                 </div>
@@ -749,9 +752,9 @@ const PublicSession = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-card rounded-xl">
-            <Home className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
+          <div className="text-center py-12 sm:py-16 bg-card rounded-xl">
+            <Home className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
+            <p className="text-muted-foreground text-sm sm:text-base">
               No properties have been added to this session yet.
             </p>
           </div>
@@ -760,9 +763,9 @@ const PublicSession = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-muted py-6 mt-8">
+      <footer className="bg-muted py-4 sm:py-6 mt-6 sm:mt-8">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Powered by{' '}
             <Link to="/" className="text-accent hover:underline">
               HomeFolio
