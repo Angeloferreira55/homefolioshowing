@@ -310,6 +310,25 @@ export default function PublicPropertyDetailDialog({
                 </ContentCard>
               )}
 
+              {/* Features */}
+              {property.features && property.features.length > 0 && (
+                <ContentCard>
+                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-3">
+                    Features
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    {property.features.map((feature, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-secondary text-secondary-foreground"
+                      >
+                        {feature}
+                      </span>
+                    ))}
+                  </div>
+                </ContentCard>
+              )}
+
               {/* About This Home */}
               {property.description && (
                 <ContentCard>
