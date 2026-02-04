@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -17,6 +17,7 @@ import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
 import CommuteCalculator from '@/components/public/CommuteCalculator';
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
+import { useBuyerFavorites } from '@/hooks/useBuyerFavorites';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -86,6 +87,10 @@ const PublicSession = () => {
 
   // Compare dialog state
   const [compareOpen, setCompareOpen] = useState(false);
+
+  // Favorites
+  const { toggleFavorite, isFavorite, getFavoriteCount } = useBuyerFavorites(token);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // Helper to get/set cached access with 2-hour expiration
   const ACCESS_CACHE_KEY = `homefolio_access_${token}`;
@@ -523,26 +528,41 @@ const PublicSession = () => {
 
       {/* Properties */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="font-display text-xl font-semibold text-foreground">
             Properties ({properties.length})
           </h2>
-          {properties.length >= 2 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCompareOpen(true)}
-              className="gap-2"
-            >
-              <Scale className="w-4 h-4" />
-              Compare
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {getFavoriteCount() > 0 && (
+              <Button
+                variant={showFavoritesOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className="gap-2"
+              >
+                <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                Favorites ({getFavoriteCount()})
+              </Button>
+            )}
+            {properties.length >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCompareOpen(true)}
+                className="gap-2"
+              >
+                <Scale className="w-4 h-4" />
+                Compare
+              </Button>
+            )}
+          </div>
         </div>
 
         {properties.length > 0 ? (
           <div className="max-w-3xl mx-auto space-y-8">
-            {properties.map((property, index) => (
+            {properties
+              .filter(p => !showFavoritesOnly || isFavorite(p.id))
+              .map((property, index) => (
               <div
                 key={property.id}
                 className="bg-card rounded-2xl overflow-hidden card-elevated"
@@ -560,6 +580,23 @@ const PublicSession = () => {
                       <Home className="w-16 h-16 text-muted-foreground" />
                     </div>
                   )}
+                  {/* Favorite button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(property.id);
+                    }}
+                    className="absolute top-3 right-3 w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                    aria-label={isFavorite(property.id) ? "Remove from favorites" : "Add to favorites"}
+                  >
+                    <Heart 
+                      className={`w-5 h-5 transition-colors ${
+                        isFavorite(property.id) 
+                          ? 'fill-red-500 text-red-500' 
+                          : 'text-foreground/70'
+                      }`} 
+                    />
+                  </button>
                 </div>
 
                 {/* Content */}
