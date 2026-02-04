@@ -357,10 +357,12 @@ export type Database = {
       showing_sessions: {
         Row: {
           admin_id: string
+          archived_at: string | null
           client_email: string | null
           client_name: string
           client_phone: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           notes: string | null
           session_date: string | null
@@ -371,10 +373,12 @@ export type Database = {
         }
         Insert: {
           admin_id: string
+          archived_at?: string | null
           client_email?: string | null
           client_name: string
           client_phone?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           notes?: string | null
           session_date?: string | null
@@ -385,10 +389,12 @@ export type Database = {
         }
         Update: {
           admin_id?: string
+          archived_at?: string | null
           client_email?: string | null
           client_name?: string
           client_phone?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           notes?: string | null
           session_date?: string | null
@@ -487,6 +493,8 @@ export type Database = {
       }
     }
     Functions: {
+      archive_session: { Args: { p_session_id: string }; Returns: undefined }
+      cleanup_deleted_sessions: { Args: never; Returns: undefined }
       get_admin_id_from_session: {
         Args: { p_session_id: string }
         Returns: string
@@ -519,6 +527,11 @@ export type Database = {
         Returns: boolean
       }
       is_valid_share_token: { Args: { token: string }; Returns: boolean }
+      restore_session: { Args: { p_session_id: string }; Returns: undefined }
+      soft_delete_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       submit_property_rating: {
         Args: {
           p_feedback: string
@@ -528,6 +541,7 @@ export type Database = {
         }
         Returns: string
       }
+      unarchive_session: { Args: { p_session_id: string }; Returns: undefined }
       verify_share_access: {
         Args: { p_password: string; p_share_token: string }
         Returns: boolean
