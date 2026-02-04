@@ -28,95 +28,95 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border safe-area-top">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
-          <Link to="/">
+          <Link to="/" className="flex-shrink-0">
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-20 w-auto dark:brightness-0 dark:invert"
+              className="h-14 sm:h-20 w-auto dark:brightness-0 dark:invert"
             />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6 lg:gap-8">
             <button
               onClick={() => scrollToSection('features')}
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm lg:text-base"
             >
               Features
             </button>
             <button
               onClick={() => scrollToSection('pricing')}
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm lg:text-base"
             >
               Pricing
             </button>
             <button
               onClick={() => scrollToSection('faq')}
-              className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+              className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm lg:text-base"
             >
               FAQ
             </button>
           </div>
 
           {/* CTA Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 lg:gap-3">
             <ThemeToggle />
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" size="sm" asChild>
               <Link to="/auth">Sign In</Link>
             </Button>
-            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button size="sm" asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Link to="/admin/showings">Get Started</Link>
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle menu"
-          >
-            {isOpen ? (
-              <X className="w-6 h-6 text-foreground" />
-            ) : (
-              <Menu className="w-6 h-6 text-foreground" />
-            )}
-          </button>
+          <div className="flex md:hidden items-center gap-2">
+            <ThemeToggle />
+            <button
+              className="p-2 touch-target"
+              onClick={() => setIsOpen(!isOpen)}
+              aria-label="Toggle menu"
+            >
+              {isOpen ? (
+                <X className="w-6 h-6 text-foreground" />
+              ) : (
+                <Menu className="w-6 h-6 text-foreground" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden py-4 border-t border-border animate-fade-in">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
               <button
                 onClick={() => scrollToSection('features')}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium px-3 py-3 text-left rounded-lg touch-target"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection('pricing')}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium px-3 py-3 text-left rounded-lg touch-target"
               >
                 Pricing
               </button>
               <button
                 onClick={() => scrollToSection('faq')}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium px-2 py-2 text-left"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium px-3 py-3 text-left rounded-lg touch-target"
               >
                 FAQ
               </button>
-              <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <div className="flex justify-center pb-2">
-                  <ThemeToggle />
-                </div>
-                <Button variant="outline" asChild className="w-full">
+              <div className="flex flex-col gap-2 pt-4 mt-2 border-t border-border">
+                <Button variant="outline" size="lg" asChild className="w-full">
                   <Link to="/auth" onClick={() => setIsOpen(false)}>Sign In</Link>
                 </Button>
-                <Button asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button size="lg" asChild className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                   <Link to="/admin/showings" onClick={() => setIsOpen(false)}>Get Started</Link>
                 </Button>
               </div>

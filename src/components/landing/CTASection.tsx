@@ -4,9 +4,9 @@ import { ArrowRight } from 'lucide-react';
 
 const CTASection = () => {
   return (
-    <section className="py-24 bg-background">
+    <section className="py-16 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl hero-gradient p-12 sm:p-16 lg:p-20">
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl hero-gradient p-8 sm:p-12 md:p-16 lg:p-20">
           {/* Background pattern */}
           <div 
             className="absolute inset-0 opacity-5"
@@ -16,23 +16,24 @@ const CTASection = () => {
           />
 
           <div className="relative z-10 max-w-3xl mx-auto text-center">
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-6">
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-primary-foreground mb-4 sm:mb-6 leading-tight">
               Ready to simplify your
-              <br />
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>
               client experience?
             </h2>
-            <p className="text-primary-foreground/80 text-lg sm:text-xl mb-10 max-w-xl mx-auto">
+            <p className="text-primary-foreground/80 text-base sm:text-lg md:text-xl mb-8 sm:mb-10 max-w-xl mx-auto px-2">
               Create your first Homefolio today and give your clients a home search 
               experience they'll love.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button size="xl" asChild className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg" asChild>
                 <Link to="/dashboard" className="gap-2">
                   Get Started Free
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
               </Button>
-              <Button variant="hero-outline" size="xl" asChild>
+              <Button variant="hero-outline" size="lg" className="w-full sm:w-auto" asChild>
                 <Link to="/demo">View Demo</Link>
               </Button>
             </div>

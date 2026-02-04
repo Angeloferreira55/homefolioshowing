@@ -37,44 +37,53 @@ const features = [{
   description: 'Go paperless with digital documents and links. No more printing stacks of MLS sheets for every showing.'
 }];
 const FeaturesSection = () => {
-  return <section id="features" className="py-24 bg-background">
+  return (
+    <section id="features" className="py-16 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="max-w-3xl mx-auto text-center mb-16">
-          <span className="text-accent font-medium text-sm uppercase tracking-wider">
+        <div className="max-w-3xl mx-auto text-center mb-10 sm:mb-16">
+          <span className="text-accent font-medium text-xs sm:text-sm uppercase tracking-wider">
             Why HomeFolio
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mt-2 sm:mt-3 mb-3 sm:mb-4">
             Your home search, organized
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg px-2">
             Everything your clients need, in one place they can always find.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature, index) => <div key={feature.title} className="group p-8 rounded-2xl bg-card card-elevated cursor-default" style={{
-          animationDelay: `${index * 0.1}s`
-        }}>
-              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-5 group-hover:bg-accent/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-accent" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+          {features.map((feature, index) => (
+            <div 
+              key={feature.title} 
+              className="group p-5 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl bg-card card-elevated cursor-default" 
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-accent/10 flex items-center justify-center mb-4 sm:mb-5 group-hover:bg-accent/20 transition-colors">
+                <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
               </div>
-              <h3 className="font-display text-xl font-semibold text-foreground mb-3">
+              <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-2 sm:mb-3">
                 {feature.title}
               </h3>
-              <p className="text-muted-foreground leading-relaxed">
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                 {feature.description}
               </p>
-            </div>)}
+            </div>
+          ))}
         </div>
 
         {/* Bottom CTA text */}
-        <div className="max-w-2xl mx-auto text-center mt-16">
-          <p className="text-lg text-muted-foreground">Get started in minutes and transform how you share listings 
-and organize your showings with your clients.</p>
+        <div className="max-w-2xl mx-auto text-center mt-10 sm:mt-16 px-4">
+          <p className="text-base sm:text-lg text-muted-foreground">
+            Get started in minutes and transform how you share listings 
+            and organize your showings with your clients.
+          </p>
         </div>
       </div>
-    </section>;
+    </section>
+  );
 };
+
 export default FeaturesSection;
