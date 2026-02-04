@@ -116,6 +116,10 @@ export type Database = {
           instagram_url: string | null
           license_number: string | null
           linkedin_url: string | null
+          mls_api_key: string | null
+          mls_api_secret: string | null
+          mls_board_id: string | null
+          mls_provider: string | null
           phone: string | null
           slogan: string | null
           twitter_url: string | null
@@ -141,6 +145,10 @@ export type Database = {
           instagram_url?: string | null
           license_number?: string | null
           linkedin_url?: string | null
+          mls_api_key?: string | null
+          mls_api_secret?: string | null
+          mls_board_id?: string | null
+          mls_provider?: string | null
           phone?: string | null
           slogan?: string | null
           twitter_url?: string | null
@@ -166,6 +174,10 @@ export type Database = {
           instagram_url?: string | null
           license_number?: string | null
           linkedin_url?: string | null
+          mls_api_key?: string | null
+          mls_api_secret?: string | null
+          mls_board_id?: string | null
+          mls_provider?: string | null
           phone?: string | null
           slogan?: string | null
           twitter_url?: string | null
