@@ -1,9 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { encodeBase64 } from 'https://deno.land/std@0.220.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+// Helper to convert Uint8Array to base64 without stack overflow
+function uint8ArrayToBase64(uint8Array: Uint8Array): string {
+  return encodeBase64(uint8Array);
+}
 
 interface PropertyData {
   mlsNumber?: string;
@@ -106,7 +112,9 @@ Deno.serve(async (req) => {
       extractedProperties = await parseCSVWithAI(text, lovableApiKey);
     } else if (fileType === 'pdf') {
       const arrayBuffer = await fileData.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      // Convert to base64 in chunks to avoid stack overflow
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const base64 = uint8ArrayToBase64(uint8Array);
       extractedProperties = await parsePDFWithAI(base64, lovableApiKey);
     }
 
