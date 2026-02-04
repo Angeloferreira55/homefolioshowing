@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.public-doc-url]
 verify_jwt = false
+
+[functions.calculate-commute]
+verify_jwt = false
