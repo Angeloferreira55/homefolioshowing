@@ -134,7 +134,7 @@ export default function PublicPropertyDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden max-h-[90vh] gap-0">
+        <DialogContent className="max-w-3xl p-0 overflow-hidden h-[100dvh] sm:h-auto sm:max-h-[90vh] gap-0 rounded-none sm:rounded-lg inset-0 sm:inset-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
           <DialogHeader className="sr-only">
             <DialogTitle>Property details</DialogTitle>
           </DialogHeader>
@@ -149,7 +149,7 @@ export default function PublicPropertyDetailDialog({
           </button>
 
           {/* Scrollable content */}
-          <div className="overflow-y-auto max-h-[90vh]">
+          <div className="overflow-y-auto h-full sm:max-h-[90vh]">
             {/* Hero Photo - Clickable to open gallery */}
             <div 
               className="relative w-full h-48 sm:h-64 bg-muted cursor-pointer group"
