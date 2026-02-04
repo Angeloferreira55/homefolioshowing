@@ -14,7 +14,7 @@ import PublicPropertyDetailDialog, {
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
-import CommuteCalculator from '@/components/public/CommuteCalculator';
+
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { useBuyerFavorites } from '@/hooks/useBuyerFavorites';
@@ -89,8 +89,6 @@ const PublicSession = () => {
   // Compare dialog state
   const [compareOpen, setCompareOpen] = useState(false);
 
-  // Commute calculator state
-  const [showCommute, setShowCommute] = useState(false);
 
   // Favorites
   const { toggleFavorite, isFavorite, getFavoriteCount } = useBuyerFavorites(token);
@@ -540,17 +538,6 @@ const PublicSession = () => {
             Properties ({properties.length})
           </h2>
           <div className="flex items-center gap-2">
-            {properties.length >= 1 && (
-              <Button
-                variant={showCommute ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowCommute(!showCommute)}
-                className="gap-2"
-              >
-                <Navigation className="w-4 h-4" />
-                Directions
-              </Button>
-            )}
             {getFavoriteCount() > 0 && (
               <Button
                 variant={showFavoritesOnly ? "default" : "outline"}
@@ -576,12 +563,6 @@ const PublicSession = () => {
           </div>
         </div>
 
-        {/* Commute Calculator */}
-        {showCommute && properties.length > 0 && (
-          <div className="max-w-3xl mx-auto mb-8">
-            <CommuteCalculator properties={properties} />
-          </div>
-        )}
 
         {properties.length > 0 ? (
           <div className="max-w-3xl mx-auto space-y-8">
@@ -776,12 +757,6 @@ const PublicSession = () => {
           </div>
         )}
 
-        {/* Commute Calculator - shows after properties */}
-        {properties.length >= 2 && (
-          <div className="max-w-3xl mx-auto mt-8">
-            <CommuteCalculator properties={properties} />
-          </div>
-        )}
       </main>
 
       {/* Footer */}
