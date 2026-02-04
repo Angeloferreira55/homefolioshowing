@@ -24,6 +24,11 @@ export interface Profile {
   twitter_url: string | null;
   youtube_url: string | null;
   website_url: string | null;
+  // MLS credentials
+  mls_api_key: string | null;
+  mls_api_secret: string | null;
+  mls_board_id: string | null;
+  mls_provider: string | null;
 }
 
 export interface ProfileUpdate {
@@ -45,6 +50,11 @@ export interface ProfileUpdate {
   twitter_url?: string;
   youtube_url?: string;
   website_url?: string;
+  // MLS credentials
+  mls_api_key?: string;
+  mls_api_secret?: string;
+  mls_board_id?: string;
+  mls_provider?: string;
 }
 
 export function useProfile() {

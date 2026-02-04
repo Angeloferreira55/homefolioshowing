@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.calculate-commute]
 verify_jwt = false
+
+[functions.spark-import]
+verify_jwt = false
