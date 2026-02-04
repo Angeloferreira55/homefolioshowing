@@ -60,7 +60,7 @@ function AppSidebar() {
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className={`${collapsed ? 'h-6 w-auto' : 'h-8 w-auto'}`}
+              className={`${collapsed ? 'h-8 w-auto' : 'h-10 w-auto'}`}
             />
           </Link>
         </div>
