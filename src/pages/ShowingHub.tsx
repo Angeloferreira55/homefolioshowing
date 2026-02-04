@@ -221,7 +221,7 @@ const ShowingHub = () => {
           className="w-full sm:w-auto mb-8 h-14 bg-primary text-primary-foreground font-semibold uppercase tracking-wide gap-2"
         >
           <Plus className="w-5 h-5" />
-          New Showing Session
+          New Home Folio
         </Button>
 
         {/* Sessions List */}
