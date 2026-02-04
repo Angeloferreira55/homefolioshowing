@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
+import BulkMLSImportDialog from '@/components/showings/BulkMLSImportDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetailsDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
@@ -127,6 +128,7 @@ const SessionDetail = () => {
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -778,7 +780,11 @@ const SessionDetail = () => {
                 Directions
               </Button>
             )}
-            <Button variant="outline" className="gap-2">
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setIsBulkImportOpen(true)}
+            >
               <Upload className="w-4 h-4" />
               Bulk Import
             </Button>
@@ -948,6 +954,12 @@ const SessionDetail = () => {
         propertyId={editDetailsPropertyId || ''}
         propertyAddress={editDetailsPropertyAddress}
         onSaved={fetchProperties}
+      />
+
+      <BulkMLSImportDialog
+        open={isBulkImportOpen}
+        onOpenChange={setIsBulkImportOpen}
+        onImport={handleAddMultipleProperties}
       />
     </AdminLayout>
   );
