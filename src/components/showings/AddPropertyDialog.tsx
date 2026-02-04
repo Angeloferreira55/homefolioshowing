@@ -444,7 +444,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="file" className="mt-4">
+        <Tabs defaultValue="file" className="mt-4 w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="file" className="gap-1">
               <FileText className="w-3 h-3" />
@@ -453,47 +453,9 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
             <TabsTrigger value="url">URL</TabsTrigger>
             <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
-          <TabsContent value="url" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="listingUrl">Listing URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="listingUrl"
-                  placeholder="https://realtor.com/..."
-                  value={listingUrl}
-                  onChange={(e) => setListingUrl(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  onClick={handleImportFromUrl}
-                  disabled={isImporting}
-                  className="gap-2"
-                >
-                  {isImporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Link2 className="w-4 h-4" />
-                  )}
-                  {isImporting ? 'Importing...' : 'Import'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Paste a Realtor.com listing URL. Redfin and Zillow are not supported.
-              </p>
-            </div>
 
-            {address && (
-              <div className="p-3 bg-muted rounded-lg text-sm">
-                <p className="font-medium">Imported: {address}</p>
-                {city && state && <p className="text-muted-foreground">{city}, {state} {zipCode}</p>}
-                {price && <p className="text-accent font-medium">${Number(price).toLocaleString()}</p>}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="file" className="space-y-4 mt-4">
-            <div className="space-y-3">
+          <TabsContent value="file" className="space-y-4 mt-4 w-full">
+            <div className="space-y-3 w-full">
               <Label>Upload MLS File</Label>
               
               <input
@@ -507,7 +469,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
               {!selectedFile ? (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                  className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
                 >
                   <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="font-medium">Click to upload</p>
@@ -516,8 +478,8 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                  <FileText className="w-8 h-8 text-primary" />
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg w-full">
+                  <FileText className="w-8 h-8 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{selectedFile.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -527,6 +489,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="flex-shrink-0"
                     onClick={() => {
                       setSelectedFile(null);
                       setParsedProperties([]);
@@ -559,7 +522,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
               )}
 
               {parsedProperties.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-3 w-full">
                   <p className="text-sm font-medium">
                     Found {parsedProperties.length} properties:
                   </p>
@@ -590,174 +553,535 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                 </div>
               )}
             </div>
+
+            {/* Show form fields after extraction */}
+            {address && (
+              <form onSubmit={handleSubmit} className="space-y-5 pt-4 border-t border-border w-full">
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium text-primary">✓ Property data extracted</p>
+                  <p className="text-muted-foreground mt-1">Review details below and click Add Property when ready.</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="address-file">Street Address *</Label>
+                  <Input
+                    id="address-file"
+                    placeholder="123 Main Street"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city-file">City</Label>
+                    <Input
+                      id="city-file"
+                      placeholder="Albuquerque"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state-file">State</Label>
+                    <Input
+                      id="state-file"
+                      placeholder="NM"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      maxLength={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode-file">ZIP Code</Label>
+                    <Input
+                      id="zipCode-file"
+                      placeholder="87101"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price-file">Price</Label>
+                    <Input
+                      id="price-file"
+                      placeholder="$500,000"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="beds-file">Beds</Label>
+                    <Input
+                      id="beds-file"
+                      placeholder="3"
+                      value={beds}
+                      onChange={(e) => setBeds(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baths-file">Baths</Label>
+                    <Input
+                      id="baths-file"
+                      placeholder="2"
+                      value={baths}
+                      onChange={(e) => setBaths(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sqft-file">Sqft</Label>
+                    <Input
+                      id="sqft-file"
+                      placeholder="1,800"
+                      value={sqft}
+                      onChange={(e) => setSqft(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Property Photo</Label>
+                  
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  
+                  {photoUrl ? (
+                    <div className="relative w-full">
+                      <img 
+                        src={photoUrl} 
+                        alt="Property preview" 
+                        className="w-full h-40 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-2 right-2 gap-1"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={isUploadingPhoto}
+                      >
+                        {isUploadingPhoto ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-3 h-3" />
+                        )}
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                      className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
+                    >
+                      {isUploadingPhoto ? (
+                        <>
+                          <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                          <p className="text-sm text-muted-foreground">Uploading...</p>
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-medium text-sm">Click to upload photo</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG up to 5MB
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs text-muted-foreground">or paste URL:</span>
+                    <Input
+                      placeholder="https://..."
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      className="flex-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
+                >
+                  Add Property
+                </Button>
+              </form>
+            )}
           </TabsContent>
 
-          <TabsContent value="manual" className="mt-4">
-            {/* Form is shared between tabs */}
-          </TabsContent>
-
-        </Tabs>
-        <form onSubmit={handleSubmit} className="space-y-5 mt-2">
-          <div className="space-y-2">
-            <Label htmlFor="address">Street Address *</Label>
-            <Input
-              id="address"
-              placeholder="123 Main Street"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                placeholder="Albuquerque"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                placeholder="NM"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                maxLength={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="zipCode">ZIP Code</Label>
-              <Input
-                id="zipCode"
-                placeholder="87101"
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                placeholder="$500,000"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="beds">Beds</Label>
-              <Input
-                id="beds"
-                placeholder="3"
-                value={beds}
-                onChange={(e) => setBeds(e.target.value)}
-                type="number"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="baths">Baths</Label>
-              <Input
-                id="baths"
-                placeholder="2"
-                value={baths}
-                onChange={(e) => setBaths(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sqft">Sqft</Label>
-              <Input
-                id="sqft"
-                placeholder="1,800"
-                value={sqft}
-                onChange={(e) => setSqft(e.target.value)}
-                type="number"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Property Photo</Label>
-            
-            {/* Hidden file input */}
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className="hidden"
-            />
-            
-            {photoUrl ? (
-              <div className="relative">
-                <img 
-                  src={photoUrl} 
-                  alt="Property preview" 
-                  className="w-full h-40 object-cover rounded-lg border"
+          <TabsContent value="url" className="space-y-4 mt-4 w-full">
+            <div className="space-y-2 w-full">
+              <Label htmlFor="listingUrl">Listing URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="listingUrl"
+                  placeholder="https://realtor.com/..."
+                  value={listingUrl}
+                  onChange={(e) => setListingUrl(e.target.value)}
+                  className="flex-1"
                 />
                 <Button
                   type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="absolute top-2 right-2 gap-1"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={isUploadingPhoto}
+                  onClick={handleImportFromUrl}
+                  disabled={isImporting}
+                  className="gap-2"
                 >
-                  {isUploadingPhoto ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                  {isImporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <ImagePlus className="w-3 h-3" />
+                    <Link2 className="w-4 h-4" />
                   )}
-                  Change
+                  {isImporting ? 'Importing...' : 'Import'}
                 </Button>
               </div>
-            ) : (
-              <div
-                onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              >
-                {isUploadingPhoto ? (
-                  <>
-                    <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground">Uploading...</p>
-                  </>
-                ) : (
-                  <>
-                    <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="font-medium text-sm">Click to upload photo</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG up to 5MB
-                    </p>
-                  </>
-                )}
+              <p className="text-xs text-muted-foreground">
+                Paste a Realtor.com listing URL. Redfin and Zillow are not supported.
+              </p>
+            </div>
+
+            {address && (
+              <div className="p-3 bg-muted rounded-lg text-sm w-full">
+                <p className="font-medium">Imported: {address}</p>
+                {city && state && <p className="text-muted-foreground">{city}, {state} {zipCode}</p>}
+                {price && <p className="text-accent font-medium">${Number(price).toLocaleString()}</p>}
               </div>
             )}
-            
-            {/* Optional URL input for pasting links */}
-            <div className="flex gap-2 items-center">
-              <span className="text-xs text-muted-foreground">or paste URL:</span>
-              <Input
-                id="photoUrl"
-                placeholder="https://..."
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                className="flex-1 h-8 text-sm"
-              />
-            </div>
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
-          >
-            Add Property
-          </Button>
-        </form>
+            {/* URL tab form */}
+            <form onSubmit={handleSubmit} className="space-y-5 w-full">
+              <div className="space-y-2">
+                <Label htmlFor="address-url">Street Address *</Label>
+                <Input
+                  id="address-url"
+                  placeholder="123 Main Street"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city-url">City</Label>
+                  <Input
+                    id="city-url"
+                    placeholder="Albuquerque"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state-url">State</Label>
+                  <Input
+                    id="state-url"
+                    placeholder="NM"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    maxLength={2}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode-url">ZIP Code</Label>
+                  <Input
+                    id="zipCode-url"
+                    placeholder="87101"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price-url">Price</Label>
+                  <Input
+                    id="price-url"
+                    placeholder="$500,000"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="beds-url">Beds</Label>
+                  <Input
+                    id="beds-url"
+                    placeholder="3"
+                    value={beds}
+                    onChange={(e) => setBeds(e.target.value)}
+                    type="number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="baths-url">Baths</Label>
+                  <Input
+                    id="baths-url"
+                    placeholder="2"
+                    value={baths}
+                    onChange={(e) => setBaths(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sqft-url">Sqft</Label>
+                  <Input
+                    id="sqft-url"
+                    placeholder="1,800"
+                    value={sqft}
+                    onChange={(e) => setSqft(e.target.value)}
+                    type="number"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Property Photo</Label>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-input-url"
+                />
+                
+                {photoUrl ? (
+                  <div className="relative w-full">
+                    <img 
+                      src={photoUrl} 
+                      alt="Property preview" 
+                      className="w-full h-40 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="absolute top-2 right-2 gap-1"
+                      onClick={() => document.getElementById('photo-input-url')?.click()}
+                      disabled={isUploadingPhoto}
+                    >
+                      {isUploadingPhoto ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <ImagePlus className="w-3 h-3" />
+                      )}
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => !isUploadingPhoto && document.getElementById('photo-input-url')?.click()}
+                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
+                  >
+                    {isUploadingPhoto ? (
+                      <>
+                        <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                        <p className="text-sm text-muted-foreground">Uploading...</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="font-medium text-sm">Click to upload photo</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          JPG, PNG up to 5MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-muted-foreground">or paste URL:</span>
+                  <Input
+                    placeholder="https://..."
+                    value={photoUrl}
+                    onChange={(e) => setPhotoUrl(e.target.value)}
+                    className="flex-1 h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
+              >
+                Add Property
+              </Button>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="manual" className="mt-4 w-full">
+            <form onSubmit={handleSubmit} className="space-y-5 w-full">
+              <div className="space-y-2">
+                <Label htmlFor="address-manual">Street Address *</Label>
+                <Input
+                  id="address-manual"
+                  placeholder="123 Main Street"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city-manual">City</Label>
+                  <Input
+                    id="city-manual"
+                    placeholder="Albuquerque"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state-manual">State</Label>
+                  <Input
+                    id="state-manual"
+                    placeholder="NM"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    maxLength={2}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode-manual">ZIP Code</Label>
+                  <Input
+                    id="zipCode-manual"
+                    placeholder="87101"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price-manual">Price</Label>
+                  <Input
+                    id="price-manual"
+                    placeholder="$500,000"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="beds-manual">Beds</Label>
+                  <Input
+                    id="beds-manual"
+                    placeholder="3"
+                    value={beds}
+                    onChange={(e) => setBeds(e.target.value)}
+                    type="number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="baths-manual">Baths</Label>
+                  <Input
+                    id="baths-manual"
+                    placeholder="2"
+                    value={baths}
+                    onChange={(e) => setBaths(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sqft-manual">Sqft</Label>
+                  <Input
+                    id="sqft-manual"
+                    placeholder="1,800"
+                    value={sqft}
+                    onChange={(e) => setSqft(e.target.value)}
+                    type="number"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Property Photo</Label>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-input-manual"
+                />
+                
+                {photoUrl ? (
+                  <div className="relative w-full">
+                    <img 
+                      src={photoUrl} 
+                      alt="Property preview" 
+                      className="w-full h-40 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="absolute top-2 right-2 gap-1"
+                      onClick={() => document.getElementById('photo-input-manual')?.click()}
+                      disabled={isUploadingPhoto}
+                    >
+                      {isUploadingPhoto ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <ImagePlus className="w-3 h-3" />
+                      )}
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => !isUploadingPhoto && document.getElementById('photo-input-manual')?.click()}
+                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
+                  >
+                    {isUploadingPhoto ? (
+                      <>
+                        <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                        <p className="text-sm text-muted-foreground">Uploading...</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="font-medium text-sm">Click to upload photo</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          JPG, PNG up to 5MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-2 items-center">
+                  <span className="text-xs text-muted-foreground">or paste URL:</span>
+                  <Input
+                    placeholder="https://..."
+                    value={photoUrl}
+                    onChange={(e) => setPhotoUrl(e.target.value)}
+                    className="flex-1 h-8 text-sm"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
+              >
+                Add Property
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
