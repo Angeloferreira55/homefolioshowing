@@ -649,12 +649,26 @@ const PublicSession = () => {
                   {/* Address */}
                   <div className="flex items-start gap-2 mb-4">
                     <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <p className="font-display font-semibold text-foreground">
-                      {property.address}
-                      {property.city && `, ${property.city}`}
-                      {property.state && `, ${property.state}`}
-                      {property.zip_code && ` ${property.zip_code}`}
-                    </p>
+                    <div className="flex-1">
+                      <p className="font-display font-semibold text-foreground">
+                        {property.address}
+                        {property.city && `, ${property.city}`}
+                        {property.state && `, ${property.state}`}
+                        {property.zip_code && ` ${property.zip_code}`}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                          `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}${property.zip_code ? ` ${property.zip_code}` : ''}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        Get Directions
+                      </a>
+                    </div>
                   </div>
 
                   {/* Property Stats */}
