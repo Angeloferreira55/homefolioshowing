@@ -36,6 +36,8 @@ interface PropertyData {
   hoaFeeFrequency?: string;
   hasPid?: boolean;
   publicRemarks?: string;
+  summary?: string;
+  features?: string[];
 }
 
 Deno.serve(async (req) => {
@@ -161,7 +163,9 @@ Return a JSON array with one object per property. Each object should have these 
 - hoaFee: number (HOA fee amount if applicable)
 - hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
 - hasPid: boolean (true if PID is present/listed)
-- publicRemarks: string (public remarks/description)
+- publicRemarks: string (full public remarks/description)
+- summary: string (generate 3-5 bullet points highlighting KEY selling features from the public remarks and property details, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
+- features: string[] (array of notable interior/exterior features mentioned, e.g., ["Hardwood Floors", "Gourmet Kitchen", "Pool"])
 
 Return ONLY valid JSON array, no markdown or explanation.`;
 
