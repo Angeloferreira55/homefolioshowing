@@ -158,16 +158,6 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-notes">Notes</Label>
-            <Textarea
-              id="edit-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional notes about this session..."
-              rows={3}
-            />
-          </div>
 
           {/* Access Code Section */}
           <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
