@@ -208,6 +208,7 @@ async function parseCSVWithAI(csvContent: string, apiKey: string): Promise<Prope
 async function parsePDFWithAI(base64Content: string, apiKey: string): Promise<PropertyData[]> {
   console.log('Parsing PDF with AI...');
   
+  // Use inline_data format for Gemini PDF support
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -221,8 +222,14 @@ async function parsePDFWithAI(base64Content: string, apiKey: string): Promise<Pr
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Extract all property listings from this MLS document:' },
-            { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Content.substring(0, 500000)}` } }
+            { type: 'text', text: 'Extract all property listings from this MLS document PDF:' },
+            { 
+              type: 'file', 
+              file: { 
+                filename: 'mls-document.pdf',
+                file_data: `data:application/pdf;base64,${base64Content.substring(0, 1000000)}`
+              } 
+            }
           ]
         }
       ],
@@ -233,16 +240,60 @@ async function parsePDFWithAI(base64Content: string, apiKey: string): Promise<Pr
   if (!response.ok) {
     const errorText = await response.text();
     console.error('AI API error:', errorText);
-    return [];
+    
+    // Fallback: Try treating PDF as base64 encoded document text
+    console.log('Trying fallback with image_url format...');
+    const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: extractionPrompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extract all property listings from this MLS document:' },
+              { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Content.substring(0, 500000)}` } }
+            ]
+          }
+        ],
+        temperature: 0.1,
+      }),
+    });
+    
+    if (!fallbackResponse.ok) {
+      const fallbackError = await fallbackResponse.text();
+      console.error('Fallback AI API error:', fallbackError);
+      return [];
+    }
+    
+    const fallbackData = await fallbackResponse.json();
+    const fallbackContent = fallbackData.choices?.[0]?.message?.content || '[]';
+    
+    try {
+      const cleanContent = fallbackContent.replace(/```json\n?|\n?```/g, '').trim();
+      return JSON.parse(cleanContent);
+    } catch {
+      console.error('Failed to parse fallback AI response:', fallbackContent);
+      return [];
+    }
   }
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || '[]';
   
+  console.log('AI response content:', content.substring(0, 500));
+  
   try {
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanContent);
-  } catch {
+    const parsed = JSON.parse(cleanContent);
+    console.log('Successfully parsed properties:', parsed.length);
+    return parsed;
+  } catch (parseError) {
     console.error('Failed to parse AI response:', content);
     return [];
   }
