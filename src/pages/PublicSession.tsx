@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -88,6 +88,9 @@ const PublicSession = () => {
 
   // Compare dialog state
   const [compareOpen, setCompareOpen] = useState(false);
+
+  // Commute calculator state
+  const [showCommute, setShowCommute] = useState(false);
 
   // Favorites
   const { toggleFavorite, isFavorite, getFavoriteCount } = useBuyerFavorites(token);
@@ -537,6 +540,17 @@ const PublicSession = () => {
             Properties ({properties.length})
           </h2>
           <div className="flex items-center gap-2">
+            {properties.length >= 1 && (
+              <Button
+                variant={showCommute ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowCommute(!showCommute)}
+                className="gap-2"
+              >
+                <Navigation className="w-4 h-4" />
+                Directions
+              </Button>
+            )}
             {getFavoriteCount() > 0 && (
               <Button
                 variant={showFavoritesOnly ? "default" : "outline"}
@@ -561,6 +575,13 @@ const PublicSession = () => {
             )}
           </div>
         </div>
+
+        {/* Commute Calculator */}
+        {showCommute && properties.length > 0 && (
+          <div className="max-w-3xl mx-auto mb-8">
+            <CommuteCalculator properties={properties} />
+          </div>
+        )}
 
         {properties.length > 0 ? (
           <div className="max-w-3xl mx-auto space-y-8">
