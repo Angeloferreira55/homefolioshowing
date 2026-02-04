@@ -33,7 +33,6 @@ import {
   Loader2,
   List,
   Map,
-  Navigation,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -765,21 +764,6 @@ const SessionDetail = () => {
                 </div>
               </PopoverContent>
             </Popover>
-            {properties.length >= 1 && (
-              <Button 
-                variant="outline" 
-                className="gap-2"
-                onClick={() => {
-                  const url = getGoogleMapsUrl();
-                  if (url !== '#') {
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                  }
-                }}
-              >
-                <Navigation className="w-4 h-4" />
-                Directions
-              </Button>
-            )}
             <Button 
               variant="outline" 
               className="gap-2"
