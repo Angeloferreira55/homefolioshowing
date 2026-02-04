@@ -78,23 +78,23 @@ const PricingSection = () => {
   };
 
   return (
-    <section id="pricing" className="py-24 bg-background">
+    <section id="pricing" className="py-16 sm:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <span className="text-accent font-medium text-sm uppercase tracking-wider">
+        <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
+          <span className="text-accent font-medium text-xs sm:text-sm uppercase tracking-wider">
             Pricing
           </span>
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mt-3 mb-4">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mt-2 sm:mt-3 mb-3 sm:mb-4">
             Simple, transparent pricing
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg px-2">
             Choose the plan that fits your business. Upgrade or downgrade anytime.
           </p>
         </div>
 
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-4 mb-12">
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12">
           <span className={`text-sm font-medium ${!isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
             Monthly
           </span>
@@ -106,17 +106,17 @@ const PricingSection = () => {
           <span className={`text-sm font-medium ${isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
             Yearly
           </span>
-          <span className="ml-2 bg-accent/10 text-accent text-xs font-medium px-2.5 py-1 rounded-full">
+          <span className="bg-accent/10 text-accent text-xs font-medium px-2.5 py-1 rounded-full">
             Save 2 months
           </span>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative p-8 rounded-2xl bg-card ${
+              className={`relative p-6 sm:p-8 rounded-xl sm:rounded-2xl bg-card ${
                 plan.popular
                   ? 'ring-2 ring-accent shadow-elevated'
                   : 'card-elevated'
@@ -124,24 +124,24 @@ const PricingSection = () => {
             >
               {/* Popular Badge */}
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-accent text-accent-foreground text-sm font-medium px-4 py-1 rounded-full">
+                <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-accent text-accent-foreground text-xs sm:text-sm font-medium px-3 sm:px-4 py-1 rounded-full whitespace-nowrap">
                     Most Popular
                   </span>
                 </div>
               )}
 
               {/* Plan Header */}
-              <div className="text-center mb-8">
-                <h3 className="font-display text-xl font-semibold text-foreground mb-2">
+              <div className="text-center mb-6 sm:mb-8">
+                <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-2">
                   {plan.name}
                 </h3>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="font-display text-4xl font-bold text-foreground">
+                  <span className="font-display text-3xl sm:text-4xl font-bold text-foreground">
                     {formatPrice(plan)}
                   </span>
                   {getPeriod(plan) && (
-                    <span className="text-muted-foreground">{getPeriod(plan)}</span>
+                    <span className="text-muted-foreground text-sm">{getPeriod(plan)}</span>
                   )}
                 </div>
                 {isYearly && getSavingsPercent(plan) && (
@@ -149,19 +149,19 @@ const PricingSection = () => {
                     Save {getSavingsPercent(plan)}%
                   </p>
                 )}
-                <p className="text-muted-foreground text-sm mt-2">
+                <p className="text-muted-foreground text-sm mt-2 px-2">
                   {plan.description}
                 </p>
               </div>
 
               {/* Features */}
-              <ul className="space-y-4 mb-8">
+              <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
+                  <li key={feature} className="flex items-start gap-2.5 sm:gap-3">
                     <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Check className="w-3 h-3 text-accent" />
                     </div>
-                    <span className="text-muted-foreground">{feature}</span>
+                    <span className="text-muted-foreground text-sm sm:text-base">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -170,6 +170,7 @@ const PricingSection = () => {
               <Button
                 variant={plan.popular ? 'accent' : 'outline'}
                 className="w-full"
+                size="lg"
                 asChild
               >
                 <Link to="/auth">{plan.cta}</Link>
@@ -179,7 +180,7 @@ const PricingSection = () => {
         </div>
 
         {/* Money Back Guarantee */}
-        <p className="text-center text-muted-foreground mt-12">
+        <p className="text-center text-muted-foreground text-sm sm:text-base mt-8 sm:mt-12 px-4">
           🛡️ 14-day money-back guarantee on all paid plans. No questions asked.
         </p>
       </div>
