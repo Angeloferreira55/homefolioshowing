@@ -45,71 +45,85 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-6">
-        <div className="flex flex-col sm:flex-row gap-6">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           {/* Agent Avatar & Basic Info */}
-          <div className="flex flex-col items-center sm:items-start gap-4">
-            <Avatar className="w-32 h-32 border-4 border-background shadow-lg">
+          <div className="flex flex-row sm:flex-col items-center sm:items-start gap-4">
+            <Avatar className="w-20 h-20 sm:w-32 sm:h-32 border-4 border-background shadow-lg flex-shrink-0">
               <AvatarImage 
                 src={agent.avatar_url || undefined} 
                 alt={agent.full_name || 'Agent'} 
                 className="object-cover"
               />
-              <AvatarFallback className="text-3xl bg-primary/10 text-primary">
+              <AvatarFallback className="text-xl sm:text-3xl bg-primary/10 text-primary">
                 {getInitials(agent.full_name)}
               </AvatarFallback>
             </Avatar>
+            
+            {/* Mobile: Name & slogan next to avatar */}
+            <div className="sm:hidden flex-1 min-w-0">
+              <h3 className="font-display text-lg font-semibold text-foreground truncate">
+                {agent.full_name || 'Your Agent'}
+              </h3>
+              {agent.slogan && (
+                <p className="text-primary font-medium text-sm italic line-clamp-2">
+                  "{agent.slogan}"
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Agent Details */}
           <div className="flex-1 text-center sm:text-left">
-            <h3 className="font-display text-xl font-semibold text-foreground">
-              {agent.full_name || 'Your Agent'}
-            </h3>
-            
-            {agent.slogan && (
-              <p className="text-primary font-medium mt-1 italic">
-                "{agent.slogan}"
-              </p>
-            )}
+            {/* Desktop: Name & slogan */}
+            <div className="hidden sm:block">
+              <h3 className="font-display text-xl font-semibold text-foreground">
+                {agent.full_name || 'Your Agent'}
+              </h3>
+              {agent.slogan && (
+                <p className="text-primary font-medium mt-1 italic">
+                  "{agent.slogan}"
+                </p>
+              )}
+            </div>
 
             {agent.bio && (
-              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+              <p className="text-muted-foreground mt-2 sm:mt-3 text-sm leading-relaxed line-clamp-3 sm:line-clamp-none">
                 {agent.bio}
               </p>
             )}
 
             {/* Contact Info */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4 text-sm">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mt-3 sm:mt-4 text-sm">
               {agent.phone && (
                 <a 
                   href={`tel:${agent.phone}`} 
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors touch-target"
                 >
                   <Phone className="w-4 h-4" />
-                  {agent.phone}
+                  <span className="text-xs sm:text-sm">{agent.phone}</span>
                 </a>
               )}
               {agent.email && (
                 <a 
                   href={`mailto:${agent.email}`} 
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors touch-target"
                 >
                   <Mail className="w-4 h-4" />
-                  {agent.email}
+                  <span className="text-xs sm:text-sm truncate max-w-[180px] sm:max-w-none">{agent.email}</span>
                 </a>
               )}
             </div>
 
             {/* Social Links */}
             {hasSocialLinks && (
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mt-3 sm:mt-4">
                 {agent.linkedin_url && (
                   <a 
                     href={agent.linkedin_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="LinkedIn"
                   >
                     <Linkedin className="w-4 h-4" />
@@ -120,7 +134,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.instagram_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="Instagram"
                   >
                     <Instagram className="w-4 h-4" />
@@ -131,7 +145,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.facebook_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="Facebook"
                   >
                     <Facebook className="w-4 h-4" />
@@ -142,7 +156,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.twitter_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="X (Twitter)"
                   >
                     <XIcon className="w-4 h-4" />
@@ -153,7 +167,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.youtube_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="YouTube"
                   >
                     <Youtube className="w-4 h-4" />
@@ -164,7 +178,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     href={agent.website_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label="Website"
                   >
                     <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
@@ -175,40 +189,52 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                     </span>
                   </a>
                 )}
+                {/* Mobile-only website icon */}
+                {agent.website_url && (
+                  <a 
+                    href={agent.website_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="sm:hidden w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    aria-label="Website"
+                  >
+                    <Globe className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             )}
           </div>
 
           {/* Brokerage Info */}
           {hasBrokerageInfo && (
-            <div className="flex flex-col items-center sm:items-end gap-3 pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border sm:pl-6">
+            <div className="flex flex-col items-center sm:items-end gap-2 sm:gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border sm:pl-6">
               {agent.brokerage_logo_url ? (
                 <img 
                   src={agent.brokerage_logo_url} 
                   alt={agent.brokerage_name || 'Brokerage'} 
-                  className="h-12 max-w-[120px] object-contain"
+                  className="h-10 sm:h-12 max-w-[100px] sm:max-w-[120px] object-contain"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-muted-foreground" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center">
+                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
                 </div>
               )}
               
               {agent.brokerage_name && (
-                <p className="font-medium text-sm text-foreground text-center sm:text-right">
+                <p className="font-medium text-xs sm:text-sm text-foreground text-center sm:text-right">
                   {agent.brokerage_name}
                 </p>
               )}
 
               <div className="flex flex-col items-center sm:items-end gap-1 text-xs text-muted-foreground">
                 {agent.brokerage_address && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {agent.brokerage_address}
+                  <span className="flex items-center gap-1 text-center sm:text-right">
+                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                    <span className="line-clamp-1">{agent.brokerage_address}</span>
                   </span>
                 )}
                 {agent.brokerage_phone && (
-                  <a href={`tel:${agent.brokerage_phone}`} className="flex items-center gap-1 hover:text-foreground">
+                  <a href={`tel:${agent.brokerage_phone}`} className="flex items-center gap-1 hover:text-foreground touch-target">
                     <Phone className="w-3 h-3" />
                     {agent.brokerage_phone}
                   </a>
