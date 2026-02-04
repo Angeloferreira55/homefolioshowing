@@ -53,9 +53,9 @@ Deno.serve(async (req) => {
       const { id, address } = item;
       
       try {
-        // Add delay between requests to respect rate limits
+        // Add delay between requests to respect rate limits (reduced for better UX)
         if (results.length > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1100));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         const response = await fetch(

@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, forwardRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
 
 // Fix for default marker icons in Leaflet with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -77,10 +78,11 @@ const FitBounds = ({ positions }: { positions: [number, number][] }) => {
   return null;
 };
 
-const PropertyMap = ({ properties }: PropertyMapProps) => {
+const PropertyMapInner = ({ properties }: PropertyMapProps) => {
   const [geocodedProperties, setGeocodedProperties] = useState<GeocodedProperty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapKey, setMapKey] = useState(0);
 
   // Geocode addresses using Edge Function
   useEffect(() => {
@@ -174,12 +176,19 @@ const PropertyMap = ({ properties }: PropertyMapProps) => {
     }).format(price);
   };
 
+  const handleRetry = () => {
+    setMapKey(prev => prev + 1);
+    setIsLoading(true);
+    setError(null);
+  };
+
   if (isLoading) {
     return (
-      <div className="h-[400px] rounded-xl bg-muted flex items-center justify-center">
+      <div className="h-[400px] rounded-xl bg-muted flex items-center justify-center border border-border">
         <div className="text-center">
           <MapPin className="w-8 h-8 text-muted-foreground animate-pulse mx-auto mb-2" />
           <p className="text-muted-foreground">Locating properties...</p>
+          <p className="text-xs text-muted-foreground mt-1">This may take a few seconds</p>
         </div>
       </div>
     );
@@ -187,10 +196,19 @@ const PropertyMap = ({ properties }: PropertyMapProps) => {
 
   if (error || geocodedProperties.length === 0) {
     return (
-      <div className="h-[400px] rounded-xl bg-muted flex items-center justify-center">
+      <div className="h-[400px] rounded-xl bg-muted flex items-center justify-center border border-border">
         <div className="text-center">
           <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
           <p className="text-muted-foreground">{error || 'No properties to display'}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRetry}
+            className="mt-3"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -204,8 +222,17 @@ const PropertyMap = ({ properties }: PropertyMapProps) => {
         <span className="text-muted-foreground text-sm">
           ({geocodedProperties.length} of {properties.length} located)
         </span>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleRetry}
+          className="ml-auto h-7 px-2"
+        >
+          <RefreshCw className="w-3 h-3" />
+        </Button>
       </div>
       <MapContainer
+        key={mapKey}
         center={defaultCenter}
         zoom={defaultZoom}
         style={{ height: '400px', width: '100%' }}
@@ -260,5 +287,12 @@ const PropertyMap = ({ properties }: PropertyMapProps) => {
     </div>
   );
 };
+
+// Wrap with forwardRef to handle ref properly
+const PropertyMap = forwardRef<HTMLDivElement, PropertyMapProps>((props, ref) => {
+  return <PropertyMapInner {...props} />;
+});
+
+PropertyMap.displayName = 'PropertyMap';
 
 export default PropertyMap;
