@@ -411,14 +411,19 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          brokerage_address: string | null
+          brokerage_email: string | null
           brokerage_logo_url: string | null
           brokerage_name: string | null
+          brokerage_phone: string | null
           company: string | null
+          email: string | null
           facebook_url: string | null
           full_name: string | null
           id: string | null
           instagram_url: string | null
           linkedin_url: string | null
+          phone: string | null
           slogan: string | null
           twitter_url: string | null
           user_id: string | null
@@ -428,14 +433,19 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
           brokerage_logo_url?: string | null
           brokerage_name?: string | null
+          brokerage_phone?: string | null
           company?: string | null
+          email?: string | null
           facebook_url?: string | null
           full_name?: string | null
           id?: string | null
           instagram_url?: string | null
           linkedin_url?: string | null
+          phone?: string | null
           slogan?: string | null
           twitter_url?: string | null
           user_id?: string | null
@@ -445,14 +455,19 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
           brokerage_logo_url?: string | null
           brokerage_name?: string | null
+          brokerage_phone?: string | null
           company?: string | null
+          email?: string | null
           facebook_url?: string | null
           full_name?: string | null
           id?: string | null
           instagram_url?: string | null
           linkedin_url?: string | null
+          phone?: string | null
           slogan?: string | null
           twitter_url?: string | null
           user_id?: string | null

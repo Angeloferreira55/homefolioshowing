@@ -208,10 +208,10 @@ const PublicSession = () => {
 
       setSession(sessionData);
 
-      // Fetch agent profile
+      // Fetch agent profile from public view (excludes sensitive data like license_number, MLS credentials)
       const { data: agentData } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url, slogan, bio, phone, email, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url')
+        .from('public_agent_profile')
+        .select('full_name, avatar_url, slogan, bio, phone, email, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url')
         .eq('user_id', sessionData.admin_id)
         .maybeSingle();
 
