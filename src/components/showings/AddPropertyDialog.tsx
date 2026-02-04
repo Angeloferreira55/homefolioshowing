@@ -272,7 +272,11 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         },
       });
 
-      if (error) throw new Error(error.message);
+      // Handle edge function errors - extract message from response body
+      if (error) {
+        const errorMsg = data?.error || error.message || 'MLS search failed';
+        throw new Error(errorMsg);
+      }
       if (!data.success) throw new Error(data.error || 'MLS search failed');
 
       const listings = data.data || [];
