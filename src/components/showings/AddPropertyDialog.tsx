@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2, Upload, FileText, X } from 'lucide-react';
+import { Link2, Loader2, Upload, FileText, X, ImagePlus } from 'lucide-react';
 
 interface PropertyData {
   address: string;
@@ -96,6 +96,10 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [isUploading, setIsUploading] = useState(false);
   const [parsedProperties, setParsedProperties] = useState<PropertyData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Photo upload state
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to populate form from extracted property data
   const populateFormFromProperty = (prop: PropertyData) => {
@@ -138,6 +142,61 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     if (prop.hoaFeeFrequency) setHoaFeeFrequency(prop.hoaFeeFrequency);
     if (prop.hasPid !== undefined) setHasPid(prop.hasPid);
     if (prop.publicRemarks) setDescription(prop.publicRemarks);
+  };
+
+  // Handle photo upload
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Please sign in to upload photos');
+      }
+
+      // Upload to client-photos bucket
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('client-photos')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-photos')
+        .getPublicUrl(fileName);
+
+      setPhotoUrl(publicUrl);
+      toast.success('Photo uploaded successfully!');
+    } catch (error: any) {
+      console.error('Photo upload error:', error);
+      toast.error(error.message || 'Failed to upload photo');
+    } finally {
+      setIsUploadingPhoto(false);
+      // Reset the input
+      if (photoInputRef.current) {
+        photoInputRef.current.value = '';
+      }
+    }
   };
 
 
@@ -623,13 +682,73 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="photoUrl">Photo URL</Label>
-            <Input
-              id="photoUrl"
-              placeholder="https://..."
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
+            <Label>Property Photo</Label>
+            
+            {/* Hidden file input */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
             />
+            
+            {photoUrl ? (
+              <div className="relative">
+                <img 
+                  src={photoUrl} 
+                  alt="Property preview" 
+                  className="w-full h-40 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="absolute top-2 right-2 gap-1"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ImagePlus className="w-3 h-3" />
+                  )}
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <div
+                onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                {isUploadingPhoto ? (
+                  <>
+                    <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                    <p className="text-sm text-muted-foreground">Uploading...</p>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="font-medium text-sm">Click to upload photo</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG up to 5MB
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Optional URL input for pasting links */}
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-muted-foreground">or paste URL:</span>
+              <Input
+                id="photoUrl"
+                placeholder="https://..."
+                value={photoUrl}
+                onChange={(e) => setPhotoUrl(e.target.value)}
+                className="flex-1 h-8 text-sm"
+              />
+            </div>
           </div>
 
           <Button
