@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+ import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
 
 interface QRCodeDialogProps {
   open: boolean;
@@ -52,7 +53,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
   const [bgColor, setBgColor] = useState(DEFAULT_COLORS.background);
   const [showLogo, setShowLogo] = useState(!!logoUrl);
   const [customLogoUrl, setCustomLogoUrl] = useState('');
-  const shareUrl = `${window.location.origin}/s/${shareToken}`;
+   const shareUrl = `${getPublicShareOrigin()}/s/${shareToken}`;
 
   const effectiveLogoUrl = customLogoUrl || logoUrl;
 
