@@ -36,7 +36,7 @@ const Navbar = () => {
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-12 w-auto"
+              className="h-12 w-auto dark:brightness-0 dark:invert"
             />
           </Link>
 
