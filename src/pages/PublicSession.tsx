@@ -14,6 +14,7 @@ import PublicPropertyDetailDialog, {
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
+import CommuteCalculator from '@/components/public/CommuteCalculator';
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
 
@@ -659,6 +660,13 @@ const PublicSession = () => {
             <p className="text-muted-foreground">
               No properties have been added to this session yet.
             </p>
+          </div>
+        )}
+
+        {/* Commute Calculator - shows after properties */}
+        {properties.length >= 2 && (
+          <div className="max-w-3xl mx-auto mt-8">
+            <CommuteCalculator properties={properties} />
           </div>
         )}
       </main>
