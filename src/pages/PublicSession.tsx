@@ -87,6 +87,35 @@ const PublicSession = () => {
   // Compare dialog state
   const [compareOpen, setCompareOpen] = useState(false);
 
+  // Helper to get/set cached access with 2-hour expiration
+  const ACCESS_CACHE_KEY = `homefolio_access_${token}`;
+  const ACCESS_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+  const getCachedAccess = (): boolean => {
+    try {
+      const cached = localStorage.getItem(ACCESS_CACHE_KEY);
+      if (!cached) return false;
+      const { expiresAt } = JSON.parse(cached);
+      if (Date.now() > expiresAt) {
+        localStorage.removeItem(ACCESS_CACHE_KEY);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const setCachedAccess = () => {
+    try {
+      localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify({
+        expiresAt: Date.now() + ACCESS_EXPIRY_MS,
+      }));
+    } catch {
+      // localStorage may be unavailable in private browsing
+    }
+  };
+
   useEffect(() => {
     if (token) {
       checkPasswordProtection();
@@ -109,8 +138,14 @@ const PublicSession = () => {
       }
 
       if (data.share_password) {
-        setRequiresPassword(true);
-        setLoading(false);
+        // Check if we have cached access
+        if (getCachedAccess()) {
+          setAccessGranted(true);
+          fetchSession();
+        } else {
+          setRequiresPassword(true);
+          setLoading(false);
+        }
       } else {
         // No password required, fetch the full session
         setAccessGranted(true);
@@ -133,6 +168,8 @@ const PublicSession = () => {
       if (error) throw error;
 
       if (data) {
+        // Cache access for 2 hours
+        setCachedAccess();
         setAccessGranted(true);
         setRequiresPassword(false);
         setLoading(true);
