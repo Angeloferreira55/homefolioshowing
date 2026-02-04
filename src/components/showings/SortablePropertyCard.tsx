@@ -11,8 +11,13 @@ import {
   MessageSquare,
   GripVertical,
   Pencil,
+  ImagePlus,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -55,6 +60,7 @@ interface SortablePropertyCardProps {
   onEditNotes: (property: SessionProperty) => void;
   onManageDocs: (property: SessionProperty) => void;
   onDelete: (id: string) => void;
+  onPhotoUpdated?: () => void;
   formatPrice: (price: number | null) => string | null;
 }
 
@@ -66,8 +72,13 @@ export function SortablePropertyCard({
   onEditNotes,
   onManageDocs,
   onDelete,
+  onPhotoUpdated,
   formatPrice,
 }: SortablePropertyCardProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
+
   const {
     attributes,
     listeners,
@@ -81,6 +92,62 @@ export function SortablePropertyCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${property.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${property.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('client-photos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-photos')
+        .getPublicUrl(filePath);
+
+      // Update the property record
+      const { error: updateError } = await supabase
+        .from('session_properties')
+        .update({ photo_url: publicUrl })
+        .eq('id', property.id);
+
+      if (updateError) throw updateError;
+
+      setLocalPhotoUrl(publicUrl);
+      toast.success('Photo uploaded!');
+      onPhotoUpdated?.();
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast.error(error.message || 'Failed to upload photo');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const displayPhotoUrl = localPhotoUrl || property.photo_url;
 
   return (
     <div
@@ -109,19 +176,40 @@ export function SortablePropertyCard({
         <GripVertical className="w-5 h-5 text-muted-foreground" />
       </button>
 
-      {/* Photo */}
-      <div className="w-20 h-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-        {property.photo_url ? (
-          <img
-            src={property.photo_url}
-            alt={property.address}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Home className="w-6 h-6 text-muted-foreground" />
-          </div>
-        )}
+      {/* Photo with upload button */}
+      <div className="flex-shrink-0 relative group/photo">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoUpload}
+          className="hidden"
+        />
+        <div className="w-20 h-14 rounded-lg bg-muted overflow-hidden">
+          {displayPhotoUrl ? (
+            <img
+              src={displayPhotoUrl}
+              alt={property.address}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Home className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity rounded-lg"
+        >
+          {uploading ? (
+            <Loader2 className="w-4 h-4 text-white animate-spin" />
+          ) : (
+            <ImagePlus className="w-4 h-4 text-white" />
+          )}
+        </button>
       </div>
 
       {/* Info */}
