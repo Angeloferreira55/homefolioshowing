@@ -139,21 +139,25 @@ export default function PublicPropertyDetailDialog({
             <DialogTitle>Property details</DialogTitle>
           </DialogHeader>
 
-          {/* Close button */}
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 z-50 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4 text-white" />
-          </button>
+          {/* Close button (notch-safe) */}
+          <div className="absolute top-0 right-0 z-50 safe-area-top">
+            <button
+              onClick={() => onOpenChange(false)}
+              className="m-4 touch-target w-11 h-11 rounded-full bg-background/80 backdrop-blur-md border border-border flex items-center justify-center hover:bg-background transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-foreground" />
+            </button>
+          </div>
 
           {/* Scrollable content */}
-          <div className="overflow-y-auto h-full sm:max-h-[90vh]">
+          <div className="overflow-y-auto h-full sm:max-h-[90vh] overscroll-contain touch-pan-y safe-area-bottom [-webkit-overflow-scrolling:touch]">
             {/* Hero Photo - Clickable to open gallery */}
-            <div 
-              className="relative w-full h-48 sm:h-64 bg-muted cursor-pointer group"
+            <button
+              type="button"
+              className="relative w-full h-48 sm:h-64 bg-muted cursor-pointer group text-left"
               onClick={() => images.length > 0 && setGalleryOpen(true)}
+              aria-label={images.length > 0 ? 'Open photo gallery' : 'No photos available'}
             >
               {property.photo_url ? (
                 <>
@@ -181,7 +185,7 @@ export default function PublicPropertyDetailDialog({
                   No photo
                 </div>
               )}
-            </div>
+            </button>
 
             {/* Content */}
             <div className="px-4 sm:px-6 py-6 space-y-5">
