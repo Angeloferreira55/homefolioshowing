@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,7 @@ interface CommuteRequest {
   origins: string[]; // Property addresses
   destination: string; // Work/school address
   mode?: 'driving' | 'walking' | 'transit';
+  share_token?: string; // Optional for public session access
 }
 
 interface CommuteResult {
@@ -28,11 +30,22 @@ serve(async (req) => {
   }
 
   try {
-    const { origins, destination, mode = 'driving' }: CommuteRequest = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const { origins, destination, mode = 'driving', share_token }: CommuteRequest = await req.json();
 
+    // Validate required inputs first
     if (!origins || !Array.isArray(origins) || origins.length === 0) {
       return new Response(
         JSON.stringify({ error: 'origins array is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (origins.length > 20) {
+      return new Response(
+        JSON.stringify({ error: 'Maximum 20 origins allowed per request' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -44,19 +57,72 @@ serve(async (req) => {
       );
     }
 
+    if (destination.length > 500) {
+      return new Response(
+        JSON.stringify({ error: 'destination address too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate each origin address
+    for (const origin of origins) {
+      if (typeof origin !== 'string' || origin.length === 0 || origin.length > 500) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid origin address' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Authentication: either via JWT or valid share_token
+    const authHeader = req.headers.get('Authorization');
+    let isAuthenticated = false;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      // Try JWT authentication
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+      
+      if (!claimsError && claims?.claims) {
+        isAuthenticated = true;
+        console.log('Authenticated user:', claims.claims.sub);
+      }
+    }
+
+    if (!isAuthenticated && share_token) {
+      // Validate share_token for public session access
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data: isValid } = await supabase.rpc('is_valid_share_token', { token: share_token });
+      
+      if (isValid) {
+        isAuthenticated = true;
+        console.log('Authenticated via share_token');
+      }
+    }
+
+    if (!isAuthenticated) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - valid authentication or share_token required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`Calculating commute for ${origins.length} origins to ${destination} via ${mode}`);
 
-    const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
-    
-    // Use OpenRouteService (free tier) for distance matrix calculations
-    // Fallback to estimated times if no API available
     const results: CommuteResult[] = [];
 
     for (const origin of origins) {
-      // For now, use a simple estimation based on typical commute patterns
-      // This can be upgraded to use Google Maps API, OpenRouteService, or MapBox
       const estimatedResult = await estimateCommute(origin, destination, mode);
       results.push(estimatedResult);
+      
+      // Rate limit: respect Nominatim's 1 request/second policy
+      if (origins.length > 1) {
+        await new Promise(resolve => setTimeout(resolve, 1100));
+      }
     }
 
     console.log(`Calculated ${results.length} commute results`);
@@ -167,7 +233,7 @@ async function geocodeAddress(address: string): Promise<Coordinates | null> {
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`,
       {
         headers: {
-          'User-Agent': 'HomeFolio/1.0',
+          'User-Agent': 'HomeFolio/1.0 (https://homefolioshowing.lovable.app)',
         },
       }
     );
