@@ -28,8 +28,8 @@ const CTASection = () => {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Button size="lg" className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg" asChild>
-                <Link to="/dashboard" className="gap-2">
-                  Get Started Free
+                <Link to="/auth?mode=signup" className="gap-2">
+                  Start for Free
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Link>
               </Button>

@@ -48,8 +48,8 @@ const HeroSection = () => {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-16 animate-slide-up opacity-0 stagger-3 px-4 sm:px-0">
             <Button variant="hero" size="lg" className="w-full sm:w-auto text-base" asChild>
-              <Link to="/dashboard" className="gap-2">
-                Start Your First Homefolio
+              <Link to="/auth?mode=signup" className="gap-2">
+                Start for Free
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </Link>
             </Button>
