@@ -646,106 +646,128 @@ const SessionDetail = () => {
         {/* Back Link */}
         <Link
           to="/admin/showings"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 sm:mb-6 touch-target"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Sessions
+          <span className="text-sm sm:text-base">Back to Sessions</span>
         </Link>
 
         {/* Session Header */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-2">
-            <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-              {session.title}
-            </h1>
-            <p className="text-muted-foreground">{session.client_name}</p>
-            {session.session_date && (
-              <p className="text-muted-foreground flex items-center gap-2 mt-1">
-                📅 {format(new Date(session.session_date), 'EEEE, MMMM d, yyyy')}
-              </p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-3">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-1 sm:mb-2 break-words">
+            {session.title}
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">{session.client_name}</p>
+          {session.session_date && (
+            <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2 mt-1">
+              📅 {format(new Date(session.session_date), 'MMM d, yyyy')}
+              <span className="hidden sm:inline">
+                ({format(new Date(session.session_date), 'EEEE')})
+              </span>
+            </p>
+          )}
+          
+          {/* Actions - Horizontal on mobile, inline buttons */}
+          <div className="flex flex-wrap gap-2 mt-4">
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-2"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={() => setIsEditSessionOpen(true)}
             >
-              <Edit className="w-4 h-4" />
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Edit
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start gap-2"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={handleCopyLink}
             >
-              <Copy className="w-4 h-4" />
+              <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Copy Link
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start gap-2"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={() => setIsQROpen(true)}
             >
-              <QrCode className="w-4 h-4" />
+              <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               QR Code
             </Button>
             <Button
               variant="destructive"
-              className="w-full justify-start gap-2"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={() => setIsDeleteOpen(true)}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Delete
             </Button>
           </div>
         </div>
 
         {/* Properties Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="font-display text-xl font-semibold text-foreground">
-            Properties ({properties.length})
-          </h2>
-          <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
+              Properties ({properties.length})
+            </h2>
+            <Button
+              variant="accent"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
+              onClick={() => setIsAddPropertyOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Add</span>
+              <span className="xs:hidden">+</span>
+            </Button>
+          </div>
+          
+          {/* Secondary actions row */}
+          <div className="flex flex-wrap gap-2">
             <Popover>
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="gap-2"
+                  size="sm"
+                  className="gap-1.5 h-9 text-xs sm:text-sm"
                   disabled={isOptimizing || properties.length < 2}
                 >
                   {isOptimizing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                   ) : (
-                    <Route className="w-4 h-4" />
+                    <Route className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   )}
-                  {isOptimizing ? 'Optimizing...' : 'Optimize Route'}
+                  <span className="hidden sm:inline">{isOptimizing ? 'Optimizing...' : 'Optimize Route'}</span>
+                  <span className="sm:hidden">{isOptimizing ? '...' : 'Route'}</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80" align="end">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-foreground">Route Optimization</h4>
-                    <p className="text-sm text-muted-foreground">
+                    <h4 className="font-medium text-foreground text-sm sm:text-base">Route Optimization</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Reorder properties for the most efficient driving route.
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="startingPoint">Starting Location (optional)</Label>
+                    <Label htmlFor="startingPoint" className="text-xs sm:text-sm">Starting Location (optional)</Label>
                     <Input
                       id="startingPoint"
                       placeholder="e.g., 123 Main St, City, State"
                       value={startingPoint}
                       onChange={(e) => setStartingPoint(e.target.value)}
+                      className="text-sm"
                     />
                     <p className="text-xs text-muted-foreground">
                       Leave empty to optimize based on property locations only.
                     </p>
                   </div>
                   <Button 
-                    className="w-full gap-2" 
+                    className="w-full gap-2 h-10" 
                     onClick={handleOptimizeRoute}
                     disabled={isOptimizing}
                   >
@@ -766,19 +788,13 @@ const SessionDetail = () => {
             </Popover>
             <Button 
               variant="outline" 
-              className="gap-2"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={() => setIsBulkImportOpen(true)}
             >
-              <Upload className="w-4 h-4" />
-              Bulk Import
-            </Button>
-            <Button
-              variant="accent"
-              className="gap-2"
-              onClick={() => setIsAddPropertyOpen(true)}
-            >
-              <Plus className="w-4 h-4" />
-              Add Property
+              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Bulk Import</span>
+              <span className="sm:hidden">Import</span>
             </Button>
           </div>
         </div>
@@ -786,18 +802,18 @@ const SessionDetail = () => {
         {/* Properties List/Map Tabs */}
         {properties.length > 0 ? (
           <Tabs defaultValue="list" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="list" className="gap-2">
-                <List className="w-4 h-4" />
-                List View
+            <TabsList className="mb-3 sm:mb-4 w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
+              <TabsTrigger value="list" className="gap-1.5 text-xs sm:text-sm">
+                <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>List</span>
               </TabsTrigger>
-              <TabsTrigger value="map" className="gap-2">
-                <Map className="w-4 h-4" />
-                Map View
+              <TabsTrigger value="map" className="gap-1.5 text-xs sm:text-sm">
+                <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Map</span>
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="list" className="space-y-4">
+            <TabsContent value="list" className="space-y-3 sm:space-y-4">
               {/* Bulk Actions Bar */}
               <BulkActionsBar
                 selectedCount={selectedProperties.size}
@@ -817,7 +833,7 @@ const SessionDetail = () => {
                   items={properties.map((p) => p.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {properties.map((property, index) => (
                       <SortablePropertyCard
                         key={property.id}
