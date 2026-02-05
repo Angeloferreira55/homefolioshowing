@@ -28,6 +28,8 @@ import {
   TrendingUp,
   Users,
   Activity,
+  UserPlus,
+  Calendar,
 } from 'lucide-react';
 import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,15 +59,30 @@ const Analytics = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('showing_sessions')
-        .select('id, title, client_name');
+        .select('id, title, client_name, created_at');
       
       if (error) throw error;
       return data || [];
     },
   });
 
+  // Fetch total user signups
+  const { data: userCount } = useQuery({
+    queryKey: ['analytics-users'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   // Calculate metrics
   const metrics = {
+    totalUsers: userCount || 0,
+    totalSessions: sessions?.length || 0,
     totalViews: events?.filter(e => e.event_type === 'session_view').length || 0,
     propertyViews: events?.filter(e => e.event_type === 'property_view').length || 0,
     ratings: events?.filter(e => e.event_type === 'property_rating').length || 0,
@@ -156,8 +173,26 @@ const Analytics = () => {
           description="Track client engagement and property performance"
         />
 
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Key Metrics - User & Session Growth */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Total Users</span>
+              </div>
+              <p className="text-3xl font-bold mt-1">{metrics.totalUsers}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">Sessions Created</span>
+              </div>
+              <p className="text-3xl font-bold mt-1">{metrics.totalSessions}</p>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center gap-2">
@@ -167,6 +202,19 @@ const Analytics = () => {
               <p className="text-2xl font-bold mt-1">{metrics.totalViews}</p>
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Active Sessions</span>
+              </div>
+              <p className="text-2xl font-bold mt-1">{metrics.uniqueSessions}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Engagement Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center gap-2">
@@ -201,15 +249,6 @@ const Analytics = () => {
                 <span className="text-sm text-muted-foreground">Shares</span>
               </div>
               <p className="text-2xl font-bold mt-1">{metrics.shares}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Active Sessions</span>
-              </div>
-              <p className="text-2xl font-bold mt-1">{metrics.uniqueSessions}</p>
             </CardContent>
           </Card>
         </div>
