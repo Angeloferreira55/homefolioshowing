@@ -322,7 +322,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         fileType = 'excel';
       }
 
-      // Parse the file
+      // Start the parsing job
       const { data, error } = await supabase.functions.invoke('parse-mls-file', {
         body: { filePath, fileType },
       });
@@ -332,26 +332,59 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to parse file');
+        throw new Error(data.error || 'Failed to start parsing');
       }
 
-      const properties = data.data as PropertyData[];
-      
-      if (properties.length === 0) {
-        toast.error('No properties found in the file');
-        return;
+      const jobId = data.jobId;
+      if (!jobId) {
+        throw new Error('No job ID returned from parsing service');
       }
 
-      if (properties.length === 1) {
-        // Single property - fill the form with all extracted fields
-        const prop = properties[0];
-        populateFormFromProperty(prop);
-        toast.success('Property data extracted! Review and submit.');
-      } else {
-        // Multiple properties - show list
-        setParsedProperties(properties);
-        toast.success(`Found ${properties.length} properties!`);
+      // Poll for job completion
+      toast.info('Processing file...');
+      const maxAttempts = 60; // 60 seconds max
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+
+        const { data: job, error: jobError } = await supabase
+          .from('mls_parsing_jobs')
+          .select('status, progress, result, error')
+          .eq('id', jobId)
+          .single();
+
+        if (jobError) {
+          console.error('Job poll error:', jobError);
+          continue;
+        }
+
+        if (job.status === 'complete') {
+          const properties = (job.result as unknown as PropertyData[]) || [];
+          
+          if (properties.length === 0) {
+            toast.error('No properties found in the file');
+            return;
+          }
+
+          if (properties.length === 1) {
+            const prop = properties[0];
+            populateFormFromProperty(prop);
+            toast.success('Property data extracted! Review and submit.');
+          } else {
+            setParsedProperties(properties);
+            toast.success(`Found ${properties.length} properties!`);
+          }
+          return;
+        }
+
+        if (job.status === 'error') {
+          throw new Error(job.error || 'Failed to parse file');
+        }
       }
+
+      throw new Error('Parsing timed out. Please try again.');
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error(error.message || 'Failed to process file');
