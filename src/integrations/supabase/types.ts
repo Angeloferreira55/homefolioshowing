@@ -315,6 +315,7 @@ export type Database = {
           price: number | null
           property_type: string | null
           session_id: string
+          showing_time: string | null
           sqft: number | null
           state: string | null
           summary: string | null
@@ -342,6 +343,7 @@ export type Database = {
           price?: number | null
           property_type?: string | null
           session_id: string
+          showing_time?: string | null
           sqft?: number | null
           state?: string | null
           summary?: string | null
@@ -369,6 +371,7 @@ export type Database = {
           price?: number | null
           property_type?: string | null
           session_id?: string
+          showing_time?: string | null
           sqft?: number | null
           state?: string | null
           summary?: string | null

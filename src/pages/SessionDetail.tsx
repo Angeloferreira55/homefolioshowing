@@ -94,6 +94,7 @@ interface SessionProperty {
   sqft: number | null;
   doc_count?: number;
   rating?: PropertyRating;
+  showing_time?: string | null;
 }
 
 interface ShowingSession {
@@ -879,6 +880,7 @@ const SessionDetail = () => {
                       }}
                       onDelete={handleDeleteProperty}
                       onPhotoUpdated={fetchProperties}
+                      onTimeUpdated={fetchProperties}
                       formatPrice={formatPrice}
                     />
                   ))}
