@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DndContext,
   closestCenter,
@@ -31,8 +30,6 @@ import {
   Route,
   Upload,
   Loader2,
-  List,
-  Map,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -42,7 +39,7 @@ import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetailsDialog';
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
-import PropertyMap from '@/components/showings/PropertyMap';
+
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard';
@@ -839,74 +836,57 @@ const SessionDetail = () => {
           </div>
         </div>
 
-        {/* Properties List/Map Tabs */}
+        {/* Properties List */}
         {properties.length > 0 ? (
-          <Tabs defaultValue="list" className="w-full">
-            <TabsList className="mb-3 sm:mb-4 w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
-              <TabsTrigger value="list" className="gap-1.5 text-xs sm:text-sm">
-                <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>List</span>
-              </TabsTrigger>
-              <TabsTrigger value="map" className="gap-1.5 text-xs sm:text-sm">
-                <Map className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>Map</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="list" className="space-y-3 sm:space-y-4">
-              {/* Bulk Actions Bar */}
-              <BulkActionsBar
-                selectedCount={selectedProperties.size}
-                onClear={handleClearSelection}
-                onSelectAll={handleSelectAll}
-                onDelete={handleBulkDelete}
-                totalCount={properties.length}
-              />
+          <div className="space-y-3 sm:space-y-4">
+            {/* Bulk Actions Bar */}
+            <BulkActionsBar
+              selectedCount={selectedProperties.size}
+              onClear={handleClearSelection}
+              onSelectAll={handleSelectAll}
+              onDelete={handleBulkDelete}
+              totalCount={properties.length}
+            />
 
-              {/* Drag and Drop List */}
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+            {/* Drag and Drop List */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={properties.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <SortableContext
-                  items={properties.map((p) => p.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3 sm:space-y-4">
-                    {properties.map((property, index) => (
-                      <SortablePropertyCard
-                        key={property.id}
-                        property={property}
-                        index={index}
-                        isSelected={selectedProperties.has(property.id)}
-                        onSelect={handleSelectProperty}
-                        onEditNotes={(prop) => {
-                          setEditDetailsPropertyId(prop.id);
-                          setEditDetailsPropertyAddress(
-                            `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
-                          );
-                        }}
-                        onManageDocs={(prop) => {
-                          setDocsPropertyId(prop.id);
-                          setDocsPropertyAddress(
-                            `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
-                          );
-                        }}
-                        onDelete={handleDeleteProperty}
-                        onPhotoUpdated={fetchProperties}
-                        formatPrice={formatPrice}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </TabsContent>
-            
-            <TabsContent value="map">
-              <PropertyMap properties={properties} />
-            </TabsContent>
-          </Tabs>
+                <div className="space-y-3 sm:space-y-4">
+                  {properties.map((property, index) => (
+                    <SortablePropertyCard
+                      key={property.id}
+                      property={property}
+                      index={index}
+                      isSelected={selectedProperties.has(property.id)}
+                      onSelect={handleSelectProperty}
+                      onEditNotes={(prop) => {
+                        setEditDetailsPropertyId(prop.id);
+                        setEditDetailsPropertyAddress(
+                          `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                        );
+                      }}
+                      onManageDocs={(prop) => {
+                        setDocsPropertyId(prop.id);
+                        setDocsPropertyAddress(
+                          `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                        );
+                      }}
+                      onDelete={handleDeleteProperty}
+                      onPhotoUpdated={fetchProperties}
+                      formatPrice={formatPrice}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
         ) : (
           <div className="text-center py-16 bg-card rounded-xl">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
