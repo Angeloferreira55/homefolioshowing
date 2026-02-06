@@ -131,20 +131,31 @@ const PublicSession = () => {
 
   const checkPasswordProtection = async () => {
     try {
-      // First check if session exists and if it has password protection
-      const { data, error } = await supabase
-        .from('showing_sessions')
-        .select('share_password')
+      // First check if session exists using public view
+      const { data: sessionExists, error: sessionError } = await supabase
+        .from('public_session_info')
+        .select('id')
         .eq('share_token', token)
         .maybeSingle();
 
-      if (error || !data) {
+      if (sessionError || !sessionExists) {
         setNotFound(true);
         setLoading(false);
         return;
       }
 
-      if (data.share_password) {
+      // Check if password is required using secure RPC function
+      const { data: requiresPass, error: passError } = await supabase
+        .rpc('check_session_password_required', { p_share_token: token });
+
+      if (passError) {
+        console.error('Error checking password requirement:', passError);
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      if (requiresPass) {
         // Check if we have cached access
         if (getCachedAccess()) {
           setAccessGranted(true);
