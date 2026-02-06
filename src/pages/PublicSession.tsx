@@ -557,6 +557,66 @@ const PublicSession = () => {
         </div>
       )}
 
+      {/* Daily Schedule Summary */}
+      {(() => {
+        const propertiesWithTimes = properties
+          .filter(p => p.showing_time)
+          .sort((a, b) => {
+            if (!a.showing_time || !b.showing_time) return 0;
+            return a.showing_time.localeCompare(b.showing_time);
+          });
+        
+        if (propertiesWithTimes.length === 0) return null;
+        
+        return (
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6">
+            <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-5 card-elevated">
+              <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                <h3 className="font-display font-semibold text-foreground text-sm sm:text-base">
+                  Today's Schedule
+                </h3>
+              </div>
+              <div className="space-y-2 sm:space-y-3">
+                {propertiesWithTimes.map((property) => {
+                  const originalIndex = properties.findIndex(p => p.id === property.id);
+                  return (
+                    <div
+                      key={property.id}
+                      className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                      onClick={() => {
+                        const element = document.getElementById(`property-${property.id}`);
+                        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                    >
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="px-2 py-0.5 bg-primary text-primary-foreground rounded text-xs font-bold">
+                          #{originalIndex + 1}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs sm:text-sm font-medium text-foreground min-w-[70px] sm:min-w-[80px]">
+                          <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground" />
+                          {formatShowingTime(property.showing_time)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm text-foreground truncate">
+                          {property.address}
+                        </p>
+                      </div>
+                      {property.price && (
+                        <span className="text-xs sm:text-sm font-semibold text-foreground flex-shrink-0 hidden xs:block">
+                          {formatPrice(property.price)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Properties */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between sm:gap-4 mb-5 sm:mb-6">
@@ -589,7 +649,6 @@ const PublicSession = () => {
           </div>
         </div>
 
-
         {properties.length > 0 ? (
           <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
             {properties
@@ -597,6 +656,7 @@ const PublicSession = () => {
               .map((property, index) => (
               <div
                 key={property.id}
+                id={`property-${property.id}`}
                 className="bg-card rounded-xl sm:rounded-2xl overflow-hidden card-elevated"
               >
                 {/* Large Image */}
