@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ClientType } from '@/types/homefolio';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,14 +45,14 @@ const CreateClientDialog = ({ open, onOpenChange, onCreate }: CreateClientDialog
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Create Client Homefolio</DialogTitle>
-          <DialogDescription>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-md">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="font-display text-2xl">Create Client Homefolio</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Start a new property collection for your client. A unique private link will be generated automatically.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           <div className="space-y-2">
@@ -112,8 +112,8 @@ const CreateClientDialog = ({ open, onOpenChange, onCreate }: CreateClientDialog
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };
 

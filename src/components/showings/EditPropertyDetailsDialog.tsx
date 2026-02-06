@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -169,16 +169,16 @@ const EditPropertyDetailsDialog = ({
   const displayPhoto = newPhotoPreview || currentPhotoUrl;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="font-display text-xl">
             Edit Property Details
-          </DialogTitle>
+          </ResponsiveDialogTitle>
           <p className="text-sm text-muted-foreground truncate">
             {propertyAddress}
           </p>
-        </DialogHeader>
+        </ResponsiveDialogHeader>
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
@@ -323,8 +323,8 @@ const EditPropertyDetailsDialog = ({
             </Button>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };
 
