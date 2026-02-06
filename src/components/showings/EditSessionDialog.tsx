@@ -63,7 +63,13 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
     if (session) {
       setTitle(session.title || '');
       setClientName(session.client_name || '');
-      setSessionDate(session.session_date ? new Date(session.session_date) : undefined);
+      // Parse date string as local date to avoid timezone shift
+      if (session.session_date) {
+        const [year, month, day] = session.session_date.split('-').map(Number);
+        setSessionDate(new Date(year, month - 1, day));
+      } else {
+        setSessionDate(undefined);
+      }
       setNotes(session.notes || '');
       setAccessCodeEnabled(!!session.share_password);
       setAccessCode(session.share_password || '');

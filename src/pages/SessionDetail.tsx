@@ -511,6 +511,14 @@ const SessionDetail = () => {
     }
   };
 
+  // Helper to format date as YYYY-MM-DD without timezone shift
+  const formatDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleEditSession = async (data: {
     title: string;
     clientName: string;
@@ -524,7 +532,7 @@ const SessionDetail = () => {
         .update({
           title: data.title,
           client_name: data.clientName,
-          session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+          session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
           notes: data.notes || null,
           share_password: data.accessCode,
         })
@@ -658,14 +666,19 @@ const SessionDetail = () => {
             {session.title}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">{session.client_name}</p>
-          {session.session_date && (
-            <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2 mt-1">
-              📅 {format(new Date(session.session_date), 'MMM d, yyyy')}
-              <span className="hidden sm:inline">
-                ({format(new Date(session.session_date), 'EEEE')})
-              </span>
-            </p>
-          )}
+          {session.session_date && (() => {
+            // Parse date string as local date to avoid timezone shift
+            const [year, month, day] = session.session_date.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return (
+              <p className="text-sm sm:text-base text-muted-foreground flex items-center gap-2 mt-1">
+                📅 {format(localDate, 'MMM d, yyyy')}
+                <span className="hidden sm:inline">
+                  ({format(localDate, 'EEEE')})
+                </span>
+              </p>
+            );
+          })()}
           
           {/* Actions - Horizontal on mobile, inline buttons */}
           <div className="flex flex-wrap gap-2 mt-4">
