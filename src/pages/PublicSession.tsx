@@ -561,10 +561,7 @@ const PublicSession = () => {
       {(() => {
         const propertiesWithTimes = properties
           .filter(p => p.showing_time)
-          .sort((a, b) => {
-            if (!a.showing_time || !b.showing_time) return 0;
-            return a.showing_time.localeCompare(b.showing_time);
-          });
+          .sort((a, b) => a.order_index - b.order_index);
         
         if (propertiesWithTimes.length === 0) return null;
         
