@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from '@/components/ui/responsive-dialog';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import demoVideo from '@/assets/homefolio-demo.mp4';
@@ -46,13 +46,13 @@ export function DemoVideoDialog({ open, onOpenChange }: DemoVideoDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-background/95 backdrop-blur-lg border-border/50">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="font-display text-2xl text-center">
+    <ResponsiveDialog open={open} onOpenChange={handleClose}>
+      <ResponsiveDialogContent className="max-w-4xl p-0 overflow-hidden bg-background/95 backdrop-blur-lg border-border/50">
+        <ResponsiveDialogHeader className="p-6 pb-0">
+          <ResponsiveDialogTitle className="font-display text-2xl text-center">
             See HomeFolio In Action
-          </DialogTitle>
-        </DialogHeader>
+          </ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
         
         <div className="p-6">
           <AspectRatio ratio={16 / 9} className="bg-muted rounded-lg overflow-hidden">
@@ -111,7 +111,7 @@ export function DemoVideoDialog({ open, onOpenChange }: DemoVideoDialogProps) {
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

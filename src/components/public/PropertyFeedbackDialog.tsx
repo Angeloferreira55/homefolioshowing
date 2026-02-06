@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -99,15 +99,15 @@ const PropertyFeedbackDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl flex items-center gap-2">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="font-display text-xl flex items-center gap-2">
             <Star className="w-5 h-5 text-gold" />
             Rate This Home
-          </DialogTitle>
+          </ResponsiveDialogTitle>
           <p className="text-sm text-muted-foreground">{propertyAddress}</p>
-        </DialogHeader>
+        </ResponsiveDialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Rating Slider */}
@@ -284,8 +284,8 @@ const PropertyFeedbackDialog = ({
         <Button onClick={handleSubmit} disabled={saving} className="w-full">
           {saving ? 'Saving...' : 'Submit Feedback'}
         </Button>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };
 

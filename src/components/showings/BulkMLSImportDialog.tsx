@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -255,7 +255,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
   const allFilesProcessed = files.length > 0 && files.every(f => f.status === 'success' || f.status === 'error');
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
+    <ResponsiveDialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen && !isProcessing) {
         clearAllFiles();
       }
@@ -263,15 +263,15 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
         onOpenChange(isOpen);
       }
     }}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl">
+      <ResponsiveDialogContent className="sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="font-display text-2xl">
             Bulk Import MLS Sheets
-          </DialogTitle>
-          <DialogDescription>
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Upload multiple MLS PDF files to import properties at once.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <div className="space-y-4 mt-4">
           {/* Drop Zone */}
@@ -416,8 +416,8 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 };
 
