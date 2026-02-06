@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,6 +26,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Upload, FileText, Trash2, ExternalLink, Loader2, File } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PropertyDocument {
   id: string;
@@ -58,6 +66,7 @@ const PropertyDocumentsDialog = ({
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('other');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (open && propertyId) {
@@ -201,6 +210,174 @@ const PropertyDocumentsDialog = ({
     return DOC_TYPES.find((t) => t.value === type)?.label || 'Other';
   };
 
+  const content = (
+    <>
+      {/* Upload Section */}
+      <div className="space-y-4 pt-4 border-t border-border">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,image/jpeg,image/png,image/webp"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
+        {!selectedFile ? (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+          >
+            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="font-medium text-sm">Click to upload</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              PDF or images up to 50MB
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <File className="w-8 h-8 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{selectedFile.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
+              >
+                Change
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="docName" className="text-xs">Document Name</Label>
+                <Input
+                  id="docName"
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
+                  placeholder="e.g., Seller's Disclosure"
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Document Type</Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOC_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="w-full"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Document
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Documents List */}
+      <div className="space-y-3 pt-4 border-t border-border">
+        <h4 className="font-medium text-sm text-muted-foreground">
+          Uploaded Documents ({documents.length})
+        </h4>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Loading...
+          </p>
+        ) : documents.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No documents uploaded yet
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {documents.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+              >
+                <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{doc.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getDocTypeLabel(doc.doc_type)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleView(doc)}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(doc)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="text-left pb-2">
+            <DrawerTitle className="font-display text-xl">
+              Property Documents
+            </DrawerTitle>
+            <DrawerDescription className="text-sm text-muted-foreground line-clamp-1">
+              {propertyAddress}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-6 overflow-y-auto">
+            {content}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -212,150 +389,7 @@ const PropertyDocumentsDialog = ({
             {propertyAddress}
           </DialogDescription>
         </DialogHeader>
-
-        {/* Upload Section */}
-        <div className="space-y-4 pt-4 border-t">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,image/jpeg,image/png,image/webp"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-
-          {!selectedFile ? (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-            >
-              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="font-medium text-sm">Click to upload</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF or images up to 50MB
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <File className="w-8 h-8 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                >
-                  Change
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="docName" className="text-xs">Document Name</Label>
-                  <Input
-                    id="docName"
-                    value={docName}
-                    onChange={(e) => setDocName(e.target.value)}
-                    placeholder="e.g., Seller's Disclosure"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Document Type</Label>
-                  <Select value={docType} onValueChange={setDocType}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DOC_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="w-full"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Document
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Documents List */}
-        <div className="space-y-3 pt-4 border-t">
-          <h4 className="font-medium text-sm text-muted-foreground">
-            Uploaded Documents ({documents.length})
-          </h4>
-
-          {loading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Loading...
-            </p>
-          ) : documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No documents uploaded yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
-                >
-                  <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {getDocTypeLabel(doc.doc_type)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleView(doc)}
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(doc)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {content}
       </DialogContent>
     </Dialog>
   );
