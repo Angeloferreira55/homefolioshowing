@@ -521,12 +521,16 @@ const PublicSession = () => {
           <p className="text-primary-foreground/80 text-sm sm:text-base">
             Welcome, {session.client_name}
           </p>
-          {session.session_date && (
-            <p className="flex items-center gap-2 text-primary-foreground/80 mt-2 text-sm sm:text-base">
-              <Calendar className="w-4 h-4" />
-              {format(new Date(session.session_date), 'EEEE, MMMM d, yyyy')}
-            </p>
-          )}
+          {session.session_date && (() => {
+            const [year, month, day] = session.session_date.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return (
+              <p className="flex items-center gap-2 text-primary-foreground/80 mt-2 text-sm sm:text-base">
+                <Calendar className="w-4 h-4" />
+                {format(localDate, 'EEEE, MMMM d, yyyy')}
+              </p>
+            );
+          })()}
           {session.notes && (
             <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
               {session.notes}
@@ -624,12 +628,16 @@ const PublicSession = () => {
                       <span className="px-2.5 sm:px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-bold">
                         #{index + 1}
                       </span>
-                      {session.session_date && (
-                        <span className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-muted-foreground">
-                          <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          {format(new Date(session.session_date), 'MMM d')}
-                        </span>
-                      )}
+                      {session.session_date && (() => {
+                        const [year, month, day] = session.session_date.split('-').map(Number);
+                        const localDate = new Date(year, month - 1, day);
+                        return (
+                          <span className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            {format(localDate, 'MMM d')}
+                          </span>
+                        );
+                      })()}
                     </div>
                     {property.price && (
                       <span className="text-xl sm:text-2xl font-display font-bold text-foreground">

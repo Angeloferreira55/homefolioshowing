@@ -110,6 +110,14 @@ const ShowingHub = () => {
   const archivedSessions = sessions.filter(s => !s.deleted_at && s.archived_at);
   const trashedSessions = sessions.filter(s => s.deleted_at);
 
+  // Helper to format date as YYYY-MM-DD without timezone shift
+  const formatDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleCreateSession = async (data: {
     title: string;
     sessionDate?: Date;
@@ -124,7 +132,7 @@ const ShowingHub = () => {
       const { error } = await supabase.from('showing_sessions').insert({
         admin_id: user.id,
         title: data.title,
-        session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+        session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
         client_name: data.clientName,
         notes: data.notes || null,
         share_password: data.sharePassword || null,
@@ -277,7 +285,7 @@ const ShowingHub = () => {
         .update({
           title: data.title,
           client_name: data.clientName,
-          session_date: data.sessionDate?.toISOString().split('T')[0] || null,
+          session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
           notes: data.notes || null,
         })
         .eq('id', editingSession.id);
@@ -318,12 +326,16 @@ const ShowingHub = () => {
               <Users className="w-4 h-4" />
               {session.client_name}
             </span>
-            {session.session_date && (
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" />
-                {format(new Date(session.session_date), 'M/d/yyyy')}
-              </span>
-            )}
+            {session.session_date && (() => {
+              const [year, month, day] = session.session_date.split('-').map(Number);
+              const localDate = new Date(year, month - 1, day);
+              return (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {format(localDate, 'M/d/yyyy')}
+                </span>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
