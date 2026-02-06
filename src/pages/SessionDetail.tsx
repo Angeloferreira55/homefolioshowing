@@ -168,17 +168,44 @@ const SessionDetail = () => {
     }
   };
 
-  const fetchSession = async () => {
+  const fetchSession = async (retryCount = 0) => {
     try {
+      // First ensure we have a valid auth session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.log('Auth error, redirecting to login');
+        navigate('/auth');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('showing_sessions')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        // Session not found - could be timing issue on mobile, retry once
+        if (retryCount < 2) {
+          console.log(`Session not found, retrying (attempt ${retryCount + 1})...`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return fetchSession(retryCount + 1);
+        }
+        toast.error('Session not found');
+        navigate('/admin/showings');
+        return;
+      }
+      
       setSession(data);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Fetch session error:', error);
+      // Retry on network errors
+      if (retryCount < 2 && (error.message?.includes('network') || error.code === 'PGRST301')) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return fetchSession(retryCount + 1);
+      }
       toast.error('Failed to load session');
       navigate('/admin/showings');
     } finally {
