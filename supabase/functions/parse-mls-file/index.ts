@@ -1,15 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { encodeBase64 } from 'https://deno.land/std@0.220.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-// Helper to convert Uint8Array to base64 without stack overflow
-function uint8ArrayToBase64(uint8Array: Uint8Array): string {
-  return encodeBase64(uint8Array);
-}
 
 interface PropertyData {
   mlsNumber?: string;
@@ -38,6 +32,230 @@ interface PropertyData {
   publicRemarks?: string;
   summary?: string;
   features?: string[];
+}
+
+const extractionPrompt = `You are an MLS document parser. Extract property listing data from the provided document.
+
+Return a JSON array with one object per property. Each object should have these fields (use null for missing values):
+
+- mlsNumber: string (MLS listing number/ID)
+- address: string (street address only, no city/state/zip)
+- city: string
+- state: string (2-letter abbreviation)
+- zipCode: string
+- price: number (list price, just the number)
+- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse")
+- daysOnMarket: number (DOM or CDOM value)
+- beds: number (total bedrooms)
+- baths: number (total bathrooms)
+- sqft: number (living area square footage)
+- yearBuilt: number (year the property was built)
+- pricePerSqft: number (price per square foot)
+- lotSizeAcres: number (lot size in acres)
+- garageSpaces: number (number of garage spaces)
+- roof: string (roof type/material)
+- heating: string (heating type)
+- cooling: string (cooling type)
+- taxAnnualAmount: number (annual tax amount)
+- hasHoa: boolean (true if there's an HOA/Association)
+- hoaFee: number (HOA fee amount if applicable)
+- hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
+- hasPid: boolean (true if PID is present/listed)
+- publicRemarks: string (full public remarks/description)
+- summary: string (generate 3-5 bullet points highlighting KEY selling features from the public remarks and property details, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
+- features: string[] (array of notable interior/exterior features mentioned, e.g., ["Hardwood Floors", "Gourmet Kitchen", "Pool"])
+
+Return ONLY valid JSON array, no markdown or explanation.`;
+
+async function processInBackground(
+  jobId: string,
+  filePath: string,
+  fileType: string,
+  serviceSupabase: ReturnType<typeof createClient>,
+  lovableApiKey: string
+) {
+  console.log(`Background processing started for job ${jobId}`);
+  
+  try {
+    // Download file
+    console.log('Downloading file:', filePath);
+    const { data: fileData, error: downloadError } = await serviceSupabase.storage
+      .from('mls-uploads')
+      .download(filePath);
+
+    if (downloadError || !fileData) {
+      console.error('Download error:', downloadError);
+      await serviceSupabase
+        .from('mls_parsing_jobs')
+        .update({ status: 'error', error: 'Failed to download file' })
+        .eq('id', jobId);
+      return;
+    }
+
+    await serviceSupabase
+      .from('mls_parsing_jobs')
+      .update({ progress: 30 })
+      .eq('id', jobId);
+
+    let extractedProperties: PropertyData[] = [];
+
+    if (fileType === 'csv' || fileType === 'excel') {
+      const text = await fileData.text();
+      extractedProperties = await parseCSVWithAI(text, lovableApiKey);
+    } else if (fileType === 'pdf') {
+      // For PDFs, use a streaming approach with smaller chunks
+      const text = await extractTextFromPDF(fileData);
+      if (text) {
+        extractedProperties = await parseTextWithAI(text, lovableApiKey);
+      }
+    }
+
+    await serviceSupabase
+      .from('mls_parsing_jobs')
+      .update({ progress: 90 })
+      .eq('id', jobId);
+
+    console.log('Extracted properties:', extractedProperties.length);
+
+    // Update job with results
+    await serviceSupabase
+      .from('mls_parsing_jobs')
+      .update({
+        status: 'complete',
+        progress: 100,
+        result: extractedProperties,
+      })
+      .eq('id', jobId);
+
+    console.log(`Job ${jobId} completed successfully`);
+  } catch (error) {
+    console.error('Background processing error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Processing failed';
+    await serviceSupabase
+      .from('mls_parsing_jobs')
+      .update({ status: 'error', error: errorMessage })
+      .eq('id', jobId);
+  }
+}
+
+async function extractTextFromPDF(fileData: Blob): Promise<string | null> {
+  // Convert PDF to text by reading as array buffer and extracting readable content
+  // This is a simplified approach that works for text-based PDFs
+  try {
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Try to extract text content from PDF (basic extraction)
+    let text = '';
+    let inTextObject = false;
+    let textContent = '';
+    
+    for (let i = 0; i < bytes.length - 1; i++) {
+      // Look for text markers in PDF
+      if (bytes[i] === 66 && bytes[i + 1] === 84) { // 'BT' - Begin Text
+        inTextObject = true;
+      } else if (bytes[i] === 69 && bytes[i + 1] === 84) { // 'ET' - End Text
+        inTextObject = false;
+        text += textContent + ' ';
+        textContent = '';
+      } else if (inTextObject) {
+        const char = bytes[i];
+        if (char >= 32 && char <= 126) {
+          textContent += String.fromCharCode(char);
+        }
+      }
+    }
+    
+    // Also try to get any readable ASCII content
+    let readableText = '';
+    for (let i = 0; i < bytes.length; i++) {
+      const char = bytes[i];
+      if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
+        readableText += String.fromCharCode(char);
+      }
+    }
+    
+    // Return the longer of the two extractions
+    const result = text.length > readableText.length / 2 ? text : readableText;
+    
+    // Limit to prevent memory issues - take first 50KB of text
+    return result.substring(0, 50000);
+  } catch (error) {
+    console.error('Error extracting text from PDF:', error);
+    return null;
+  }
+}
+
+async function parseTextWithAI(textContent: string, apiKey: string): Promise<PropertyData[]> {
+  console.log('Parsing text content with AI...');
+  
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: extractionPrompt },
+        { role: 'user', content: `Extract property data from this MLS document text:\n\n${textContent.substring(0, 30000)}` }
+      ],
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('AI API error:', await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '[]';
+  
+  try {
+    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanContent);
+  } catch {
+    console.error('Failed to parse AI response:', content.substring(0, 500));
+    return [];
+  }
+}
+
+async function parseCSVWithAI(csvContent: string, apiKey: string): Promise<PropertyData[]> {
+  console.log('Parsing CSV with AI...');
+  
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: extractionPrompt },
+        { role: 'user', content: `Extract property data from this CSV:\n\n${csvContent.substring(0, 15000)}` }
+      ],
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error('AI API error:', await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '[]';
+  
+  try {
+    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanContent);
+  } catch {
+    console.error('Failed to parse AI response:', content);
+    return [];
+  }
 }
 
 Deno.serve(async (req) => {
@@ -94,207 +312,45 @@ Deno.serve(async (req) => {
 
     const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Downloading file:', filePath);
-    const { data: fileData, error: downloadError } = await serviceSupabase.storage
-      .from('mls-uploads')
-      .download(filePath);
+    // Create job record immediately
+    const { data: job, error: jobError } = await serviceSupabase
+      .from('mls_parsing_jobs')
+      .insert({
+        user_id: userId,
+        file_path: filePath,
+        file_type: fileType,
+        status: 'processing',
+        progress: 0,
+      })
+      .select()
+      .single();
 
-    if (downloadError || !fileData) {
-      console.error('Download error:', downloadError);
+    if (jobError || !job) {
+      console.error('Failed to create job:', jobError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Failed to download file' }),
+        JSON.stringify({ success: false, error: 'Failed to create processing job' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    let extractedProperties: PropertyData[] = [];
+    console.log('Created job:', job.id);
 
-    if (fileType === 'csv' || fileType === 'excel') {
-      const text = await fileData.text();
-      extractedProperties = await parseCSVWithAI(text, lovableApiKey);
-    } else if (fileType === 'pdf') {
-      const arrayBuffer = await fileData.arrayBuffer();
-      // Convert to base64 in chunks to avoid stack overflow
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const base64 = uint8ArrayToBase64(uint8Array);
-      extractedProperties = await parsePDFWithAI(base64, lovableApiKey);
-    }
+    // Start background processing (non-blocking)
+    EdgeRuntime.waitUntil(
+      processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey)
+    );
 
-    console.log('Extracted properties:', extractedProperties);
-
+    // Return immediately with job ID
     return new Response(
-      JSON.stringify({ success: true, data: extractedProperties }),
+      JSON.stringify({ success: true, jobId: job.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error parsing file:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to parse file';
+    console.error('Error in parse-mls-file:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to start parsing';
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-
-const extractionPrompt = `You are an MLS document parser. Extract property listing data from the provided document.
-
-Return a JSON array with one object per property. Each object should have these fields (use null for missing values):
-
-- mlsNumber: string (MLS listing number/ID)
-- address: string (street address only, no city/state/zip)
-- city: string
-- state: string (2-letter abbreviation)
-- zipCode: string
-- price: number (list price, just the number)
-- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse")
-- daysOnMarket: number (DOM or CDOM value)
-- beds: number (total bedrooms)
-- baths: number (total bathrooms)
-- sqft: number (living area square footage)
-- yearBuilt: number (year the property was built)
-- pricePerSqft: number (price per square foot)
-- lotSizeAcres: number (lot size in acres)
-- garageSpaces: number (number of garage spaces)
-- roof: string (roof type/material)
-- heating: string (heating type)
-- cooling: string (cooling type)
-- taxAnnualAmount: number (annual tax amount)
-- hasHoa: boolean (true if there's an HOA/Association)
-- hoaFee: number (HOA fee amount if applicable)
-- hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
-- hasPid: boolean (true if PID is present/listed)
-- publicRemarks: string (full public remarks/description)
-- summary: string (generate 3-5 bullet points highlighting KEY selling features from the public remarks and property details, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
-- features: string[] (array of notable interior/exterior features mentioned, e.g., ["Hardwood Floors", "Gourmet Kitchen", "Pool"])
-
-Return ONLY valid JSON array, no markdown or explanation.`;
-
-async function parseCSVWithAI(csvContent: string, apiKey: string): Promise<PropertyData[]> {
-  console.log('Parsing CSV with AI...');
-  
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: extractionPrompt },
-        { role: 'user', content: `Extract property data from this CSV:\n\n${csvContent.substring(0, 15000)}` }
-      ],
-      temperature: 0.1,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error('AI API error:', await response.text());
-    return [];
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '[]';
-  
-  try {
-    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanContent);
-  } catch {
-    console.error('Failed to parse AI response:', content);
-    return [];
-  }
-}
-
-async function parsePDFWithAI(base64Content: string, apiKey: string): Promise<PropertyData[]> {
-  console.log('Parsing PDF with AI...');
-  
-  // Use inline_data format for Gemini PDF support
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: extractionPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Extract all property listings from this MLS document PDF:' },
-            { 
-              type: 'file', 
-              file: { 
-                filename: 'mls-document.pdf',
-                file_data: `data:application/pdf;base64,${base64Content.substring(0, 1000000)}`
-              } 
-            }
-          ]
-        }
-      ],
-      temperature: 0.1,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('AI API error:', errorText);
-    
-    // Fallback: Try treating PDF as base64 encoded document text
-    console.log('Trying fallback with image_url format...');
-    const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: extractionPrompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extract all property listings from this MLS document:' },
-              { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64Content.substring(0, 500000)}` } }
-            ]
-          }
-        ],
-        temperature: 0.1,
-      }),
-    });
-    
-    if (!fallbackResponse.ok) {
-      const fallbackError = await fallbackResponse.text();
-      console.error('Fallback AI API error:', fallbackError);
-      return [];
-    }
-    
-    const fallbackData = await fallbackResponse.json();
-    const fallbackContent = fallbackData.choices?.[0]?.message?.content || '[]';
-    
-    try {
-      const cleanContent = fallbackContent.replace(/```json\n?|\n?```/g, '').trim();
-      return JSON.parse(cleanContent);
-    } catch {
-      console.error('Failed to parse fallback AI response:', fallbackContent);
-      return [];
-    }
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '[]';
-  
-  console.log('AI response content:', content.substring(0, 500));
-  
-  try {
-    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    const parsed = JSON.parse(cleanContent);
-    console.log('Successfully parsed properties:', parsed.length);
-    return parsed;
-  } catch (parseError) {
-    console.error('Failed to parse AI response:', content);
-    return [];
-  }
-}

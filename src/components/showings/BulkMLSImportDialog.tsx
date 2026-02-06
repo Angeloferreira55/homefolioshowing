@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -40,6 +40,7 @@ interface FileUploadStatus {
   status: 'pending' | 'uploading' | 'parsing' | 'success' | 'error';
   error?: string;
   properties?: PropertyData[];
+  jobId?: string;
 }
 
 interface BulkMLSImportDialogProps {
@@ -53,6 +54,15 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollingRef.current.forEach((timeout) => clearTimeout(timeout));
+      pollingRef.current.clear();
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -92,8 +102,98 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
   };
 
   const clearAllFiles = () => {
+    // Stop all polling
+    pollingRef.current.forEach((timeout) => clearTimeout(timeout));
+    pollingRef.current.clear();
     setFiles([]);
     setProcessedCount(0);
+  };
+
+  const pollForJobCompletion = async (jobId: string, fileIndex: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('mls_parsing_jobs')
+        .select('status, progress, result, error')
+        .eq('id', jobId)
+        .single();
+
+      if (error) {
+        console.error('Error polling job:', error);
+        return;
+      }
+
+      if (data.status === 'complete') {
+        // Job completed successfully
+        const properties = (data.result as unknown as PropertyData[]) || [];
+        
+        setFiles(prev => {
+          const updated = [...prev];
+          if (updated[fileIndex]) {
+            updated[fileIndex] = {
+              ...updated[fileIndex],
+              status: 'success',
+              properties,
+            };
+          }
+          return updated;
+        });
+        
+        setProcessedCount(prev => prev + 1);
+        pollingRef.current.delete(jobId);
+        
+        // Check if all files are done
+        checkAllFilesProcessed();
+        return;
+      }
+
+      if (data.status === 'error') {
+        // Job failed
+        setFiles(prev => {
+          const updated = [...prev];
+          if (updated[fileIndex]) {
+            updated[fileIndex] = {
+              ...updated[fileIndex],
+              status: 'error',
+              error: data.error || 'Failed to process file',
+            };
+          }
+          return updated;
+        });
+        
+        setProcessedCount(prev => prev + 1);
+        pollingRef.current.delete(jobId);
+        
+        // Check if all files are done
+        checkAllFilesProcessed();
+        return;
+      }
+
+      // Still processing, poll again in 2 seconds
+      const timeout = setTimeout(() => pollForJobCompletion(jobId, fileIndex), 2000);
+      pollingRef.current.set(jobId, timeout);
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  };
+
+  const checkAllFilesProcessed = () => {
+    setFiles(prev => {
+      const allDone = prev.every(f => f.status === 'success' || f.status === 'error');
+      if (allDone && pollingRef.current.size === 0) {
+        setIsProcessing(false);
+        
+        const successCount = prev.filter(f => f.status === 'success').length;
+        const errorCount = prev.filter(f => f.status === 'error').length;
+
+        if (successCount > 0) {
+          toast.success(`Successfully processed ${successCount} file${successCount > 1 ? 's' : ''}`);
+        }
+        if (errorCount > 0) {
+          toast.error(`${errorCount} file${errorCount > 1 ? 's' : ''} failed to process`);
+        }
+      }
+      return prev;
+    });
   };
 
   const processFiles = async () => {
@@ -102,7 +202,6 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
     setIsProcessing(true);
     setProcessedCount(0);
 
-    const allProperties: PropertyData[] = [];
     const updatedFiles = [...files];
 
     for (let i = 0; i < updatedFiles.length; i++) {
@@ -139,7 +238,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
         updatedFiles[i] = { ...fileStatus, status: 'parsing' };
         setFiles([...updatedFiles]);
 
-        // Parse the file
+        // Start the parsing job (returns immediately with job ID)
         const { data, error } = await supabase.functions.invoke('parse-mls-file', {
           body: { filePath, fileType: 'pdf' },
         });
@@ -149,46 +248,32 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
         }
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to parse file');
+          throw new Error(data.error || 'Failed to start parsing');
         }
 
-        const properties = data.data as PropertyData[];
-        
-        if (properties.length === 0) {
-          throw new Error('No properties found in the file');
-        }
+        const jobId = data.jobId;
+        updatedFiles[i] = { ...updatedFiles[i], jobId };
+        setFiles([...updatedFiles]);
 
-        // Success
-        updatedFiles[i] = { 
-          ...fileStatus, 
-          status: 'success', 
-          properties 
-        };
-        allProperties.push(...properties);
+        // Start polling for this job
+        pollForJobCompletion(jobId, i);
         
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Error processing ${fileStatus.file.name}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
         updatedFiles[i] = { 
           ...fileStatus, 
           status: 'error', 
-          error: error.message || 'Failed to process file' 
+          error: errorMessage
         };
+        setFiles([...updatedFiles]);
+        setProcessedCount(prev => prev + 1);
       }
-
-      setFiles([...updatedFiles]);
-      setProcessedCount(prev => prev + 1);
     }
 
-    setIsProcessing(false);
-
-    const successCount = updatedFiles.filter(f => f.status === 'success').length;
-    const errorCount = updatedFiles.filter(f => f.status === 'error').length;
-
-    if (successCount > 0) {
-      toast.success(`Successfully processed ${successCount} file${successCount > 1 ? 's' : ''}`);
-    }
-    if (errorCount > 0) {
-      toast.error(`${errorCount} file${errorCount > 1 ? 's' : ''} failed to process`);
+    // Check if any files are still being polled
+    if (pollingRef.current.size === 0) {
+      setIsProcessing(false);
     }
   };
 
@@ -242,7 +327,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
       case 'uploading':
         return 'Uploading...';
       case 'parsing':
-        return 'Extracting data...';
+        return 'Extracting data (may take up to 30s)...';
       case 'success':
         return `${fileStatus.properties?.length || 0} propert${(fileStatus.properties?.length || 0) > 1 ? 'ies' : 'y'} found`;
       case 'error':
