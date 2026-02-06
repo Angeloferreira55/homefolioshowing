@@ -509,6 +509,10 @@ export type Database = {
     }
     Functions: {
       archive_session: { Args: { p_session_id: string }; Returns: undefined }
+      check_session_password_required: {
+        Args: { p_share_token: string }
+        Returns: boolean
+      }
       cleanup_deleted_sessions: { Args: never; Returns: undefined }
       get_admin_id_from_session: {
         Args: { p_session_id: string }
