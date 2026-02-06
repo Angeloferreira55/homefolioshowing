@@ -50,7 +50,6 @@ const DOC_TYPES = [
   { value: 'hoa', label: 'HOA Documents' },
   { value: 'mls_info_sheet', label: 'MLS Info Sheet' },
   { value: 'survey', label: 'Survey' },
-  { value: 'title', label: 'Title Report' },
   { value: 'other', label: 'Other' },
 ];
 
