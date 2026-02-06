@@ -49,6 +49,7 @@ const DOC_TYPES = [
   { value: 'floorplan', label: 'Floor Plan' },
   { value: 'hoa', label: 'HOA Documents' },
   { value: 'mls_info_sheet', label: 'MLS Info Sheet' },
+  { value: 'estimated_taxes', label: 'Estimated Taxes' },
   { value: 'survey', label: 'Survey' },
   { value: 'other', label: 'Other' },
 ];
