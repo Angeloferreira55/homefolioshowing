@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Home,
   FileText,
@@ -13,6 +14,7 @@ import {
   Pencil,
   ImagePlus,
   Loader2,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRef, useState } from 'react';
@@ -50,6 +52,7 @@ interface SessionProperty {
   sqft: number | null;
   doc_count?: number;
   rating?: PropertyRating;
+  showing_time?: string | null;
 }
 
 interface SortablePropertyCardProps {
@@ -61,6 +64,7 @@ interface SortablePropertyCardProps {
   onManageDocs: (property: SessionProperty) => void;
   onDelete: (id: string) => void;
   onPhotoUpdated?: () => void;
+  onTimeUpdated?: () => void;
   formatPrice: (price: number | null) => string | null;
 }
 
@@ -73,11 +77,15 @@ export function SortablePropertyCard({
   onManageDocs,
   onDelete,
   onPhotoUpdated,
+  onTimeUpdated,
   formatPrice,
 }: SortablePropertyCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
+  const [editingTime, setEditingTime] = useState(false);
+  const [timeValue, setTimeValue] = useState(property.showing_time || '');
+  const [savingTime, setSavingTime] = useState(false);
 
   const {
     attributes,
@@ -145,6 +153,37 @@ export function SortablePropertyCard({
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleSaveTime = async () => {
+    setSavingTime(true);
+    try {
+      const { error } = await supabase
+        .from('session_properties')
+        .update({ showing_time: timeValue || null })
+        .eq('id', property.id);
+
+      if (error) throw error;
+
+      toast.success('Time saved!');
+      setEditingTime(false);
+      onTimeUpdated?.();
+    } catch (error: any) {
+      console.error('Error saving time:', error);
+      toast.error(error.message || 'Failed to save time');
+    } finally {
+      setSavingTime(false);
+    }
+  };
+
+  const formatDisplayTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    // Convert 24h format (HH:mm:ss or HH:mm) to 12h format
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
   };
 
   const displayPhotoUrl = localPhotoUrl || property.photo_url;
@@ -216,18 +255,105 @@ export function SortablePropertyCard({
             </button>
           </div>
 
-          {/* Badge on mobile */}
-          <span className="sm:hidden px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded flex-shrink-0">
-            #{index + 1}
-          </span>
+          {/* Badge on mobile with time */}
+          <div className="sm:hidden flex items-center gap-1.5 flex-shrink-0">
+            <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded">
+              #{index + 1}
+            </span>
+            {editingTime ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="time"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(e.target.value)}
+                  className="h-6 w-[90px] text-xs px-1"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <Button
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={handleSaveTime}
+                  disabled={savingTime}
+                >
+                  {savingTime ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1 text-xs"
+                  onClick={() => {
+                    setEditingTime(false);
+                    setTimeValue(property.showing_time || '');
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingTime(true);
+                }}
+                className="flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium rounded transition-colors"
+              >
+                <Clock className="w-3 h-3" />
+                {formatDisplayTime(property.showing_time) || 'Add time'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Info section */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start sm:items-center gap-2 flex-wrap">
-            <span className="hidden sm:inline px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded flex-shrink-0">
-              #{index + 1}
-            </span>
+            {/* Badge on desktop with time */}
+            <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
+              <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded">
+                #{index + 1}
+              </span>
+              {editingTime ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="time"
+                    value={timeValue}
+                    onChange={(e) => setTimeValue(e.target.value)}
+                    className="h-7 w-[100px] text-xs px-2"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={handleSaveTime}
+                    disabled={savingTime}
+                  >
+                    {savingTime ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-1 text-xs"
+                    onClick={() => {
+                      setEditingTime(false);
+                      setTimeValue(property.showing_time || '');
+                    }}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingTime(true);
+                  }}
+                  className="flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium rounded transition-colors"
+                >
+                  <Clock className="w-3 h-3" />
+                  {formatDisplayTime(property.showing_time) || 'Add time'}
+                </button>
+              )}
+            </div>
             <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-2 sm:truncate">
               {property.address}
               {property.city && `, ${property.city}`}
