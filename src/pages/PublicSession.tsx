@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -36,6 +36,7 @@ type PropertyDocument = PublicPropertyDocument;
 type SessionProperty = PublicSessionProperty & { 
   order_index: number;
   client_photos?: ClientPhoto[];
+  showing_time?: string | null;
 };
 
 interface ClientPhoto {
@@ -377,6 +378,16 @@ const PublicSession = () => {
     }).format(price);
   };
 
+  const formatShowingTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    // Convert 24h format (HH:mm:ss or HH:mm) to 12h format
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
+  };
+
   const handleViewDocument = async (doc: PropertyDocument) => {
     try {
       if (!token) {
@@ -628,7 +639,13 @@ const PublicSession = () => {
                       <span className="px-2.5 sm:px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-bold">
                         #{index + 1}
                       </span>
-                      {session.session_date && (() => {
+                      {property.showing_time && (
+                        <span className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          {formatShowingTime(property.showing_time)}
+                        </span>
+                      )}
+                      {!property.showing_time && session.session_date && (() => {
                         const [year, month, day] = session.session_date.split('-').map(Number);
                         const localDate = new Date(year, month - 1, day);
                         return (
