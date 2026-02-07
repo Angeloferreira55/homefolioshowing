@@ -11,7 +11,7 @@ const plans = [
     yearlyPrice: 0,
     description: 'Perfect for agents just getting started',
     features: [
-      'Up to 3 active clients',
+      'Up to 1 active client',
       '5 properties per client',
       'Basic property details',
       'Shareable client links',
