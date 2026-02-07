@@ -32,6 +32,7 @@ interface PropertyData {
   publicRemarks?: string;
   summary?: string;
   features?: string[];
+  photoUrl?: string;
 }
 
 const extractionPrompt = `You are an expert MLS document parser. Your job is to extract ALL property listing data from MLS sheets with high accuracy.
@@ -82,12 +83,218 @@ IMPORTANT:
 - Use null for truly missing values, but try hard to find the required fields
 - Clean numeric values: remove $ and commas (e.g., "$499,000" → 499000)`;
 
+const photoExtractionPrompt = `You are a photo extraction assistant. Look at this MLS document and find the MAIN PROPERTY PHOTO (the largest exterior or interior photo of the home, NOT agent photos, logos, or map images).
+
+If you find a main property photo, describe what you see in the image (exterior view, interior room, etc.) and respond with:
+{
+  "hasPhoto": true,
+  "description": "Brief description of the photo"
+}
+
+If there is NO property photo visible, respond with:
+{
+  "hasPhoto": false,
+  "description": null
+}
+
+Return ONLY the JSON object, no additional text.`;
+
+async function extractPhotoFromPdf(
+  fileData: Blob,
+  apiKey: string,
+  userId: string,
+  propertyAddress: string,
+  serviceSupabase: ReturnType<typeof createClient>
+): Promise<string | null> {
+  console.log('Attempting to extract property photo from PDF...');
+  
+  try {
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64Pdf = btoa(binary);
+    
+    // Use image generation model to extract the photo
+    // First, check if there's a photo to extract
+    const checkResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: photoExtractionPrompt },
+          { 
+            role: 'user', 
+            content: [
+              { type: 'text', text: 'Analyze this MLS document and determine if it contains a main property photo.' },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Pdf}`
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0,
+      }),
+    });
+
+    if (!checkResponse.ok) {
+      console.error('Photo check API error:', await checkResponse.text());
+      return null;
+    }
+
+    const checkData = await checkResponse.json();
+    const checkContent = checkData.choices?.[0]?.message?.content || '{}';
+    
+    let photoInfo;
+    try {
+      const cleanContent = checkContent.replace(/```json\n?|\n?```/g, '').trim();
+      photoInfo = JSON.parse(cleanContent);
+    } catch {
+      console.log('Could not parse photo check response:', checkContent);
+      return null;
+    }
+    
+    if (!photoInfo.hasPhoto) {
+      console.log('No property photo found in PDF');
+      return null;
+    }
+    
+    console.log('Property photo detected:', photoInfo.description);
+    
+    // Now extract the actual image using Gemini's image generation capability
+    // We'll use Google's image model to recreate/extract the property photo
+    const extractResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-pro-image-preview',
+        messages: [
+          { 
+            role: 'user', 
+            content: [
+              { 
+                type: 'text', 
+                text: 'Extract and output ONLY the main property photo from this MLS document. Output the property photo as an image. Do not include any text, logos, or other elements - just the property photo itself.' 
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Pdf}`
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0,
+      }),
+    });
+
+    if (!extractResponse.ok) {
+      console.error('Photo extraction API error:', await extractResponse.text());
+      return null;
+    }
+
+    const extractData = await extractResponse.json();
+    const extractContent = extractData.choices?.[0]?.message?.content;
+    
+    // Check if the response contains an image
+    if (!extractContent) {
+      console.log('No image content returned from extraction');
+      return null;
+    }
+    
+    // If the model returned inline image data (base64), upload it to storage
+    // The response format varies - check for inline_data or base64 content
+    let imageBase64: string | null = null;
+    let mimeType = 'image/jpeg';
+    
+    // Check if there's an array of content parts
+    const messageParts = extractData.choices?.[0]?.message?.parts || [];
+    for (const part of messageParts) {
+      if (part.inline_data?.data) {
+        imageBase64 = part.inline_data.data;
+        mimeType = part.inline_data.mime_type || 'image/jpeg';
+        break;
+      }
+    }
+    
+    // Also check for image data in the content itself
+    if (!imageBase64 && typeof extractContent === 'object' && extractContent.inline_data) {
+      imageBase64 = extractContent.inline_data.data;
+      mimeType = extractContent.inline_data.mime_type || 'image/jpeg';
+    }
+    
+    if (!imageBase64) {
+      console.log('No base64 image data found in response');
+      return null;
+    }
+    
+    console.log('Image extracted, uploading to storage...');
+    
+    // Convert base64 to Uint8Array for upload
+    const imageBytes = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0));
+    const imageBlob = new Blob([imageBytes], { type: mimeType });
+    
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const sanitizedAddress = propertyAddress
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase()
+      .substring(0, 50);
+    const extension = mimeType.includes('png') ? 'png' : 'jpg';
+    const fileName = `${userId}/${timestamp}-${sanitizedAddress}.${extension}`;
+    
+    // Upload to client-photos bucket (it's public)
+    const { data: uploadData, error: uploadError } = await serviceSupabase.storage
+      .from('client-photos')
+      .upload(fileName, imageBlob, {
+        contentType: mimeType,
+        upsert: false,
+      });
+    
+    if (uploadError) {
+      console.error('Failed to upload extracted photo:', uploadError);
+      return null;
+    }
+    
+    // Get the public URL
+    const { data: urlData } = serviceSupabase.storage
+      .from('client-photos')
+      .getPublicUrl(fileName);
+    
+    console.log('Photo uploaded successfully:', urlData.publicUrl);
+    return urlData.publicUrl;
+    
+  } catch (error) {
+    console.error('Error extracting photo from PDF:', error);
+    return null;
+  }
+}
+
 async function processInBackground(
   jobId: string,
   filePath: string,
   fileType: string,
   serviceSupabase: ReturnType<typeof createClient>,
-  lovableApiKey: string
+  lovableApiKey: string,
+  userId: string
 ) {
   console.log(`Background processing started for job ${jobId}`);
   
@@ -120,6 +327,40 @@ async function processInBackground(
     } else if (fileType === 'pdf') {
       // Use Vision API for PDFs - handles both text and scanned/image-based PDFs
       extractedProperties = await extractPdfWithVisionApi(fileData, lovableApiKey);
+      
+      // Update progress before photo extraction
+      await serviceSupabase
+        .from('mls_parsing_jobs')
+        .update({ progress: 70 })
+        .eq('id', jobId);
+      
+      // Try to extract photo for each property (typically one per PDF)
+      if (extractedProperties.length > 0) {
+        console.log('Attempting to extract property photos...');
+        
+        // Clone fileData for photo extraction (since we already read it)
+        const { data: photoFileData } = await serviceSupabase.storage
+          .from('mls-uploads')
+          .download(filePath);
+        
+        if (photoFileData) {
+          for (let i = 0; i < extractedProperties.length; i++) {
+            const property = extractedProperties[i];
+            const photoUrl = await extractPhotoFromPdf(
+              photoFileData,
+              lovableApiKey,
+              userId,
+              property.address || `property-${i}`,
+              serviceSupabase
+            );
+            
+            if (photoUrl) {
+              extractedProperties[i].photoUrl = photoUrl;
+              console.log(`Photo extracted for property: ${property.address}`);
+            }
+          }
+        }
+      }
     }
 
     await serviceSupabase
@@ -373,7 +614,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const userId = claims.claims.sub;
+    const userId = claims.claims.sub as string;
     console.log('Authenticated user:', userId);
 
     const { filePath, fileType } = await req.json();
@@ -423,7 +664,7 @@ Deno.serve(async (req) => {
 
     // Start background processing (non-blocking)
     EdgeRuntime.waitUntil(
-      processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey)
+      processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey, userId)
     );
 
     // Return immediately with job ID
