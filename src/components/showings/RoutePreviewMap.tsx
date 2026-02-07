@@ -40,8 +40,8 @@ const createNumberedIcon = (number: number, isSpecial?: boolean) =>
     className: "custom-marker",
     html: `
       <div style="
-        background-color: ${isSpecial ? '#16a34a' : '#2563eb'};
-        color: white;
+        background-color: ${isSpecial ? "hsl(var(--accent))" : "hsl(var(--primary))"};
+        color: hsl(var(--primary-foreground));
         width: 32px;
         height: 32px;
         border-radius: 9999px;
@@ -50,8 +50,8 @@ const createNumberedIcon = (number: number, isSpecial?: boolean) =>
         justify-content: center;
         font-weight: 700;
         font-size: 13px;
-        border: 3px solid white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        border: 3px solid hsl(var(--background));
+        box-shadow: 0 2px 10px hsl(var(--foreground) / 0.2);
       ">
         ${number}
       </div>
@@ -66,14 +66,14 @@ const createSpecialIcon = (label: string) =>
     className: "custom-marker",
     html: `
       <div style="
-        background-color: #16a34a;
-        color: white;
+        background-color: hsl(var(--accent));
+        color: hsl(var(--accent-foreground));
         padding: 4px 10px;
         border-radius: 9999px;
         font-weight: 600;
         font-size: 11px;
-        border: 2px solid white;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        border: 2px solid hsl(var(--background));
+        box-shadow: 0 2px 10px hsl(var(--foreground) / 0.2);
         white-space: nowrap;
       ">
         ${label}
@@ -189,7 +189,7 @@ export default function RoutePreviewMap({
           <Polyline
             positions={routePositions}
             pathOptions={{
-              color: "#2563eb",
+              color: "hsl(var(--primary))",
               weight: 4,
               opacity: 0.8,
             }}
