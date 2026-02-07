@@ -490,26 +490,103 @@ const ShowingHub = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Active Sessions */}
-          <TabsContent value="active">
-            {loading ? (
-              <SessionListSkeleton count={4} />
-            ) : activeSessions.length > 0 ? (
-              <div className="space-y-4">
-                {activeSessions.map((session) => renderSessionCard(session, 'active'))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={Calendar}
-                title="No active sessions"
-                description="Create your first showing session to start organizing property tours for your clients."
-                action={{
-                  label: "Create First Session",
-                  onClick: () => setIsCreateOpen(true),
-                }}
-              />
-            )}
-          </TabsContent>
+           {/* Active Sessions */}
+           <TabsContent value="active">
+             {loading ? (
+               <SessionListSkeleton count={4} />
+             ) : activeSessions.length > 0 ? (
+               <div className="space-y-4">
+                 {activeSessions.map((session) => renderSessionCard(session, 'active'))}
+               </div>
+             ) : (
+               <div className="space-y-8">
+                 <EmptyState
+                   icon={Calendar}
+                   title="No active sessions yet"
+                   description="Welcome! Let's get you started with your first HomeFolio showing session."
+                   action={{
+                     label: "Create First Session",
+                     onClick: () => setIsCreateOpen(true),
+                   }}
+                 />
+                 
+                 {/* Onboarding Steps */}
+                 <div className="bg-card rounded-xl p-8 card-elevated">
+                   <h3 className="font-display text-lg font-semibold text-foreground mb-6">
+                     Get Started in 3 Steps
+                   </h3>
+                   <div className="space-y-4">
+                     <div className="flex gap-4">
+                       <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                         1
+                       </div>
+                       <div>
+                         <h4 className="font-semibold text-foreground mb-1">Create a Session</h4>
+                         <p className="text-sm text-muted-foreground">
+                           Start by creating a new showing session with your client's name and optional date.
+                         </p>
+                       </div>
+                     </div>
+                     
+                     <div className="flex gap-4">
+                       <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                         2
+                       </div>
+                       <div>
+                         <h4 className="font-semibold text-foreground mb-1">Add Properties</h4>
+                         <p className="text-sm text-muted-foreground">
+                           Add property details, photos, showing times, and documents. Set the order your clients will see them in.
+                         </p>
+                       </div>
+                     </div>
+                     
+                     <div className="flex gap-4">
+                       <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                         3
+                       </div>
+                       <div>
+                         <h4 className="font-semibold text-foreground mb-1">Share with Clients</h4>
+                         <p className="text-sm text-muted-foreground">
+                           Generate a shareable link or QR code. Your clients can view properties, see schedules, compare homes, and provide feedback—no app needed.
+                         </p>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   {/* Key Features */}
+                   <div className="mt-8 pt-8 border-t border-border">
+                     <p className="text-sm font-semibold text-foreground mb-4">What you can do:</p>
+                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Organize multiple properties in one session</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Schedule specific times for each property</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Upload documents and photos</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Protect links with optional access codes</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>View client feedback and ratings</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Generate QR codes for easy sharing</span>
+                       </li>
+                     </ul>
+                   </div>
+                 </div>
+               </div>
+             )}
+           </TabsContent>
 
           {/* Archived Sessions */}
           <TabsContent value="archived">
