@@ -322,11 +322,19 @@ Deno.serve(async (req) => {
 
     console.log("Optimized order:", optimizedOrder.join(" → "), `(${Math.round(totalSeconds / 60)} min)`);
 
+    // Build route coordinates for map display
+    const routeCoordinates = route.map((idx) => {
+      const id = idxToId[idx];
+      const coords = osrmCoords[idx];
+      return { id, lat: coords.lat, lng: coords.lon };
+    });
+
     return new Response(
       JSON.stringify({
         optimizedOrder,
         totalSeconds,
         legDurations,
+        routeCoordinates,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
