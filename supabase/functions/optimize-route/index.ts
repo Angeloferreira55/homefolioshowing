@@ -19,23 +19,117 @@ interface Coordinates {
   lon: number;
 }
 
-function toRad(deg: number): number {
-  return deg * (Math.PI / 180);
-}
-
-function haversineDistanceKm(a: Coordinates, b: Coordinates): number {
-  const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const x =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-  return R * c;
-}
-
 function buildFullAddress(p: { address: string; city?: string | null; state?: string | null; zip_code?: string | null }) {
   return [p.address, p.city, p.state, p.zip_code].filter(Boolean).join(", ");
+}
+
+/**
+ * Get driving durations matrix from OSRM public API.
+ * Returns a 2D array [from][to] of durations in seconds.
+ */
+async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] | null> {
+  if (coords.length < 2) return null;
+
+  // OSRM expects "lon,lat;lon,lat;..." format
+  const coordString = coords.map((c) => `${c.lon},${c.lat}`).join(";");
+  const url = `https://router.project-osrm.org/table/v1/driving/${coordString}?annotations=duration`;
+
+  console.log("Calling OSRM table API for", coords.length, "points");
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "HomeFolio/1.0 (https://homefolioshowing.lovable.app)",
+      },
+    });
+
+    if (!response.ok) {
+      console.error("OSRM API error:", response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.code !== "Ok" || !data.durations) {
+      console.error("OSRM returned non-OK:", data.code, data.message);
+      return null;
+    }
+
+    return data.durations as number[][];
+  } catch (err) {
+    console.error("OSRM fetch error:", err);
+    return null;
+  }
+}
+
+/**
+ * Nearest-neighbor heuristic for TSP, optimizing for minimum total driving time.
+ * Returns the order of indices (not including the origin twice; caller can handle round-trip).
+ */
+function nearestNeighborTSP(durations: number[][], startIdx: number): number[] {
+  const n = durations.length;
+  const visited = new Set<number>([startIdx]);
+  const route = [startIdx];
+  let current = startIdx;
+
+  while (visited.size < n) {
+    let best = -1;
+    let bestTime = Infinity;
+
+    for (let i = 0; i < n; i++) {
+      if (visited.has(i)) continue;
+      const time = durations[current][i];
+      if (time !== null && time < bestTime) {
+        bestTime = time;
+        best = i;
+      }
+    }
+
+    if (best === -1) break; // No reachable nodes left
+    visited.add(best);
+    route.push(best);
+    current = best;
+  }
+
+  return route;
+}
+
+/**
+ * 2-opt improvement: iteratively reverses segments to reduce total time.
+ */
+function twoOptImprove(route: number[], durations: number[][], isRoundTrip: boolean): number[] {
+  const improved = [...route];
+  const n = improved.length;
+  let madeSwap = true;
+
+  const totalTime = (r: number[]) => {
+    let sum = 0;
+    for (let i = 0; i < r.length - 1; i++) {
+      sum += durations[r[i]][r[i + 1]] ?? 0;
+    }
+    if (isRoundTrip && r.length > 1) {
+      sum += durations[r[r.length - 1]][r[0]] ?? 0;
+    }
+    return sum;
+  };
+
+  while (madeSwap) {
+    madeSwap = false;
+    for (let i = 1; i < n - 1; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const newRoute = [
+          ...improved.slice(0, i),
+          ...improved.slice(i, j + 1).reverse(),
+          ...improved.slice(j + 1),
+        ];
+        if (totalTime(newRoute) < totalTime(improved)) {
+          improved.splice(0, improved.length, ...newRoute);
+          madeSwap = true;
+        }
+      }
+    }
+  }
+
+  return improved;
 }
 
 Deno.serve(async (req) => {
@@ -87,12 +181,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Keep requests bounded (geocoding policy + user experience)
     if (properties.length > 20) {
       return new Response(
-        JSON.stringify({
-          error: "Too many properties to optimize at once (max 20).",
-        }),
+        JSON.stringify({ error: "Too many properties to optimize at once (max 20)." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -107,7 +198,7 @@ Deno.serve(async (req) => {
       normalized.map((p, i) => `${i + 1}. ID: ${p.id} - ${p.fullAddress}`).join("\n"),
     );
 
-    // Use the existing geocoder function (same one the map uses) for better hit-rate.
+    // Use the existing geocoder function for address -> coords
     const ORIGIN_ID = "__origin__";
     const addressesPayload = [
       ...(typeof startingPoint === "string" && startingPoint.trim()
@@ -135,16 +226,15 @@ Deno.serve(async (req) => {
       coordsById.set(r.id, { lat: r.lat, lon: r.lng });
     }
 
+    const hasOrigin = coordsById.has(ORIGIN_ID);
     const originCoords = coordsById.get(ORIGIN_ID) || null;
 
     const geocoded = normalized.filter((p) => coordsById.has(p.id));
-    const ungeocodedIdsInOriginalOrder = normalized
-      .filter((p) => !coordsById.has(p.id))
-      .map((p) => p.id);
+    const ungeocodedIds = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.id);
 
     console.log(
       `Geocoded ${geocoded.length}/${normalized.length} properties` +
-        (ungeocodedIdsInOriginalOrder.length ? `; missing: ${ungeocodedIdsInOriginalOrder.join(", ")}` : ""),
+        (ungeocodedIds.length ? `; missing: ${ungeocodedIds.join(", ")}` : ""),
     );
 
     if (geocoded.length < 2) {
@@ -155,44 +245,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Nearest-neighbor route (deterministic tie-breakers)
-    const remaining = [...geocoded].sort((a, b) => a.id.localeCompare(b.id));
+    // Build coordinate list for OSRM: origin (if any) + geocoded properties
+    const osrmCoords: Coordinates[] = [];
+    const idxToId: string[] = [];
 
-    const route: PropertyInput[] = [];
-
-    // Determine the first stop
-    if (originCoords) {
-      remaining.sort((a, b) => {
-        const da = haversineDistanceKm(originCoords!, coordsById.get(a.id)!);
-        const db = haversineDistanceKm(originCoords!, coordsById.get(b.id)!);
-        if (da !== db) return da - db;
-        return a.id.localeCompare(b.id);
-      });
-      route.push(remaining.shift()!);
-    } else {
-      // No starting point: keep the current first property as start to avoid surprising users
-      const firstId = (properties as PropertyInput[])[0]?.id;
-      const idx = firstId ? remaining.findIndex((p) => p.id === firstId) : -1;
-      if (idx >= 0) route.push(remaining.splice(idx, 1)[0]);
-      else route.push(remaining.shift()!);
+    if (hasOrigin && originCoords) {
+      osrmCoords.push(originCoords);
+      idxToId.push(ORIGIN_ID);
     }
 
-    while (remaining.length) {
-      const current = route[route.length - 1];
-      const currentCoords = coordsById.get(current.id)!;
-
-      remaining.sort((a, b) => {
-        const da = haversineDistanceKm(currentCoords, coordsById.get(a.id)!);
-        const db = haversineDistanceKm(currentCoords, coordsById.get(b.id)!);
-        if (da !== db) return da - db;
-        return a.id.localeCompare(b.id);
-      });
-
-      route.push(remaining.shift()!);
+    for (const p of geocoded) {
+      osrmCoords.push(coordsById.get(p.id)!);
+      idxToId.push(p.id);
     }
 
-    // Append ungeocoded properties at the end in their original order (deterministic + transparent)
-    const optimizedOrder = [...route.map((p) => p.id), ...ungeocodedIdsInOriginalOrder];
+    // Get driving time matrix from OSRM
+    const durations = await getOSRMDurationMatrix(osrmCoords);
+
+    if (!durations) {
+      console.warn("OSRM failed; falling back to original order");
+      return new Response(
+        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Run nearest-neighbor starting from origin index (0 if origin, else first property)
+    const startIdx = hasOrigin ? 0 : 0;
+    let route = nearestNeighborTSP(durations, startIdx);
+
+    // Apply 2-opt improvement (round trip)
+    route = twoOptImprove(route, durations, true);
+
+    // Convert indices to property IDs (exclude origin marker)
+    const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID);
+
+    // Append ungeocoded properties at the end
+    const optimizedOrder = [...orderedIds, ...ungeocodedIds];
+
+    console.log("Optimized order:", optimizedOrder.join(" → "));
 
     return new Response(JSON.stringify({ optimizedOrder }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
