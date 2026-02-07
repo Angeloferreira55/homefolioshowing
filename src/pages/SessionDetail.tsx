@@ -51,6 +51,7 @@ import { sendNotificationEmail } from '@/hooks/useNotifications';
 import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
 import { Card } from '@/components/ui/card';
 import RoutePreviewMap from '@/components/showings/RoutePreviewMap';
+import RoutePreviewMapBoundary from '@/components/showings/RoutePreviewMapBoundary';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -981,15 +982,22 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 strategy={verticalListSortingStrategy}
               >
                 {routeCoordinates.length > 0 && (
-                  <RoutePreviewMap
-                    routeCoordinates={routeCoordinates}
-                    properties={properties}
-                    legDurations={legDurations}
+                  <RoutePreviewMapBoundary
                     onClose={() => {
                       setRouteCoordinates([]);
                       setLegDurations([]);
                     }}
-                  />
+                  >
+                    <RoutePreviewMap
+                      routeCoordinates={routeCoordinates}
+                      properties={properties}
+                      legDurations={legDurations}
+                      onClose={() => {
+                        setRouteCoordinates([]);
+                        setLegDurations([]);
+                      }}
+                    />
+                  </RoutePreviewMapBoundary>
                 )}
                 <div className="space-y-3 sm:space-y-4">
                   {properties.map((property, index) => (
