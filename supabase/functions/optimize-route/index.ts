@@ -68,17 +68,27 @@ Deno.serve(async (req) => {
       return `${i + 1}. ID: ${p.id} - ${fullAddress}`;
     }).join("\n");
 
-    const systemPrompt = `You are a route optimization assistant. Given a list of property addresses, determine the optimal driving order to minimize total travel distance and time. Consider geographical proximity and logical routing patterns.
+    const systemPrompt = `You are a route optimization assistant that minimizes total driving distance using the Traveling Salesman Problem approach.
 
-You must respond with ONLY a JSON array of property IDs in the optimal visiting order. No explanation, no other text - just the JSON array.
+RULES:
+1. Analyze the geographical locations of all addresses
+2. Calculate the optimal route that minimizes TOTAL TRAVEL DISTANCE
+3. Use nearest-neighbor heuristic: from each location, go to the closest unvisited location
+4. Consider the starting point if provided, otherwise start from the first property
+5. Account for actual road geography (cities in same area should be grouped)
 
-Example response format: ["id1", "id2", "id3"]`;
+CRITICAL: You must be DETERMINISTIC. Given the same addresses, ALWAYS return the EXACT same order.
 
-    const userPrompt = `Optimize the driving route for visiting these properties${startingPoint ? ` starting from: ${startingPoint}` : ''}:
+Respond with ONLY a JSON array of property IDs in optimal order. No explanation.`;
+
+    const userPrompt = `Optimize this driving route to minimize total distance${startingPoint ? `. Starting from: ${startingPoint}` : ''}:
 
 ${addressList}
 
-Return ONLY a JSON array of the property IDs in optimal visiting order.`;
+Apply nearest-neighbor algorithm: from each stop, visit the closest unvisited property next.
+Return ONLY a JSON array of property IDs in the optimal order.`;
+
+    console.log('Optimizing route for properties:', addressList);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -88,6 +98,7 @@ Return ONLY a JSON array of the property IDs in optimal visiting order.`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
+        temperature: 0,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
