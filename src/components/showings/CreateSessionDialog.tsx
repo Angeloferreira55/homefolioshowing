@@ -48,6 +48,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [sharePassword, setSharePassword] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +93,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
     setErrors({});
     setPasswordEnabled(false);
     setSharePassword('');
+    setDatePickerOpen(false);
   };
 
   const handleGenerateCode = () => {
@@ -135,7 +137,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
 
           <div className="space-y-2">
             <Label>Session Date</Label>
-            <Popover>
+            <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -152,8 +154,12 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
                 <Calendar
                   mode="single"
                   selected={sessionDate}
-                  onSelect={setSessionDate}
+                  onSelect={(date) => {
+                    setSessionDate(date);
+                    setDatePickerOpen(false);
+                  }}
                   initialFocus
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
