@@ -348,7 +348,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
         onOpenChange(isOpen);
       }
     }}>
-      <ResponsiveDialogContent className="sm:max-w-lg">
+      <ResponsiveDialogContent className="sm:max-w-2xl">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle className="font-display text-2xl">
             Bulk Import MLS Sheets
