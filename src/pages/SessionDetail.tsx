@@ -47,6 +47,7 @@ import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard
 import { BulkActionsBar } from '@/components/showings/BulkActionsBar';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { sendNotificationEmail } from '@/hooks/useNotifications';
+import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -523,7 +524,8 @@ const SessionDetail = () => {
 
   const handleShareLink = async () => {
     if (!session) return;
-    const link = `${window.location.origin}/s/${session.share_token}`;
+    const publicOrigin = getPublicShareOrigin();
+    const link = `${publicOrigin}/s/${session.share_token}`;
     const shareData = {
       title: session.title,
       text: `View ${session.client_name}'s property tour`,
