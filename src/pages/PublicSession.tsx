@@ -876,13 +876,6 @@ const PublicSession = () => {
                     </div>
                   )}
 
-                  {/* Agent's Note */}
-                  {session.notes && (
-                    <div className="bg-secondary rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4">
-                      <p className="text-xs text-muted-foreground mb-1">{agent?.full_name || 'Agent'}'s note</p>
-                      <p className="text-xs sm:text-sm text-foreground">{session.notes}</p>
-                    </div>
-                  )}
 
                   {/* Documents */}
                   {property.documents && property.documents.length > 0 && (
