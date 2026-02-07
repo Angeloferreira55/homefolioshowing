@@ -1,4 +1,4 @@
-import { Users, Home, Calendar, Share2, FileText, Route, TreePine } from 'lucide-react';
+import { Users, Home, Calendar, FileText, Route, TreePine } from 'lucide-react';
 const features = [{
   icon: Users,
   title: 'Client Hub',
@@ -11,10 +11,6 @@ const features = [{
   icon: Calendar,
   title: 'Showing Notes',
   description: 'Record showing dates, agent observations, and client feedback all in one place for each property.'
-}, {
-  icon: Share2,
-  title: 'One Living Link',
-  description: 'Share a single private link that updates in real time. Clients refresh to see new properties instantly.'
 }, {
   icon: FileText,
   title: 'Documents & Photos',
