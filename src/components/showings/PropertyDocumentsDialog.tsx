@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -63,6 +64,7 @@ const PropertyDocumentsDialog = ({
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('other');
@@ -100,11 +102,13 @@ const PropertyDocumentsDialog = ({
         toast.error('Please upload a PDF or image file');
         return;
       }
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error('File size must be less than 50MB');
+      // Limit to 20MB (platform limit)
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('File size must be less than 20MB');
         return;
       }
       setSelectedFile(file);
+      setUploadProgress(0);
       if (!docName) {
         setDocName(file.name.replace(/\.[^/.]+$/, ''));
       }
@@ -118,24 +122,50 @@ const PropertyDocumentsDialog = ({
     }
 
     setUploading(true);
+    setUploadProgress(0);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload file to storage
+      // Upload file to storage with progress tracking
       const fileExt = selectedFile.name.split('.').pop();
       const filePath = `${propertyId}/${Date.now()}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
-        .from('property-documents')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('property-documents')
-        .getPublicUrl(filePath);
+      // Use XMLHttpRequest for progress tracking since Supabase JS doesn't expose it
+      const formData = new FormData();
+      formData.append('', selectedFile);
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        });
+        
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+        
+        xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+        xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+        
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        xhr.open('POST', `${supabaseUrl}/storage/v1/object/property-documents/${filePath}`);
+        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.setRequestHeader('x-upsert', 'true');
+        xhr.send(selectedFile);
+      });
 
       // Create document record
       const { error: insertError } = await supabase
@@ -143,7 +173,7 @@ const PropertyDocumentsDialog = ({
         .insert({
           session_property_id: propertyId,
           name: docName.trim(),
-          file_url: filePath, // Store path, not full URL
+          file_url: filePath,
           doc_type: docType,
         });
 
@@ -153,6 +183,7 @@ const PropertyDocumentsDialog = ({
       setSelectedFile(null);
       setDocName('');
       setDocType('other');
+      setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
       fetchDocuments();
     } catch (error: any) {
@@ -231,7 +262,7 @@ const PropertyDocumentsDialog = ({
             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
             <p className="font-medium text-sm">Click to upload</p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF or images up to 50MB
+              PDF or images up to 20MB
             </p>
           </div>
         ) : (
@@ -292,7 +323,7 @@ const PropertyDocumentsDialog = ({
               {uploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
+                  Uploading... {uploadProgress}%
                 </>
               ) : (
                 <>
@@ -301,6 +332,10 @@ const PropertyDocumentsDialog = ({
                 </>
               )}
             </Button>
+            
+            {uploading && (
+              <Progress value={uploadProgress} className="h-2" />
+            )}
           </div>
         )}
       </div>
