@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     const userId = claims.claims.sub;
     console.log("Authenticated user:", userId);
 
-    const { properties, startingPoint } = await req.json();
+    const { properties, startingPoint, endingPoint } = await req.json();
 
     if (!properties || !Array.isArray(properties)) {
       return new Response(JSON.stringify({ error: "properties array is required" }), {
@@ -200,11 +200,14 @@ Deno.serve(async (req) => {
 
     // Use the existing geocoder function for address -> coords
     const ORIGIN_ID = "__origin__";
+    const DEST_ID = "__destination__";
+    const hasEndingPoint = typeof endingPoint === "string" && endingPoint.trim();
     const addressesPayload = [
       ...(typeof startingPoint === "string" && startingPoint.trim()
         ? [{ id: ORIGIN_ID, address: startingPoint.trim() }]
         : []),
       ...normalized.map((p) => ({ id: p.id, address: p.fullAddress })),
+      ...(hasEndingPoint ? [{ id: DEST_ID, address: endingPoint.trim() }] : []),
     ];
 
     const { data: geoData, error: geoError } = await supabase.functions.invoke("geocode-address", {
@@ -227,7 +230,9 @@ Deno.serve(async (req) => {
     }
 
     const hasOrigin = coordsById.has(ORIGIN_ID);
+    const hasDestination = coordsById.has(DEST_ID);
     const originCoords = coordsById.get(ORIGIN_ID) || null;
+    const destCoords = coordsById.get(DEST_ID) || null;
 
     const geocoded = normalized.filter((p) => coordsById.has(p.id));
     const ungeocodedIds = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.id);
@@ -259,6 +264,12 @@ Deno.serve(async (req) => {
       idxToId.push(p.id);
     }
 
+    // Add destination if specified (different from origin)
+    if (hasDestination && destCoords) {
+      osrmCoords.push(destCoords);
+      idxToId.push(DEST_ID);
+    }
+
     // Get driving time matrix from OSRM
     const durations = await getOSRMDurationMatrix(osrmCoords);
 
@@ -274,11 +285,12 @@ Deno.serve(async (req) => {
     const startIdx = hasOrigin ? 0 : 0;
     let route = nearestNeighborTSP(durations, startIdx);
 
-    // Apply 2-opt improvement (round trip)
-    route = twoOptImprove(route, durations, true);
+    // Apply 2-opt improvement (only round trip if no explicit destination)
+    const isRoundTrip = !hasDestination;
+    route = twoOptImprove(route, durations, isRoundTrip);
 
-    // Convert indices to property IDs (exclude origin marker)
-    const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID);
+    // Convert indices to property IDs (exclude origin and destination markers)
+    const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID && id !== DEST_ID);
 
     // Append ungeocoded properties at the end
     const optimizedOrder = [...orderedIds, ...ungeocodedIds];
@@ -297,8 +309,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Add return to origin if round trip
-    if (true && route.length > 1) {
+    // Add return to origin only if round trip (no explicit destination)
+    if (isRoundTrip && route.length > 1) {
       const returnTime = durations[route[route.length - 1]][route[0]] ?? 0;
       totalSeconds += returnTime;
       legDurations.push({

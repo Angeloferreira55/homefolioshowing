@@ -123,6 +123,7 @@ const SessionDetail = () => {
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startingPoint, setStartingPoint] = useState('');
+  const [endingPoint, setEndingPoint] = useState('');
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
@@ -672,6 +673,7 @@ const SessionDetail = () => {
             zip_code: p.zip_code,
           })),
           startingPoint: startingPoint.trim() || undefined,
+          endingPoint: endingPoint.trim() || undefined,
         },
       });
 
@@ -705,6 +707,8 @@ const SessionDetail = () => {
       toast.error(error.message || 'Failed to optimize route');
     } finally {
       setIsOptimizing(false);
+      setStartingPoint('');
+      setEndingPoint('');
     }
   };
 
@@ -851,8 +855,18 @@ const SessionDetail = () => {
                       onChange={(e) => setStartingPoint(e.target.value)}
                       className="text-sm"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endingPoint" className="text-xs sm:text-sm">Ending Location (optional)</Label>
+                    <Input
+                      id="endingPoint"
+                      placeholder="e.g., 456 Oak Ave, City, State"
+                      value={endingPoint}
+                      onChange={(e) => setEndingPoint(e.target.value)}
+                      className="text-sm"
+                    />
                     <p className="text-xs text-muted-foreground">
-                      Leave empty to optimize based on property locations only.
+                      Leave empty for round-trip back to start.
                     </p>
                   </div>
                   <Button 
