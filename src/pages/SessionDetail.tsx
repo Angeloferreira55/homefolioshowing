@@ -30,6 +30,7 @@ import {
   Route,
   Upload,
   Loader2,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -520,6 +521,42 @@ const SessionDetail = () => {
     }
   };
 
+  const handleShareLink = async () => {
+    if (!session) return;
+    const link = `${window.location.origin}/s/${session.share_token}`;
+    const shareData = {
+      title: session.title,
+      text: `View ${session.client_name}'s property tour`,
+      url: link,
+    };
+
+    if (navigator.share && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        // Track share event
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          trackEvent({
+            eventType: 'session_share',
+            sessionId: session.id,
+            adminId: user.id,
+            metadata: { client_name: session.client_name, method: 'native_share' },
+          });
+        }
+      } catch (err) {
+        // User cancelled or share failed - fall back to copy
+        if ((err as Error).name !== 'AbortError') {
+          navigator.clipboard.writeText(link);
+          toast.success('Link copied to clipboard!');
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(link);
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
   const handleDeleteSession = async () => {
     try {
       const { error } = await supabase
@@ -724,6 +761,15 @@ const SessionDetail = () => {
             >
               <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Copy Link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
+              onClick={handleShareLink}
+            >
+              <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Share
             </Button>
             <Button
               variant="outline"
