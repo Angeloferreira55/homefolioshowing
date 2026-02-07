@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface PropertyInput {
@@ -13,6 +14,64 @@ interface PropertyInput {
   zip_code: string | null;
 }
 
+interface Coordinates {
+  lat: number;
+  lon: number;
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
+function haversineDistanceKm(a: Coordinates, b: Coordinates): number {
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  return R * c;
+}
+
+function buildFullAddress(p: { address: string; city?: string | null; state?: string | null; zip_code?: string | null }) {
+  return [p.address, p.city, p.state, p.zip_code].filter(Boolean).join(", ");
+}
+
+async function geocodeAddress(address: string): Promise<Coordinates | null> {
+  try {
+    const encoded = encodeURIComponent(address);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1`,
+      {
+        headers: {
+          "User-Agent": "HomeFolio/1.0 (Real Estate Showing App)",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      console.error(`Geocoding failed (${response.status}) for: ${address}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+      };
+    }
+
+    console.warn(`No geocoding results for: ${address}`);
+    return null;
+  } catch (err) {
+    console.error(`Geocoding error for ${address}:`, err);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,149 +79,154 @@ Deno.serve(async (req) => {
 
   try {
     // Validate authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
     });
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claims?.claims) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const userId = claims.claims.sub;
-    console.log('Authenticated user:', userId);
+    console.log("Authenticated user:", userId);
 
     const { properties, startingPoint } = await req.json();
-    
-    if (!properties || properties.length < 2) {
+
+    if (!properties || !Array.isArray(properties)) {
+      return new Response(JSON.stringify({ error: "properties array is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (properties.length < 2) {
       return new Response(
-        JSON.stringify({ optimizedOrder: properties?.map((p: PropertyInput) => p.id) || [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ optimizedOrder: properties.map((p: PropertyInput) => p.id) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // Keep requests bounded (Nominatim policy + user experience)
+    if (properties.length > 20) {
+      return new Response(
+        JSON.stringify({
+          error: "Too many properties to optimize at once (max 20).",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    // Format addresses for the AI
-    const addressList = properties.map((p: PropertyInput, i: number) => {
-      const fullAddress = [p.address, p.city, p.state, p.zip_code]
-        .filter(Boolean)
-        .join(", ");
-      return `${i + 1}. ID: ${p.id} - ${fullAddress}`;
-    }).join("\n");
+    const normalized = (properties as PropertyInput[]).map((p) => ({
+      ...p,
+      fullAddress: buildFullAddress(p),
+    }));
 
-    const systemPrompt = `You are a route optimization assistant that minimizes total driving distance using the Traveling Salesman Problem approach.
-
-RULES:
-1. Analyze the geographical locations of all addresses
-2. Calculate the optimal route that minimizes TOTAL TRAVEL DISTANCE
-3. Use nearest-neighbor heuristic: from each location, go to the closest unvisited location
-4. Consider the starting point if provided, otherwise start from the first property
-5. Account for actual road geography (cities in same area should be grouped)
-
-CRITICAL: You must be DETERMINISTIC. Given the same addresses, ALWAYS return the EXACT same order.
-
-Respond with ONLY a JSON array of property IDs in optimal order. No explanation.`;
-
-    const userPrompt = `Optimize this driving route to minimize total distance${startingPoint ? `. Starting from: ${startingPoint}` : ''}:
-
-${addressList}
-
-Apply nearest-neighbor algorithm: from each stop, visit the closest unvisited property next.
-Return ONLY a JSON array of property IDs in the optimal order.`;
-
-    console.log('Optimizing route for properties:', addressList);
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        temperature: 0,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds to continue." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("Failed to optimize route");
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
-    
-    // Parse the JSON array from the response
-    let optimizedOrder: string[];
-    try {
-      // Extract JSON array from response (handle potential markdown code blocks)
-      const jsonMatch = content.match(/\[[\s\S]*?\]/);
-      if (jsonMatch) {
-        optimizedOrder = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON array found in response");
-      }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      // Fallback to original order
-      optimizedOrder = properties.map((p: PropertyInput) => p.id);
-    }
-
-    // Validate that all IDs are present
-    const inputIds = new Set(properties.map((p: PropertyInput) => p.id));
-    const validOrder = optimizedOrder.filter(id => inputIds.has(id));
-    
-    // Add any missing IDs at the end
-    for (const p of properties) {
-      if (!validOrder.includes(p.id)) {
-        validOrder.push(p.id);
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ optimizedOrder: validOrder }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    console.log(
+      "Optimizing route for properties:",
+      normalized.map((p, i) => `${i + 1}. ID: ${p.id} - ${p.fullAddress}`).join("\n"),
     );
+
+    const geoCache = new Map<string, Coordinates | null>();
+    const geocodeWithCache = async (addr: string) => {
+      if (geoCache.has(addr)) return geoCache.get(addr)!;
+      const coords = await geocodeAddress(addr);
+      geoCache.set(addr, coords);
+      return coords;
+    };
+
+    // Geocode starting point (optional) + all properties deterministically, respecting rate limits.
+    const coordsById = new Map<string, Coordinates>();
+
+    let originCoords: Coordinates | null = null;
+    if (typeof startingPoint === "string" && startingPoint.trim()) {
+      originCoords = await geocodeWithCache(startingPoint.trim());
+      // Rate limit
+      await new Promise((r) => setTimeout(r, 1100));
+      if (!originCoords) console.warn("Could not geocode starting point");
+    }
+
+    for (const p of normalized) {
+      const coords = await geocodeWithCache(p.fullAddress);
+      if (coords) coordsById.set(p.id, coords);
+      // Rate limit between calls
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+
+    const geocoded = normalized.filter((p) => coordsById.has(p.id));
+    const ungeocoded = normalized.filter((p) => !coordsById.has(p.id));
+
+    if (geocoded.length < 2) {
+      console.warn("Not enough geocoded properties to optimize; returning original order");
+      return new Response(
+        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Nearest-neighbor route (deterministic tie-breakers)
+    const remaining = [...geocoded].sort((a, b) => a.id.localeCompare(b.id));
+
+    const route: PropertyInput[] = [];
+
+    // Determine the first stop
+    if (originCoords) {
+      remaining.sort((a, b) => {
+        const da = haversineDistanceKm(originCoords!, coordsById.get(a.id)!);
+        const db = haversineDistanceKm(originCoords!, coordsById.get(b.id)!);
+        if (da !== db) return da - db;
+        return a.id.localeCompare(b.id);
+      });
+      route.push(remaining.shift()!);
+    } else {
+      // No starting point: keep the current first property as start to avoid surprising users
+      const firstId = (properties as PropertyInput[])[0]?.id;
+      const idx = firstId ? remaining.findIndex((p) => p.id === firstId) : -1;
+      if (idx >= 0) route.push(remaining.splice(idx, 1)[0]);
+      else route.push(remaining.shift()!);
+    }
+
+    while (remaining.length) {
+      const current = route[route.length - 1];
+      const currentCoords = coordsById.get(current.id)!;
+
+      remaining.sort((a, b) => {
+        const da = haversineDistanceKm(currentCoords, coordsById.get(a.id)!);
+        const db = haversineDistanceKm(currentCoords, coordsById.get(b.id)!);
+        if (da !== db) return da - db;
+        return a.id.localeCompare(b.id);
+      });
+
+      route.push(remaining.shift()!);
+    }
+
+    // Append ungeocoded properties at the end in their original order (deterministic + transparent)
+    const ungeocodedIdsInOriginalOrder = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.id);
+
+    const optimizedOrder = [...route.map((p) => p.id), ...ungeocodedIdsInOriginalOrder];
+
+    return new Response(JSON.stringify({ optimizedOrder }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Route optimization error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
