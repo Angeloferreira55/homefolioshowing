@@ -134,7 +134,7 @@ export default function PublicPropertyDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="fixed inset-0 left-0 top-0 translate-x-0 translate-y-0 z-50 max-w-3xl p-0 overflow-hidden h-[100dvh] w-full gap-0 rounded-none [&>button.absolute.right-4.top-4]:hidden sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-auto sm:max-h-[90vh] sm:w-auto sm:rounded-lg sm:inset-auto data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:slide-in-from-bottom-2">
+        <DialogContent className="w-[95vw] max-w-3xl p-0 overflow-hidden gap-0 max-h-[90vh] sm:rounded-lg">
           <DialogHeader className="sr-only">
             <DialogTitle>Property details</DialogTitle>
           </DialogHeader>
