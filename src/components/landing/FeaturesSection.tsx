@@ -1,4 +1,4 @@
-import { Users, Home, Calendar, Share2, FileText, RefreshCw, Route, Columns, TreePine } from 'lucide-react';
+import { Users, Home, Calendar, Share2, FileText, Route, TreePine } from 'lucide-react';
 const features = [{
   icon: Users,
   title: 'Client Hub',
@@ -20,17 +20,9 @@ const features = [{
   title: 'Documents & Photos',
   description: 'Attach MLS PDFs, disclosures, and high-quality photos to each property for complete information.'
 }, {
-  icon: RefreshCw,
-  title: 'Real-Time Updates',
-  description: 'Update your client\'s Homefolio anytime. Properties can be added, removed, or reordered with ease.'
-}, {
   icon: Route,
   title: 'Route Optimization',
   description: 'Plan efficient showing routes for multiple properties. Save time and maximize your client visits.'
-}, {
-  icon: Columns,
-  title: 'Property Comparisons',
-  description: 'Let clients compare homes side by side. View price, size, and features at a glance to make decisions easier.'
 }, {
   icon: TreePine,
   title: 'Save a Tree, Save Money',
