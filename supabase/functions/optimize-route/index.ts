@@ -38,55 +38,6 @@ function buildFullAddress(p: { address: string; city?: string | null; state?: st
   return [p.address, p.city, p.state, p.zip_code].filter(Boolean).join(", ");
 }
 
-async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  const userAgent = "HomeFolio/1.0 (https://homefolioshowing.lovable.app)";
-
-  // Nominatim can be picky about formatting; try a few deterministic variants.
-  const variants = [
-    address,
-    `${address}, USA`,
-    address.replace(/\s*,\s*/g, " "),
-  ];
-
-  for (const query of variants) {
-    try {
-      const encoded = encodeURIComponent(query);
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1&countrycodes=us`,
-        {
-          headers: {
-            "User-Agent": userAgent,
-            Accept: "application/json",
-            "Accept-Language": "en-US,en;q=0.9",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        console.error(`Geocoding failed (${response.status}) for: ${query}`);
-        continue;
-      }
-
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return {
-          lat: parseFloat(data[0].lat),
-          lon: parseFloat(data[0].lon),
-        };
-      }
-
-      console.warn(`No geocoding results for: ${query}`);
-    } catch (err) {
-      console.error(`Geocoding error for ${query}:`, err);
-    }
-
-    // Small delay between variant attempts
-    await new Promise((r) => setTimeout(r, 250));
-  }
-
-  return null;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -136,7 +87,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Keep requests bounded (Nominatim policy + user experience)
+    // Keep requests bounded (geocoding policy + user experience)
     if (properties.length > 20) {
       return new Response(
         JSON.stringify({
@@ -156,34 +107,45 @@ Deno.serve(async (req) => {
       normalized.map((p, i) => `${i + 1}. ID: ${p.id} - ${p.fullAddress}`).join("\n"),
     );
 
-    const geoCache = new Map<string, Coordinates | null>();
-    const geocodeWithCache = async (addr: string) => {
-      if (geoCache.has(addr)) return geoCache.get(addr)!;
-      const coords = await geocodeAddress(addr);
-      geoCache.set(addr, coords);
-      return coords;
-    };
+    // Use the existing geocoder function (same one the map uses) for better hit-rate.
+    const ORIGIN_ID = "__origin__";
+    const addressesPayload = [
+      ...(typeof startingPoint === "string" && startingPoint.trim()
+        ? [{ id: ORIGIN_ID, address: startingPoint.trim() }]
+        : []),
+      ...normalized.map((p) => ({ id: p.id, address: p.fullAddress })),
+    ];
 
-    // Geocode starting point (optional) + all properties deterministically, respecting rate limits.
+    const { data: geoData, error: geoError } = await supabase.functions.invoke("geocode-address", {
+      body: { addresses: addressesPayload },
+    });
+
+    if (geoError || geoData?.error) {
+      console.error("Geocoding function error:", geoError || geoData?.error);
+      return new Response(
+        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const coordsById = new Map<string, Coordinates>();
-
-    let originCoords: Coordinates | null = null;
-    if (typeof startingPoint === "string" && startingPoint.trim()) {
-      originCoords = await geocodeWithCache(startingPoint.trim());
-      // Rate limit
-      await new Promise((r) => setTimeout(r, 1100));
-      if (!originCoords) console.warn("Could not geocode starting point");
+    const results = Array.isArray(geoData?.results) ? geoData.results : [];
+    for (const r of results) {
+      if (!r?.id || typeof r.lat !== "number" || typeof r.lng !== "number") continue;
+      coordsById.set(r.id, { lat: r.lat, lon: r.lng });
     }
 
-    for (const p of normalized) {
-      const coords = await geocodeWithCache(p.fullAddress);
-      if (coords) coordsById.set(p.id, coords);
-      // Rate limit between calls
-      await new Promise((r) => setTimeout(r, 1100));
-    }
+    const originCoords = coordsById.get(ORIGIN_ID) || null;
 
     const geocoded = normalized.filter((p) => coordsById.has(p.id));
-    const ungeocoded = normalized.filter((p) => !coordsById.has(p.id));
+    const ungeocodedIdsInOriginalOrder = normalized
+      .filter((p) => !coordsById.has(p.id))
+      .map((p) => p.id);
+
+    console.log(
+      `Geocoded ${geocoded.length}/${normalized.length} properties` +
+        (ungeocodedIdsInOriginalOrder.length ? `; missing: ${ungeocodedIdsInOriginalOrder.join(", ")}` : ""),
+    );
 
     if (geocoded.length < 2) {
       console.warn("Not enough geocoded properties to optimize; returning original order");
@@ -230,8 +192,6 @@ Deno.serve(async (req) => {
     }
 
     // Append ungeocoded properties at the end in their original order (deterministic + transparent)
-    const ungeocodedIdsInOriginalOrder = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.id);
-
     const optimizedOrder = [...route.map((p) => p.id), ...ungeocodedIdsInOriginalOrder];
 
     return new Response(JSON.stringify({ optimizedOrder }), {
