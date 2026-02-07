@@ -7,8 +7,8 @@
  * published domain.
  */
 
-const PUBLISHED_ORIGIN_FALLBACK = 'https://homefolio-central-link.lovable.app';
-const PUBLISHED_HOSTNAME = 'homefolio-central-link.lovable.app';
+const PUBLISHED_ORIGIN_FALLBACK = 'https://homefolioshowing.lovable.app';
+const PUBLISHED_HOSTNAME = 'homefolioshowing.lovable.app';
 
 const isEditorOrPreviewHost = (hostname: string) => {
   // The published production domain is NOT an editor/preview host
