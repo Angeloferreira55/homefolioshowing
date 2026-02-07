@@ -39,37 +39,52 @@ function buildFullAddress(p: { address: string; city?: string | null; state?: st
 }
 
 async function geocodeAddress(address: string): Promise<Coordinates | null> {
-  try {
-    const encoded = encodeURIComponent(address);
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1`,
-      {
-        headers: {
-          "User-Agent": "HomeFolio/1.0 (Real Estate Showing App)",
-          Accept: "application/json",
+  const userAgent = "HomeFolio/1.0 (https://homefolioshowing.lovable.app)";
+
+  // Nominatim can be picky about formatting; try a few deterministic variants.
+  const variants = [
+    address,
+    `${address}, USA`,
+    address.replace(/\s*,\s*/g, " "),
+  ];
+
+  for (const query of variants) {
+    try {
+      const encoded = encodeURIComponent(query);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1&countrycodes=us`,
+        {
+          headers: {
+            "User-Agent": userAgent,
+            Accept: "application/json",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
         },
-      },
-    );
+      );
 
-    if (!response.ok) {
-      console.error(`Geocoding failed (${response.status}) for: ${address}`);
-      return null;
+      if (!response.ok) {
+        console.error(`Geocoding failed (${response.status}) for: ${query}`);
+        continue;
+      }
+
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+        };
+      }
+
+      console.warn(`No geocoding results for: ${query}`);
+    } catch (err) {
+      console.error(`Geocoding error for ${query}:`, err);
     }
 
-    const data = await response.json();
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
-      };
-    }
-
-    console.warn(`No geocoding results for: ${address}`);
-    return null;
-  } catch (err) {
-    console.error(`Geocoding error for ${address}:`, err);
-    return null;
+    // Small delay between variant attempts
+    await new Promise((r) => setTimeout(r, 250));
   }
+
+  return null;
 }
 
 Deno.serve(async (req) => {
