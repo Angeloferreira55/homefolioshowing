@@ -70,7 +70,9 @@ const PropertyDocumentsDialog = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('other');
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const { upload, uploading, progress: uploadProgress, reset: resetUpload } = useFileUpload();
 
@@ -97,22 +99,49 @@ const PropertyDocumentsDialog = ({
     }
   };
 
+  const validateAndSetFile = (file: File) => {
+    if (!VALID_FILE_TYPES.includes(file.type)) {
+      toast.error('Please upload a PDF or image file (PDF, JPG, PNG, WebP)');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast.error(`File size must be less than ${MAX_FILE_SIZE_MB}MB`);
+      return;
+    }
+    setSelectedFile(file);
+    resetUpload();
+    if (!docName) {
+      setDocName(file.name.replace(/\.[^/.]+$/, ''));
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!VALID_FILE_TYPES.includes(file.type)) {
-        toast.error('Please upload a PDF or image file (PDF, JPG, PNG, WebP)');
-        return;
-      }
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        toast.error(`File size must be less than ${MAX_FILE_SIZE_MB}MB`);
-        return;
-      }
-      setSelectedFile(file);
-      resetUpload();
-      if (!docName) {
-        setDocName(file.name.replace(/\.[^/.]+$/, ''));
-      }
+      validateAndSetFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      validateAndSetFile(files[0]);
     }
   };
 
@@ -224,11 +253,21 @@ const PropertyDocumentsDialog = ({
 
         {!selectedFile ? (
           <div
+            ref={dropZoneRef}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+              isDragging
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-primary/50'
+            }`}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="font-medium text-sm">Click to upload</p>
+            <p className="font-medium text-sm">
+              {isDragging ? 'Drop your file here' : 'Click to upload or drag and drop'}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
               PDF or images up to 20MB
             </p>
