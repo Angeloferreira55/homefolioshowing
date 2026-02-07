@@ -40,7 +40,7 @@ const createNumberedIcon = (number: number, isSpecial?: boolean) =>
     className: "custom-marker",
     html: `
       <div style="
-        background-color: ${isSpecial ? 'hsl(142, 76%, 36%)' : 'hsl(var(--primary))'};
+        background-color: ${isSpecial ? '#16a34a' : '#2563eb'};
         color: white;
         width: 32px;
         height: 32px;
@@ -66,7 +66,7 @@ const createSpecialIcon = (label: string) =>
     className: "custom-marker",
     html: `
       <div style="
-        background-color: hsl(142, 76%, 36%);
+        background-color: #16a34a;
         color: white;
         padding: 4px 10px;
         border-radius: 9999px;
@@ -125,7 +125,9 @@ export default function RoutePreviewMap({
   onClose,
 }: RoutePreviewMapProps) {
   const routePositions = useMemo((): [number, number][] => {
-    return routeCoordinates.map((c) => [c.lat, c.lng]);
+    return routeCoordinates
+      .filter((c) => typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng))
+      .map((c) => [c.lat, c.lng]);
   }, [routeCoordinates]);
 
   const totalSeconds = useMemo(() => {
@@ -173,7 +175,7 @@ export default function RoutePreviewMap({
           <Polyline
             positions={routePositions}
             pathOptions={{
-              color: "hsl(var(--primary))",
+              color: "#2563eb",
               weight: 4,
               opacity: 0.8,
             }}
