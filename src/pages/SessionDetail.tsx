@@ -125,8 +125,8 @@ const SessionDetail = () => {
   const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [startingAddress, setStartingAddress] = useState({ street: '', city: '', state: '' });
-  const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state: '' });
+const [startingAddress, setStartingAddress] = useState({ street: '', city: '', state: '', zip: '' });
+const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state: '', zip: '' });
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [legDurations, setLegDurations] = useState<Array<{ from: string; to: string; seconds: number }>>([]);
@@ -633,7 +633,7 @@ const SessionDetail = () => {
     const encodedAddresses = addresses.map(addr => encodeURIComponent(addr));
     
     // If there's a starting point, use it as origin
-    const startingPointStr = [startingAddress.street, startingAddress.city, startingAddress.state].filter(Boolean).join(', ');
+    const startingPointStr = [startingAddress.street, startingAddress.city, startingAddress.state, startingAddress.zip].filter(Boolean).join(', ');
     if (startingPointStr) {
       const origin = encodeURIComponent(startingPointStr);
       // All properties become waypoints, last one is destination
@@ -679,8 +679,8 @@ const SessionDetail = () => {
             state: p.state,
             zip_code: p.zip_code,
           })),
-          startingPoint: [startingAddress.street, startingAddress.city, startingAddress.state].filter(Boolean).join(', ') || undefined,
-          endingPoint: [endingAddress.street, endingAddress.city, endingAddress.state].filter(Boolean).join(', ') || undefined,
+          startingPoint: [startingAddress.street, startingAddress.city, startingAddress.state, startingAddress.zip].filter(Boolean).join(', ') || undefined,
+          endingPoint: [endingAddress.street, endingAddress.city, endingAddress.state, endingAddress.zip].filter(Boolean).join(', ') || undefined,
         },
       });
 
@@ -719,8 +719,8 @@ const SessionDetail = () => {
       toast.error(error.message || 'Failed to optimize route');
     } finally {
       setIsOptimizing(false);
-      setStartingAddress({ street: '', city: '', state: '' });
-      setEndingAddress({ street: '', city: '', state: '' });
+      setStartingAddress({ street: '', city: '', state: '', zip: '' });
+      setEndingAddress({ street: '', city: '', state: '', zip: '' });
     }
   };
 
@@ -868,7 +868,7 @@ const SessionDetail = () => {
                           onChange={(e) => setStartingAddress(prev => ({ ...prev, street: e.target.value }))}
                           className="text-sm"
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <Input
                             placeholder="City"
                             value={startingAddress.city}
@@ -879,6 +879,12 @@ const SessionDetail = () => {
                             placeholder="State"
                             value={startingAddress.state}
                             onChange={(e) => setStartingAddress(prev => ({ ...prev, state: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            placeholder="Zip"
+                            value={startingAddress.zip}
+                            onChange={(e) => setStartingAddress(prev => ({ ...prev, zip: e.target.value }))}
                             className="text-sm"
                           />
                         </div>
@@ -893,7 +899,7 @@ const SessionDetail = () => {
                           onChange={(e) => setEndingAddress(prev => ({ ...prev, street: e.target.value }))}
                           className="text-sm"
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <Input
                             placeholder="City"
                             value={endingAddress.city}
@@ -904,6 +910,12 @@ const SessionDetail = () => {
                             placeholder="State"
                             value={endingAddress.state}
                             onChange={(e) => setEndingAddress(prev => ({ ...prev, state: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            placeholder="Zip"
+                            value={endingAddress.zip}
+                            onChange={(e) => setEndingAddress(prev => ({ ...prev, zip: e.target.value }))}
                             className="text-sm"
                           />
                         </div>

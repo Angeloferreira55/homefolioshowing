@@ -125,20 +125,26 @@ export default function RoutePreviewMap({
   onClose,
 }: RoutePreviewMapProps) {
   const routePositions = useMemo((): [number, number][] => {
+    if (!Array.isArray(routeCoordinates)) return [];
     return routeCoordinates
-      .filter((c) => typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng))
+      .filter((c) => c && typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng))
       .map((c) => [c.lat, c.lng]);
   }, [routeCoordinates]);
 
   const totalSeconds = useMemo(() => {
-    return legDurations.reduce((sum, leg) => sum + leg.seconds, 0);
+    if (!Array.isArray(legDurations)) return 0;
+    return legDurations.reduce((sum, leg) => sum + (leg?.seconds || 0), 0);
   }, [legDurations]);
 
-  const propertyCount = routeCoordinates.filter(
-    (c) => c.id !== "__origin__" && c.id !== "__destination__"
-  ).length;
+  const propertyCount = useMemo(() => {
+    if (!Array.isArray(routeCoordinates)) return 0;
+    return routeCoordinates.filter(
+      (c) => c && c.id !== "__origin__" && c.id !== "__destination__"
+    ).length;
+  }, [routeCoordinates]);
 
-  if (routeCoordinates.length === 0) {
+  // Safety check - don't render if we have no valid coordinates
+  if (!Array.isArray(routeCoordinates) || routeCoordinates.length === 0 || routePositions.length === 0) {
     return null;
   }
 
