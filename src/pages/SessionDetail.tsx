@@ -134,6 +134,7 @@ const SessionDetail = () => {
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -700,6 +701,7 @@ const SessionDetail = () => {
       const routeCoords = data.routeCoordinates || [];
       setLegDurations(routeLegDurations);
       setRouteCoordinates(routeCoords);
+      setIsRoutePopoverOpen(false); // Close popover after success
       toast.success(`Route optimized! Total drive time: ${timeStr}`);
       const updates = optimizedOrder.map((propId, newIndex) => 
         supabase
@@ -831,7 +833,7 @@ const SessionDetail = () => {
           
           {/* Secondary actions row */}
           <div className="flex flex-wrap gap-2">
-            <Popover>
+            <Popover open={isRoutePopoverOpen} onOpenChange={setIsRoutePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button 
                   variant="outline" 
