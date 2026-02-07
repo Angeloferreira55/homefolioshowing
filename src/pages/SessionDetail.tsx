@@ -122,8 +122,8 @@ const SessionDetail = () => {
   const [docsPropertyId, setDocsPropertyId] = useState<string | null>(null);
   const [docsPropertyAddress, setDocsPropertyAddress] = useState('');
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [startingPoint, setStartingPoint] = useState('');
-  const [endingPoint, setEndingPoint] = useState('');
+  const [startingAddress, setStartingAddress] = useState({ street: '', city: '', state: '' });
+  const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state: '' });
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
@@ -627,8 +627,9 @@ const SessionDetail = () => {
     const encodedAddresses = addresses.map(addr => encodeURIComponent(addr));
     
     // If there's a starting point, use it as origin
-    if (startingPoint.trim()) {
-      const origin = encodeURIComponent(startingPoint.trim());
+    const startingPointStr = [startingAddress.street, startingAddress.city, startingAddress.state].filter(Boolean).join(', ');
+    if (startingPointStr) {
+      const origin = encodeURIComponent(startingPointStr);
       // All properties become waypoints, last one is destination
       if (encodedAddresses.length === 1) {
         return `https://www.google.com/maps/dir/${origin}/${encodedAddresses[0]}`;
@@ -672,8 +673,8 @@ const SessionDetail = () => {
             state: p.state,
             zip_code: p.zip_code,
           })),
-          startingPoint: startingPoint.trim() || undefined,
-          endingPoint: endingPoint.trim() || undefined,
+          startingPoint: [startingAddress.street, startingAddress.city, startingAddress.state].filter(Boolean).join(', ') || undefined,
+          endingPoint: [endingAddress.street, endingAddress.city, endingAddress.state].filter(Boolean).join(', ') || undefined,
         },
       });
 
@@ -707,8 +708,8 @@ const SessionDetail = () => {
       toast.error(error.message || 'Failed to optimize route');
     } finally {
       setIsOptimizing(false);
-      setStartingPoint('');
-      setEndingPoint('');
+      setStartingAddress({ street: '', city: '', state: '' });
+      setEndingAddress({ street: '', city: '', state: '' });
     }
   };
 
@@ -846,28 +847,60 @@ const SessionDetail = () => {
                       Reorder properties for the most efficient driving route.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="startingPoint" className="text-xs sm:text-sm">Starting Location (optional)</Label>
-                    <Input
-                      id="startingPoint"
-                      placeholder="e.g., 123 Main St, City, State"
-                      value={startingPoint}
-                      onChange={(e) => setStartingPoint(e.target.value)}
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endingPoint" className="text-xs sm:text-sm">Ending Location (optional)</Label>
-                    <Input
-                      id="endingPoint"
-                      placeholder="e.g., 456 Oak Ave, City, State"
-                      value={endingPoint}
-                      onChange={(e) => setEndingPoint(e.target.value)}
-                      className="text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Leave empty for round-trip back to start.
-                    </p>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs sm:text-sm font-medium">Starting Location (optional)</Label>
+                      <div className="grid grid-cols-1 gap-2 mt-1.5">
+                        <Input
+                          placeholder="Street address"
+                          value={startingAddress.street}
+                          onChange={(e) => setStartingAddress(prev => ({ ...prev, street: e.target.value }))}
+                          className="text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="City"
+                            value={startingAddress.city}
+                            onChange={(e) => setStartingAddress(prev => ({ ...prev, city: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            placeholder="State"
+                            value={startingAddress.state}
+                            onChange={(e) => setStartingAddress(prev => ({ ...prev, state: e.target.value }))}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm font-medium">Ending Location (optional)</Label>
+                      <div className="grid grid-cols-1 gap-2 mt-1.5">
+                        <Input
+                          placeholder="Street address"
+                          value={endingAddress.street}
+                          onChange={(e) => setEndingAddress(prev => ({ ...prev, street: e.target.value }))}
+                          className="text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="City"
+                            value={endingAddress.city}
+                            onChange={(e) => setEndingAddress(prev => ({ ...prev, city: e.target.value }))}
+                            className="text-sm"
+                          />
+                          <Input
+                            placeholder="State"
+                            value={endingAddress.state}
+                            onChange={(e) => setEndingAddress(prev => ({ ...prev, state: e.target.value }))}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Leave empty for round-trip back to start.
+                      </p>
+                    </div>
                   </div>
                   <Button 
                     className="w-full gap-2 h-10" 
