@@ -47,9 +47,10 @@ interface BulkMLSImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (properties: PropertyData[]) => void;
+  existingAddresses?: string[];
 }
 
-const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDialogProps) => {
+const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses = [] }: BulkMLSImportDialogProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
@@ -291,10 +292,37 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport }: BulkMLSImportDial
       return;
     }
 
-    onImport(allProperties);
+    // Normalize addresses for comparison (lowercase, trim whitespace)
+    const normalizeAddress = (addr: string) => addr.toLowerCase().trim();
+    const existingNormalized = new Set(existingAddresses.map(normalizeAddress));
+
+    // Filter out duplicates
+    const newProperties: PropertyData[] = [];
+    const duplicates: string[] = [];
+
+    allProperties.forEach(prop => {
+      if (existingNormalized.has(normalizeAddress(prop.address))) {
+        duplicates.push(prop.address);
+      } else {
+        newProperties.push(prop);
+        // Also add to set to prevent duplicates within the same import batch
+        existingNormalized.add(normalizeAddress(prop.address));
+      }
+    });
+
+    if (newProperties.length === 0) {
+      toast.error('All properties already exist in this session');
+      return;
+    }
+
+    if (duplicates.length > 0) {
+      toast.warning(`${duplicates.length} propert${duplicates.length > 1 ? 'ies' : 'y'} already added to this session`);
+    }
+
+    onImport(newProperties);
     clearAllFiles();
     onOpenChange(false);
-    toast.success(`Imported ${allProperties.length} propert${allProperties.length > 1 ? 'ies' : 'y'}!`);
+    toast.success(`Imported ${newProperties.length} propert${newProperties.length > 1 ? 'ies' : 'y'}!`);
   };
 
   const getSuccessfulPropertyCount = () => {

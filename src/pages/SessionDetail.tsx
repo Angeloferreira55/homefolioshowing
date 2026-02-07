@@ -1103,6 +1103,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         open={isBulkImportOpen}
         onOpenChange={setIsBulkImportOpen}
         onImport={handleAddMultipleProperties}
+        existingAddresses={properties.map(p => p.address)}
       />
     </AdminLayout>
   );
