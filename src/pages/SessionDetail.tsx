@@ -28,6 +28,7 @@ import {
   Plus,
   ExternalLink,
   Route,
+  ChevronDown,
   Upload,
   Loader2,
   Share2,
@@ -48,6 +49,7 @@ import { BulkActionsBar } from '@/components/showings/BulkActionsBar';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { sendNotificationEmail } from '@/hooks/useNotifications';
 import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
+import { Card } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,6 +128,7 @@ const SessionDetail = () => {
   const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state: '' });
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
+  const [legDurations, setLegDurations] = useState<Array<{ from: string; to: string; seconds: number }>>([]);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -691,6 +694,8 @@ const SessionDetail = () => {
       const totalHours = Math.floor(totalSeconds / 3600);
       const remainingMinutes = Math.round((totalSeconds % 3600) / 60);
       const timeStr = totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${totalMinutes}m`;
+      const routeLegDurations = data.legDurations || [];
+      setLegDurations(routeLegDurations);
       toast.success(`Route optimized! Total drive time: ${timeStr}`);
       const updates = optimizedOrder.map((propId, newIndex) => 
         supabase
@@ -957,6 +962,26 @@ const SessionDetail = () => {
                 items={properties.map((p) => p.id)}
                 strategy={verticalListSortingStrategy}
               >
+                {legDurations.length > 0 && (
+                  <Card className="border-primary/20 bg-primary/5 p-4">
+                    <h3 className="text-sm font-semibold mb-3">Route Leg Times</h3>
+                    <div className="space-y-2 text-sm max-h-60 overflow-y-auto">
+                      {legDurations.map((leg, idx) => {
+                        const fromProp = properties.find(p => p.id === leg.from);
+                        const toProp = properties.find(p => p.id === leg.to);
+                        const fromLabel = fromProp ? `#${fromProp.order_index + 1}` : (leg.from === '__origin__' ? 'Start' : 'Prop');
+                        const toLabel = toProp ? `#${toProp.order_index + 1}` : (leg.to === '__destination__' ? 'End' : 'Prop');
+                        const mins = Math.round(leg.seconds / 60);
+                        return (
+                          <div key={idx} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+                            <span className="text-muted-foreground">{fromLabel} → {toLabel}</span>
+                            <span className="font-semibold text-primary">{mins}m</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                )}
                 <div className="space-y-3 sm:space-y-4">
                   {properties.map((property, index) => (
                     <SortablePropertyCard
