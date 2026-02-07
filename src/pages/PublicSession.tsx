@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -19,6 +19,7 @@ import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { useBuyerFavorites } from '@/hooks/useBuyerFavorites';
 import logoImage from '@/assets/homefolio-logo.png';
+import { logError } from '@/lib/errorLogger';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -67,7 +68,10 @@ const PublicSession = () => {
   const [agent, setAgent] = useState<AgentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [ratings, setRatings] = useState<Record<string, PropertyRating>>({});
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 2;
   
   // Password protection state
   const [requiresPassword, setRequiresPassword] = useState(false);
@@ -124,86 +128,9 @@ const PublicSession = () => {
     }
   };
 
-  useEffect(() => {
-    if (token) {
-      checkPasswordProtection();
-    }
-  }, [token]);
-
-  const checkPasswordProtection = async () => {
-    try {
-      // First check if session exists using public view
-      const { data: sessionExists, error: sessionError } = await supabase
-        .from('public_session_info')
-        .select('id')
-        .eq('share_token', token)
-        .maybeSingle();
-
-      if (sessionError || !sessionExists) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      // Check if password is required using secure RPC function
-      const { data: requiresPass, error: passError } = await supabase
-        .rpc('check_session_password_required', { p_share_token: token });
-
-      if (passError) {
-        console.error('Error checking password requirement:', passError);
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      if (requiresPass) {
-        // Check if we have cached access
-        if (getCachedAccess()) {
-          setAccessGranted(true);
-          fetchSession();
-        } else {
-          setRequiresPassword(true);
-          setLoading(false);
-        }
-      } else {
-        // No password required, fetch the full session
-        setAccessGranted(true);
-        fetchSession();
-      }
-    } catch (error) {
-      setNotFound(true);
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (password: string) => {
-    setIsVerifying(true);
-    setPasswordError(null);
-
-    try {
-      const { data, error } = await supabase
-        .rpc('verify_share_access', { p_share_token: token, p_password: password });
-
-      if (error) throw error;
-
-      if (data) {
-        // Cache access for 2 hours
-        setCachedAccess();
-        setAccessGranted(true);
-        setRequiresPassword(false);
-        setLoading(true);
-        fetchSession();
-      } else {
-        setPasswordError('Invalid access code. Please try again.');
-      }
-    } catch (error) {
-      setPasswordError('Something went wrong. Please try again.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const fetchSession = async () => {
+  const fetchSession = useCallback(async (attempt = 0) => {
+    setLoadError(null);
+    
     try {
       // Use secure RPC function that excludes client contact info
       const { data: sessionResult, error: sessionError } = await supabase
@@ -211,19 +138,31 @@ const PublicSession = () => {
 
       const sessionData = sessionResult?.[0];
 
-      if (sessionError || !sessionData) {
+      if (sessionError) {
+        logError(sessionError, { context: 'PublicSession.fetchSession', token, attempt });
+        throw sessionError;
+      }
+
+      if (!sessionData) {
+        // Session truly doesn't exist
         setNotFound(true);
+        setLoading(false);
         return;
       }
 
       setSession(sessionData);
 
       // Fetch agent profile from public view (excludes sensitive data like license_number, MLS credentials)
-      const { data: agentData } = await supabase
+      const { data: agentData, error: agentError } = await supabase
         .from('public_agent_profile')
         .select('full_name, avatar_url, slogan, bio, phone, email, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url')
         .eq('user_id', sessionData.admin_id)
         .maybeSingle();
+
+      if (agentError) {
+        logError(agentError, { context: 'PublicSession.fetchAgent', adminId: sessionData.admin_id });
+        // Non-critical - continue without agent data
+      }
 
       if (agentData) {
         setAgent(agentData as unknown as AgentProfile);
@@ -236,27 +175,42 @@ const PublicSession = () => {
         .eq('session_id', sessionData.id)
         .order('order_index', { ascending: true });
 
-      if (propsError) throw propsError;
+      if (propsError) {
+        logError(propsError, { context: 'PublicSession.fetchProperties', sessionId: sessionData.id });
+        throw propsError;
+      }
 
       // Fetch documents for all properties
       const propertyIds = (propertiesData || []).map(p => p.id);
       
       // Fetch documents and client photos in parallel
       const [docsResult, photosResult] = await Promise.all([
-        supabase
-          .from('property_documents')
-          .select('id, name, doc_type, file_url, session_property_id')
-          .in('session_property_id', propertyIds),
-        supabase
-          .from('client_photos')
-          .select('id, file_url, caption, created_at, session_property_id')
-          .in('session_property_id', propertyIds)
-          .order('created_at', { ascending: false })
+        propertyIds.length > 0 
+          ? supabase
+              .from('property_documents')
+              .select('id, name, doc_type, file_url, session_property_id')
+              .in('session_property_id', propertyIds)
+          : Promise.resolve({ data: [], error: null }),
+        propertyIds.length > 0
+          ? supabase
+              .from('client_photos')
+              .select('id, file_url, caption, created_at, session_property_id')
+              .in('session_property_id', propertyIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null })
       ]);
+
+      // Log but don't fail on document/photo errors
+      if (docsResult.error) {
+        logError(docsResult.error, { context: 'PublicSession.fetchDocuments' });
+      }
+      if (photosResult.error) {
+        logError(photosResult.error, { context: 'PublicSession.fetchPhotos' });
+      }
 
       // Group documents by property
       const docsByProperty: Record<string, PropertyDocument[]> = {};
-      docsResult.data?.forEach(doc => {
+      (docsResult.data || []).forEach(doc => {
         if (!docsByProperty[doc.session_property_id]) {
           docsByProperty[doc.session_property_id] = [];
         }
@@ -265,7 +219,7 @@ const PublicSession = () => {
 
       // Group client photos by property
       const photosByProperty: Record<string, ClientPhoto[]> = {};
-      photosResult.data?.forEach(photo => {
+      (photosResult.data || []).forEach(photo => {
         if (!photosByProperty[photo.session_property_id]) {
           photosByProperty[photo.session_property_id] = [];
         }
@@ -286,27 +240,34 @@ const PublicSession = () => {
       setProperties(propertiesWithExtras);
 
       // Fetch existing ratings with feedback
-      const { data: ratingsData } = await supabase
-        .from('property_ratings')
-        .select('session_property_id, rating, feedback')
-        .in('session_property_id', (propertiesData || []).map(p => p.id));
+      if (propertyIds.length > 0) {
+        const { data: ratingsData, error: ratingsError } = await supabase
+          .from('property_ratings')
+          .select('session_property_id, rating, feedback')
+          .in('session_property_id', propertyIds);
 
-      const ratingsMap: Record<string, PropertyRating> = {};
-      ratingsData?.forEach(r => {
-        let parsedFeedback: FeedbackData = {};
-        if (r.feedback) {
-          try {
-            parsedFeedback = JSON.parse(r.feedback);
-          } catch {
-            parsedFeedback = {};
-          }
+        if (ratingsError) {
+          logError(ratingsError, { context: 'PublicSession.fetchRatings' });
+          // Non-critical - continue without ratings
         }
-        ratingsMap[r.session_property_id] = {
-          rating: r.rating || 5,
-          feedback: parsedFeedback,
-        };
-      });
-      setRatings(ratingsMap);
+
+        const ratingsMap: Record<string, PropertyRating> = {};
+        (ratingsData || []).forEach(r => {
+          let parsedFeedback: FeedbackData = {};
+          if (r.feedback) {
+            try {
+              parsedFeedback = JSON.parse(r.feedback);
+            } catch {
+              parsedFeedback = {};
+            }
+          }
+          ratingsMap[r.session_property_id] = {
+            rating: r.rating || 5,
+            feedback: parsedFeedback,
+          };
+        });
+        setRatings(ratingsMap);
+      }
 
       // Track session view
       trackEvent({
@@ -316,10 +277,136 @@ const PublicSession = () => {
         metadata: { client_name: sessionData.client_name },
       });
 
-    } catch (error) {
-      toast.error('Failed to load session');
-    } finally {
+      // Success - reset retry count
+      setRetryCount(0);
       setLoading(false);
+
+    } catch (error) {
+      logError(error, { context: 'PublicSession.fetchSession', token, attempt });
+      
+      // Retry logic for network errors
+      if (attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s
+        setTimeout(() => {
+          setRetryCount(attempt + 1);
+          fetchSession(attempt + 1);
+        }, delay);
+        return;
+      }
+      
+      // Max retries reached
+      setLoadError('Unable to load session. Please check your connection and try again.');
+      setLoading(false);
+    }
+  }, [token]);
+
+  const checkPasswordProtection = useCallback(async (attempt = 0) => {
+    try {
+      // First check if session exists using public view
+      const { data: sessionExists, error: sessionError } = await supabase
+        .from('public_session_info')
+        .select('id')
+        .eq('share_token', token)
+        .maybeSingle();
+
+      if (sessionError) {
+        logError(sessionError, { context: 'PublicSession.checkPasswordProtection', token, attempt });
+        
+        // Retry on network errors
+        if (attempt < MAX_RETRIES) {
+          const delay = Math.pow(2, attempt) * 1000;
+          setTimeout(() => checkPasswordProtection(attempt + 1), delay);
+          return;
+        }
+        
+        setLoadError('Unable to verify session. Please check your connection.');
+        setLoading(false);
+        return;
+      }
+
+      if (!sessionExists) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // Check if password is required using secure RPC function
+      const { data: requiresPass, error: passError } = await supabase
+        .rpc('check_session_password_required', { p_share_token: token });
+
+      if (passError) {
+        logError(passError, { context: 'PublicSession.checkPassword', token });
+        
+        // Retry on network errors
+        if (attempt < MAX_RETRIES) {
+          const delay = Math.pow(2, attempt) * 1000;
+          setTimeout(() => checkPasswordProtection(attempt + 1), delay);
+          return;
+        }
+        
+        setLoadError('Unable to verify session access. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      if (requiresPass) {
+        // Check if we have cached access
+        if (getCachedAccess()) {
+          setAccessGranted(true);
+          fetchSession(0);
+        } else {
+          setRequiresPassword(true);
+          setLoading(false);
+        }
+      } else {
+        // No password required, fetch the full session
+        setAccessGranted(true);
+        fetchSession(0);
+      }
+    } catch (error) {
+      logError(error, { context: 'PublicSession.checkPasswordProtection', token, attempt });
+      
+      if (attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt) * 1000;
+        setTimeout(() => checkPasswordProtection(attempt + 1), delay);
+        return;
+      }
+      
+      setLoadError('Unable to load session. Please check your connection and try again.');
+      setLoading(false);
+    }
+  }, [token, fetchSession]);
+
+  useEffect(() => {
+    if (token) {
+      checkPasswordProtection(0);
+    }
+  }, [token, checkPasswordProtection]);
+
+  const handlePasswordSubmit = async (password: string) => {
+    setIsVerifying(true);
+    setPasswordError(null);
+
+    try {
+      const { data, error } = await supabase
+        .rpc('verify_share_access', { p_share_token: token, p_password: password });
+
+      if (error) throw error;
+
+      if (data) {
+        // Cache access for 2 hours
+        setCachedAccess();
+        setAccessGranted(true);
+        setRequiresPassword(false);
+        setLoading(true);
+        fetchSession(0);
+      } else {
+        setPasswordError('Invalid access code. Please try again.');
+      }
+    } catch (error) {
+      setPasswordError('Something went wrong. Please try again.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -491,6 +578,41 @@ const PublicSession = () => {
 
   if (loading) {
     return <PublicSessionSkeleton />;
+  }
+
+  // Show error state with retry option
+  if (loadError && !session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <RefreshCw className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-foreground mb-2">
+            Connection Issue
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            {loadError}
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button 
+              onClick={() => {
+                setLoading(true);
+                setLoadError(null);
+                fetchSession(0);
+              }}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </Button>
+            <Link to="/">
+              <Button variant="outline" className="w-full">Go to Home</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (notFound || !session) {
