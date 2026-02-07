@@ -1,11 +1,14 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logNetworkError, logAuthError } from '@/lib/errorLogger';
+import { calculateBackoff, sleep, isRetryableError } from '@/lib/networkRetry';
 
 interface UploadOptions {
   bucket: string;
   path: string;
   file: File;
   maxRetries?: number;
+  timeoutMs?: number;
   onProgress?: (percent: number) => void;
 }
 
@@ -23,7 +26,8 @@ export const useFileUpload = () => {
     bucket,
     path,
     file,
-    maxRetries = 1,
+    maxRetries = 2,
+    timeoutMs = 60000,
     onProgress,
   }: UploadOptions): Promise<UploadResult> => {
     setUploading(true);
@@ -42,7 +46,9 @@ export const useFileUpload = () => {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !sessionData.session) {
-          throw new Error('Please sign in to upload files');
+          const authError = new Error('Please sign in to upload files');
+          logAuthError(authError, { component: 'useFileUpload', action: 'getSession' });
+          throw authError;
         }
 
         const accessToken = sessionData.session.access_token;
@@ -50,12 +56,16 @@ export const useFileUpload = () => {
 
         if (attempt > 0) {
           // Wait before retry with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          const delay = calculateBackoff(attempt - 1, 1000, 10000);
+          await sleep(delay);
           updateProgress(0);
         }
 
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
+
+          // Set timeout
+          xhr.timeout = timeoutMs;
 
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
@@ -81,9 +91,6 @@ export const useFileUpload = () => {
 
           xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
           xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
-          
-          // Timeout after 60 seconds
-          xhr.timeout = 60000;
           xhr.addEventListener('timeout', () => reject(new Error('Upload timed out')));
 
           xhr.open('POST', `${supabaseUrl}/storage/v1/object/${bucket}/${path}`);
@@ -96,10 +103,26 @@ export const useFileUpload = () => {
         return { success: true, path };
       } catch (error: any) {
         lastError = error;
-        console.error(`Upload attempt ${attempt + 1} failed:`, error.message);
+        
+        const willRetry = attempt < maxRetries && isRetryableError(error);
+        
+        logNetworkError(error, {
+          component: 'useFileUpload',
+          action: 'upload',
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+          willRetry,
+          url: `${bucket}/${path}`,
+          method: 'POST',
+        });
         
         // Don't retry on auth errors
         if (error.message.includes('sign in') || error.message.includes('401')) {
+          break;
+        }
+
+        // Don't retry on non-retryable errors
+        if (!willRetry) {
           break;
         }
       }

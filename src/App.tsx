@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 import InstallPromptBanner from "@/components/InstallPromptBanner";
+import OfflineIndicator from "@/components/OfflineIndicator";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
 import Dashboard from "./pages/Dashboard";
@@ -37,6 +38,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <InstallPromptBanner />
+        <OfflineIndicator />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
