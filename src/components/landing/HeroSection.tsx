@@ -34,7 +34,7 @@ const HeroSection = () => {
                 <path d="M2 10C50 4 150 4 198 10" stroke="hsl(210 65% 28%)" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </span>
-            {' '}built for agents,
+            {' '}built by agents,
             <br />
             for their clients.
           </h1>
