@@ -28,15 +28,15 @@ const HeroSection = () => {
 
           {/* Headline */}
           <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary-foreground mb-4 sm:mb-6 animate-slide-up opacity-0 stagger-1 leading-tight">
-            One Client.{' '}
             <span className="relative inline-block">
-              One Link.
+              One Link
               <svg className="absolute -bottom-1 sm:-bottom-2 left-0 w-full" viewBox="0 0 200 12" fill="none">
                 <path d="M2 10C50 4 150 4 198 10" stroke="hsl(210 65% 28%)" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </span>
+            {' '}managed by you
             <br />
-            Every Home.
+            for your clients.
           </h1>
 
           {/* Subheadline */}
