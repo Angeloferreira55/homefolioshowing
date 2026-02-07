@@ -124,12 +124,21 @@ export default function RoutePreviewMap({
   legDurations,
   onClose,
 }: RoutePreviewMapProps) {
-  const routePositions = useMemo((): [number, number][] => {
+  const safeRouteCoordinates = useMemo((): RouteCoordinate[] => {
     if (!Array.isArray(routeCoordinates)) return [];
-    return routeCoordinates
-      .filter((c) => c && typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng))
-      .map((c) => [c.lat, c.lng]);
+    return routeCoordinates.filter(
+      (c) =>
+        !!c &&
+        typeof c.lat === "number" &&
+        typeof c.lng === "number" &&
+        !Number.isNaN(c.lat) &&
+        !Number.isNaN(c.lng)
+    );
   }, [routeCoordinates]);
+
+  const routePositions = useMemo((): [number, number][] => {
+    return safeRouteCoordinates.map((c) => [c.lat, c.lng]);
+  }, [safeRouteCoordinates]);
 
   const totalSeconds = useMemo(() => {
     if (!Array.isArray(legDurations)) return 0;
@@ -137,14 +146,13 @@ export default function RoutePreviewMap({
   }, [legDurations]);
 
   const propertyCount = useMemo(() => {
-    if (!Array.isArray(routeCoordinates)) return 0;
-    return routeCoordinates.filter(
-      (c) => c && c.id !== "__origin__" && c.id !== "__destination__"
+    return safeRouteCoordinates.filter(
+      (c) => c.id !== "__origin__" && c.id !== "__destination__"
     ).length;
-  }, [routeCoordinates]);
+  }, [safeRouteCoordinates]);
 
   // Safety check - don't render if we have no valid coordinates
-  if (!Array.isArray(routeCoordinates) || routeCoordinates.length === 0 || routePositions.length === 0) {
+  if (safeRouteCoordinates.length === 0 || routePositions.length === 0) {
     return null;
   }
 
@@ -188,7 +196,7 @@ export default function RoutePreviewMap({
           />
         )}
 
-        {routeCoordinates.map((coord, index) => {
+        {safeRouteCoordinates.map((coord, index) => {
           const isOrigin = coord.id === "__origin__";
           const isDestination = coord.id === "__destination__";
           const property = properties.find((p) => p.id === coord.id);
@@ -211,15 +219,16 @@ export default function RoutePreviewMap({
               </div>
             );
           } else if (property) {
-            const stopNumber = routeCoordinates
+            const stopNumber = safeRouteCoordinates
               .slice(0, index)
               .filter((c) => c.id !== "__origin__" && c.id !== "__destination__")
               .length + 1;
+
             icon = createNumberedIcon(stopNumber);
-            
+
             // Find leg duration to next stop
             const nextLeg = legDurations.find((leg) => leg.from === coord.id);
-            
+
             popupContent = (
               <div className="min-w-[200px]">
                 <div className="flex items-center gap-1 mb-1">
