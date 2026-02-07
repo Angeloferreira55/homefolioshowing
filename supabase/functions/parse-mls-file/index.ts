@@ -103,11 +103,8 @@ async function processInBackground(
       const text = await fileData.text();
       extractedProperties = await parseCSVWithAI(text, lovableApiKey);
     } else if (fileType === 'pdf') {
-      // For PDFs, use a streaming approach with smaller chunks
-      const text = await extractTextFromPDF(fileData);
-      if (text) {
-        extractedProperties = await parseTextWithAI(text, lovableApiKey);
-      }
+      // Use Vision API for PDFs - handles both text and scanned/image-based PDFs
+      extractedProperties = await extractPdfWithVisionApi(fileData, lovableApiKey);
     }
 
     await serviceSupabase
@@ -138,51 +135,75 @@ async function processInBackground(
   }
 }
 
-async function extractTextFromPDF(fileData: Blob): Promise<string | null> {
-  // Convert PDF to text by reading as array buffer and extracting readable content
-  // This is a simplified approach that works for text-based PDFs
+async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<PropertyData[]> {
+  console.log('Processing PDF with Vision API...');
+  
   try {
     const arrayBuffer = await fileData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     
-    // Try to extract text content from PDF (basic extraction)
-    let text = '';
-    let inTextObject = false;
-    let textContent = '';
-    
-    for (let i = 0; i < bytes.length - 1; i++) {
-      // Look for text markers in PDF
-      if (bytes[i] === 66 && bytes[i + 1] === 84) { // 'BT' - Begin Text
-        inTextObject = true;
-      } else if (bytes[i] === 69 && bytes[i + 1] === 84) { // 'ET' - End Text
-        inTextObject = false;
-        text += textContent + ' ';
-        textContent = '';
-      } else if (inTextObject) {
-        const char = bytes[i];
-        if (char >= 32 && char <= 126) {
-          textContent += String.fromCharCode(char);
-        }
-      }
+    // Convert to base64
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
     }
+    const base64Pdf = btoa(binary);
     
-    // Also try to get any readable ASCII content
-    let readableText = '';
-    for (let i = 0; i < bytes.length; i++) {
-      const char = bytes[i];
-      if ((char >= 32 && char <= 126) || char === 10 || char === 13) {
-        readableText += String.fromCharCode(char);
-      }
+    console.log(`PDF size: ${bytes.length} bytes, base64 length: ${base64Pdf.length}`);
+    
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: extractionPrompt },
+          { 
+            role: 'user', 
+            content: [
+              { 
+                type: 'text', 
+                text: 'Extract all property data from this MLS document. This may be a scanned PDF, so use OCR if needed to read all the text including prices, bedrooms, bathrooms, square footage, and all other property details.' 
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:application/pdf;base64,${base64Pdf}`
+                }
+              }
+            ]
+          }
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Vision API error:', errorText);
+      return [];
     }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '[]';
     
-    // Return the longer of the two extractions
-    const result = text.length > readableText.length / 2 ? text : readableText;
+    console.log('Vision API response received, parsing...');
     
-    // Limit to prevent memory issues - take first 50KB of text
-    return result.substring(0, 50000);
+    try {
+      const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+      return JSON.parse(cleanContent);
+    } catch {
+      console.error('Failed to parse Vision API response:', content.substring(0, 500));
+      return [];
+    }
   } catch (error) {
-    console.error('Error extracting text from PDF:', error);
-    return null;
+    console.error('Error in Vision API extraction:', error);
+    return [];
   }
 }
 
