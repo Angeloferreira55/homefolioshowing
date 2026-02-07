@@ -34,38 +34,53 @@ interface PropertyData {
   features?: string[];
 }
 
-const extractionPrompt = `You are an MLS document parser. Extract property listing data from the provided document.
+const extractionPrompt = `You are an expert MLS document parser. Your job is to extract ALL property listing data from MLS sheets with high accuracy.
 
-Return a JSON array with one object per property. Each object should have these fields (use null for missing values):
+CRITICAL INSTRUCTIONS:
+1. Look CAREFULLY at the entire document for each data point
+2. Numbers like price, beds, baths, sqft are ALWAYS present - search thoroughly
+3. Price is usually prominent (e.g., "$499,000" or "List Price: 499000")
+4. Bedrooms/Baths often shown as "3 BR / 2 BA" or "Beds: 3, Baths: 2" or in a grid
+5. Square footage may be labeled "Sq Ft", "Living Area", "SqFt", "Approx SqFt"
+6. If a value appears multiple times, use the most specific/detailed one
 
+Return a JSON array with one object per property. Use these EXACT field names:
+
+REQUIRED FIELDS (search thoroughly, these should almost always be found):
+- address: string (street address only, e.g., "123 Main Street NE")
+- city: string (city name)
+- state: string (2-letter abbreviation, e.g., "NM", "TX")
+- zipCode: string (5-digit zip code)
+- price: number (list price as integer, e.g., 499000 not "$499,000")
+- beds: number (total bedrooms as integer)
+- baths: number (total bathrooms, can be decimal like 2.5)
+- sqft: number (living area square footage as integer)
+
+ADDITIONAL FIELDS (extract if present, use null if not found):
 - mlsNumber: string (MLS listing number/ID)
-- address: string (street address only, no city/state/zip)
-- city: string
-- state: string (2-letter abbreviation)
-- zipCode: string
-- price: number (list price, just the number)
 - propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse")
 - daysOnMarket: number (DOM or CDOM value)
-- beds: number (total bedrooms)
-- baths: number (total bathrooms)
-- sqft: number (living area square footage)
-- yearBuilt: number (year the property was built)
+- yearBuilt: number (4-digit year, e.g., 1985)
 - pricePerSqft: number (price per square foot)
-- lotSizeAcres: number (lot size in acres)
+- lotSizeAcres: number (lot size in acres, convert from sqft if needed: sqft/43560)
 - garageSpaces: number (number of garage spaces)
 - roof: string (roof type/material)
 - heating: string (heating type)
 - cooling: string (cooling type)
 - taxAnnualAmount: number (annual tax amount)
-- hasHoa: boolean (true if there's an HOA/Association)
+- hasHoa: boolean (true if HOA/Association mentioned)
 - hoaFee: number (HOA fee amount if applicable)
 - hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
-- hasPid: boolean (true if PID is present/listed)
-- publicRemarks: string (full public remarks/description)
-- summary: string (generate 3-5 bullet points highlighting KEY selling features from the public remarks and property details, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
-- features: string[] (array of notable interior/exterior features mentioned, e.g., ["Hardwood Floors", "Gourmet Kitchen", "Pool"])
+- hasPid: boolean (true if PID/Special assessment is present)
+- publicRemarks: string (full public remarks/description text)
+- summary: string (generate 3-5 bullet points highlighting KEY selling features, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
+- features: string[] (array of notable features, e.g., ["Hardwood Floors", "Updated Kitchen", "Pool"])
 
-Return ONLY valid JSON array, no markdown or explanation.`;
+IMPORTANT:
+- Return ONLY a valid JSON array, no markdown code blocks or explanation
+- Each property is a separate object in the array
+- Use null for truly missing values, but try hard to find the required fields
+- Clean numeric values: remove $ and commas (e.g., "$499,000" → 499000)`;
 
 async function processInBackground(
   jobId: string,
@@ -135,6 +150,52 @@ async function processInBackground(
   }
 }
 
+async function validateAndNormalizeProperties(properties: PropertyData[]): Promise<PropertyData[]> {
+  return properties.map((prop, index) => {
+    const normalized = { ...prop };
+    
+    // Log extraction completeness for debugging
+    const requiredFields = ['address', 'price', 'beds', 'baths', 'sqft'];
+    const missingRequired = requiredFields.filter(field => 
+      normalized[field as keyof PropertyData] === null || 
+      normalized[field as keyof PropertyData] === undefined
+    );
+    
+    if (missingRequired.length > 0) {
+      console.warn(`Property ${index + 1} (${normalized.address || 'unknown'}): Missing required fields: ${missingRequired.join(', ')}`);
+    }
+    
+    // Normalize price - ensure it's a clean number
+    if (typeof normalized.price === 'string') {
+      normalized.price = parseInt(String(normalized.price).replace(/[$,]/g, ''), 10) || undefined;
+    }
+    
+    // Normalize beds/baths - ensure they're numbers
+    if (typeof normalized.beds === 'string') {
+      normalized.beds = parseInt(normalized.beds, 10) || undefined;
+    }
+    if (typeof normalized.baths === 'string') {
+      normalized.baths = parseFloat(normalized.baths) || undefined;
+    }
+    
+    // Normalize sqft
+    if (typeof normalized.sqft === 'string') {
+      normalized.sqft = parseInt(String(normalized.sqft).replace(/,/g, ''), 10) || undefined;
+    }
+    
+    // Normalize yearBuilt
+    if (typeof normalized.yearBuilt === 'string') {
+      normalized.yearBuilt = parseInt(normalized.yearBuilt, 10) || undefined;
+    }
+    
+    // Log successful extraction
+    const extractedCount = Object.values(normalized).filter(v => v !== null && v !== undefined).length;
+    console.log(`Property ${index + 1}: Extracted ${extractedCount} fields - ${normalized.address || 'No address'}, $${normalized.price || 'N/A'}, ${normalized.beds || '?'}bd/${normalized.baths || '?'}ba, ${normalized.sqft || '?'}sqft`);
+    
+    return normalized;
+  });
+}
+
 async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<PropertyData[]> {
   console.log('Processing PDF with Vision API...');
   
@@ -168,7 +229,7 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
             content: [
               { 
                 type: 'text', 
-                text: 'Extract all property data from this MLS document. This may be a scanned PDF, so use OCR if needed to read all the text including prices, bedrooms, bathrooms, square footage, and all other property details.' 
+                text: 'Extract ALL property data from this MLS document. Pay special attention to: PRICE (list price), BEDROOMS, BATHROOMS, and SQUARE FOOTAGE. These fields are critical and almost always present in MLS sheets. Look for labels like "List Price:", "BR/BA:", "Sq Ft:", "Living Area:", etc. Use OCR if this is a scanned document.' 
               },
               {
                 type: 'image_url',
@@ -193,10 +254,14 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
     const content = data.choices?.[0]?.message?.content || '[]';
     
     console.log('Vision API response received, parsing...');
+    console.log('Raw AI response preview:', content.substring(0, 500));
     
     try {
       const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-      return JSON.parse(cleanContent);
+      const rawProperties = JSON.parse(cleanContent);
+      
+      // Validate and normalize the extracted properties
+      return await validateAndNormalizeProperties(rawProperties);
     } catch {
       console.error('Failed to parse Vision API response:', content.substring(0, 500));
       return [];
