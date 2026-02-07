@@ -26,8 +26,9 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, FileText, Trash2, ExternalLink, Loader2, File } from 'lucide-react';
+import { Upload, FileText, Trash2, ExternalLink, Loader2, File, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 interface PropertyDocument {
   id: string;
@@ -55,6 +56,9 @@ const DOC_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
+const MAX_FILE_SIZE_MB = 20;
+const VALID_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
 const PropertyDocumentsDialog = ({
   open,
   onOpenChange,
@@ -63,13 +67,12 @@ const PropertyDocumentsDialog = ({
 }: PropertyDocumentsDialogProps) => {
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('other');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const { upload, uploading, progress: uploadProgress, reset: resetUpload } = useFileUpload();
 
   useEffect(() => {
     if (open && propertyId) {
@@ -97,18 +100,16 @@ const PropertyDocumentsDialog = ({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        toast.error('Please upload a PDF or image file');
+      if (!VALID_FILE_TYPES.includes(file.type)) {
+        toast.error('Please upload a PDF or image file (PDF, JPG, PNG, WebP)');
         return;
       }
-      // Limit to 20MB (platform limit)
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error('File size must be less than 20MB');
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        toast.error(`File size must be less than ${MAX_FILE_SIZE_MB}MB`);
         return;
       }
       setSelectedFile(file);
-      setUploadProgress(0);
+      resetUpload();
       if (!docName) {
         setDocName(file.name.replace(/\.[^/.]+$/, ''));
       }
@@ -121,77 +122,44 @@ const PropertyDocumentsDialog = ({
       return;
     }
 
-    setUploading(true);
-    setUploadProgress(0);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+    const fileExt = selectedFile.name.split('.').pop();
+    const filePath = `${propertyId}/${Date.now()}.${fileExt}`;
 
-      // Upload file to storage with progress tracking
-      const fileExt = selectedFile.name.split('.').pop();
-      const filePath = `${propertyId}/${Date.now()}.${fileExt}`;
-      
-      // Use XMLHttpRequest for progress tracking since Supabase JS doesn't expose it
-      const formData = new FormData();
-      formData.append('', selectedFile);
-      
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setUploadProgress(percent);
-          }
-        });
-        
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        });
-        
-        xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-        xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
-        
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        xhr.open('POST', `${supabaseUrl}/storage/v1/object/property-documents/${filePath}`);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('x-upsert', 'true');
-        xhr.send(selectedFile);
+    const result = await upload({
+      bucket: 'property-documents',
+      path: filePath,
+      file: selectedFile,
+      maxRetries: 1,
+    });
+
+    if (!result.success) {
+      toast.error(result.error || 'Failed to upload document. Please try again.');
+      return;
+    }
+
+    // Create document record
+    const { error: insertError } = await supabase
+      .from('property_documents')
+      .insert({
+        session_property_id: propertyId,
+        name: docName.trim(),
+        file_url: filePath,
+        doc_type: docType,
       });
 
-      // Create document record
-      const { error: insertError } = await supabase
-        .from('property_documents')
-        .insert({
-          session_property_id: propertyId,
-          name: docName.trim(),
-          file_url: filePath,
-          doc_type: docType,
-        });
-
-      if (insertError) throw insertError;
-
-      toast.success('Document uploaded!');
-      setSelectedFile(null);
-      setDocName('');
-      setDocType('other');
-      setUploadProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      fetchDocuments();
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload document');
-    } finally {
-      setUploading(false);
+    if (insertError) {
+      console.error('Database insert error:', insertError);
+      toast.error('File uploaded but failed to save record. Please try again.');
+      return;
     }
+
+    toast.success('Document uploaded successfully!');
+    setSelectedFile(null);
+    setDocName('');
+    setDocType('other');
+    resetUpload();
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    fetchDocuments();
   };
 
   const handleDelete = async (doc: PropertyDocument) => {
