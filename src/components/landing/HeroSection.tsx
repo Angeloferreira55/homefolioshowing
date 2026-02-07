@@ -42,6 +42,7 @@ const HeroSection = () => {
           {/* Subheadline */}
           <p className="text-base sm:text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto mb-8 sm:mb-10 animate-slide-up opacity-0 stagger-2 font-body px-2">
             HomeFolio is a private, living link for real estate professionals.
+            <br />
             Your showings updated in real time. No paper. No clutter. Just a link.
           </p>
 
