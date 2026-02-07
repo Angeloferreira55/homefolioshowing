@@ -283,11 +283,41 @@ Deno.serve(async (req) => {
     // Append ungeocoded properties at the end
     const optimizedOrder = [...orderedIds, ...ungeocodedIds];
 
-    console.log("Optimized order:", optimizedOrder.join(" → "));
+    // Calculate total driving time for the optimized route
+    let totalSeconds = 0;
+    const legDurations: Array<{ from: string; to: string; seconds: number }> = [];
 
-    return new Response(JSON.stringify({ optimizedOrder }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    for (let i = 0; i < route.length - 1; i++) {
+      const legTime = durations[route[i]][route[i + 1]] ?? 0;
+      totalSeconds += legTime;
+      legDurations.push({
+        from: idxToId[route[i]],
+        to: idxToId[route[i + 1]],
+        seconds: legTime,
+      });
+    }
+
+    // Add return to origin if round trip
+    if (true && route.length > 1) {
+      const returnTime = durations[route[route.length - 1]][route[0]] ?? 0;
+      totalSeconds += returnTime;
+      legDurations.push({
+        from: idxToId[route[route.length - 1]],
+        to: idxToId[route[0]],
+        seconds: returnTime,
+      });
+    }
+
+    console.log("Optimized order:", optimizedOrder.join(" → "), `(${Math.round(totalSeconds / 60)} min)`);
+
+    return new Response(
+      JSON.stringify({
+        optimizedOrder,
+        totalSeconds,
+        legDurations,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (error) {
     console.error("Route optimization error:", error);
     return new Response(

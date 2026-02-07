@@ -683,8 +683,12 @@ const SessionDetail = () => {
       }
 
       const optimizedOrder: string[] = data.optimizedOrder;
-      
-      // Update order_index for each property based on optimized order
+      const totalSeconds: number = data.totalSeconds || 0;
+      const totalMinutes = Math.round(totalSeconds / 60);
+      const totalHours = Math.floor(totalSeconds / 3600);
+      const remainingMinutes = Math.round((totalSeconds % 3600) / 60);
+      const timeStr = totalHours > 0 ? `${totalHours}h ${remainingMinutes}m` : `${totalMinutes}m`;
+      toast.success(`Route optimized! Total drive time: ${timeStr}`);
       const updates = optimizedOrder.map((propId, newIndex) => 
         supabase
           .from('session_properties')
