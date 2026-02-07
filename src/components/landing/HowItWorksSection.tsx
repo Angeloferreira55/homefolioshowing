@@ -40,7 +40,7 @@ const HowItWorksSection = () => {
             Simple for agents, delightful for clients
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg px-2">
-            Get started in minutes and transform how you share listings.
+            Get started in minutes and transform how you organize your showings.
           </p>
         </div>
 
