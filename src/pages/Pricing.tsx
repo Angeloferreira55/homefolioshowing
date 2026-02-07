@@ -14,7 +14,7 @@ const plans = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     features: [
-      'Up to 3 active sessions',
+      'Up to 1 active session',
       'Basic property management',
       'Client feedback collection',
       'Mobile-friendly links',
