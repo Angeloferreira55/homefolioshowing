@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   BarChart, 
   Bar, 
@@ -30,14 +32,87 @@ import {
   Activity,
   UserPlus,
   Calendar,
+  Zap,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
-import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
+import { format, subDays, startOfDay, eachDayOfInterval, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
+const eventTypeLabels: Record<string, string> = {
+  session_view: 'Session View',
+  property_view: 'Property View',
+  property_rating: 'Rating',
+  document_view: 'Document View',
+  session_share: 'Session Share',
+};
+
+const eventTypeIcons: Record<string, typeof Eye> = {
+  session_view: Eye,
+  property_view: Home,
+  property_rating: Star,
+  document_view: FileText,
+  session_share: Share2,
+};
+
 const Analytics = () => {
   const [dateRange] = useState(30);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const queryClient = useQueryClient();
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['analytics-events'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-users'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-signups'] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-recent'] });
+      setLastRefresh(new Date());
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
+  // Set up realtime subscription for live updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('analytics-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'analytics_events' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['analytics-events'] });
+          queryClient.invalidateQueries({ queryKey: ['analytics-recent'] });
+          setLastRefresh(new Date());
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'profiles' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['analytics-users'] });
+          queryClient.invalidateQueries({ queryKey: ['analytics-signups'] });
+          setLastRefresh(new Date());
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'showing_sessions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['analytics-sessions'] });
+          setLastRefresh(new Date());
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: events, isLoading } = useQuery({
     queryKey: ['analytics-events', dateRange],
@@ -52,6 +127,22 @@ const Analytics = () => {
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Recent activity (last 10 events)
+  const { data: recentActivity } = useQuery({
+    queryKey: ['analytics-recent'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('analytics_events')
+        .select('*, showing_sessions(title, client_name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
   });
 
   const { data: sessions } = useQuery({
@@ -79,6 +170,28 @@ const Analytics = () => {
     },
   });
 
+  // Fetch signups over time
+  const { data: signupData } = useQuery({
+    queryKey: ['analytics-signups', dateRange],
+    queryFn: async () => {
+      const startDate = subDays(new Date(), dateRange).toISOString();
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('created_at')
+        .gte('created_at', startDate)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Today's metrics
+  const todayStart = startOfDay(new Date()).toISOString();
+  const todayEvents = events?.filter(e => e.created_at >= todayStart) || [];
+  const todaySignups = signupData?.filter(s => s.created_at >= todayStart).length || 0;
+  const todaySessions = sessions?.filter(s => s.created_at >= todayStart).length || 0;
+
   // Calculate metrics
   const metrics = {
     totalUsers: userCount || 0,
@@ -89,9 +202,12 @@ const Analytics = () => {
     docViews: events?.filter(e => e.event_type === 'document_view').length || 0,
     shares: events?.filter(e => e.event_type === 'session_share').length || 0,
     uniqueSessions: new Set(events?.map(e => e.session_id).filter(Boolean)).size,
+    todayViews: todayEvents.filter(e => e.event_type === 'session_view').length,
+    todaySignups,
+    todaySessions,
   };
 
-  // Daily activity chart data
+  // Daily activity chart data including signups
   const dailyData = (() => {
     const days = eachDayOfInterval({
       start: subDays(new Date(), dateRange - 1),
@@ -104,12 +220,18 @@ const Analytics = () => {
         const eventDate = startOfDay(new Date(e.created_at));
         return eventDate.getTime() === dayStart.getTime();
       }) || [];
+      
+      const daySignups = signupData?.filter(s => {
+        const signupDate = startOfDay(new Date(s.created_at));
+        return signupDate.getTime() === dayStart.getTime();
+      }).length || 0;
 
       return {
         date: format(day, 'MMM d'),
         views: dayEvents.filter(e => e.event_type === 'session_view').length,
         properties: dayEvents.filter(e => e.event_type === 'property_view').length,
         ratings: dayEvents.filter(e => e.event_type === 'property_rating').length,
+        signups: daySignups,
       };
     });
   })();
@@ -144,6 +266,15 @@ const Analytics = () => {
       .slice(0, 5);
   })();
 
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['analytics-events'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics-sessions'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics-users'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics-signups'] });
+    queryClient.invalidateQueries({ queryKey: ['analytics-recent'] });
+    setLastRefresh(new Date());
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -167,11 +298,53 @@ const Analytics = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <PageHeader
-          icon={Activity}
-          title="Analytics"
-          description="Track client engagement and property performance"
-        />
+        <div className="flex items-center justify-between">
+          <PageHeader
+            icon={Activity}
+            title="Analytics"
+            description="Track client engagement and property performance"
+          />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span>Live</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Today's Highlights */}
+        <Card className="border-green-500/20 bg-green-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Zap className="w-4 h-4 text-green-500" />
+              Today's Activity
+              <Badge variant="outline" className="ml-auto text-xs">
+                <Clock className="w-3 h-3 mr-1" />
+                Updated {formatDistanceToNow(lastRefresh, { addSuffix: true })}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-2xl font-bold text-green-600">{metrics.todaySignups}</p>
+                <p className="text-xs text-muted-foreground">New Signups</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{metrics.todaySessions}</p>
+                <p className="text-xs text-muted-foreground">Sessions Created</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{metrics.todayViews}</p>
+                <p className="text-xs text-muted-foreground">Session Views</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Key Metrics - User & Session Growth */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -253,150 +426,209 @@ const Analytics = () => {
           </Card>
         </div>
 
-        {/* Charts */}
-        <Tabs defaultValue="activity" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="activity">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Activity
-            </TabsTrigger>
-            <TabsTrigger value="distribution">
-              <Activity className="w-4 h-4 mr-2" />
-              Distribution
-            </TabsTrigger>
-            <TabsTrigger value="sessions">
-              <Users className="w-4 h-4 mr-2" />
-              Top Sessions
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Charts - 2 columns */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="activity" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="activity">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Activity
+                </TabsTrigger>
+                <TabsTrigger value="distribution">
+                  <Activity className="w-4 h-4 mr-2" />
+                  Distribution
+                </TabsTrigger>
+                <TabsTrigger value="sessions">
+                  <Users className="w-4 h-4 mr-2" />
+                  Top Sessions
+                </TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <CardTitle>Daily Activity (Last {dateRange} Days)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dailyData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fontSize: 12 }}
-                        className="text-muted-foreground"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 12 }}
-                        className="text-muted-foreground"
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="views" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        name="Session Views"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="properties" 
-                        stroke="hsl(var(--chart-2))" 
-                        strokeWidth={2}
-                        name="Property Views"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="ratings" 
-                        stroke="hsl(var(--chart-3))" 
-                        strokeWidth={2}
-                        name="Ratings"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="activity">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Daily Activity (Last {dateRange} Days)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={dailyData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis 
+                            dataKey="date" 
+                            tick={{ fontSize: 12 }}
+                            className="text-muted-foreground"
+                          />
+                          <YAxis 
+                            tick={{ fontSize: 12 }}
+                            className="text-muted-foreground"
+                          />
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--card))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                            }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="signups" 
+                            stroke="hsl(var(--chart-4))" 
+                            strokeWidth={2}
+                            name="Signups"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="views" 
+                            stroke="hsl(var(--primary))" 
+                            strokeWidth={2}
+                            name="Session Views"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="properties" 
+                            stroke="hsl(var(--chart-2))" 
+                            strokeWidth={2}
+                            name="Property Views"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="ratings" 
+                            stroke="hsl(var(--chart-3))" 
+                            strokeWidth={2}
+                            name="Ratings"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          <TabsContent value="distribution">
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80 flex items-center justify-center">
-                  {eventDistribution.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={eventDistribution}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                          outerRadius={120}
-                          fill="#8884d8"
-                          dataKey="value"
+              <TabsContent value="distribution">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Event Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80 flex items-center justify-center">
+                      {eventDistribution.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={eventDistribution}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                              outerRadius={120}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {eventDistribution.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="text-muted-foreground">No events recorded yet</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="sessions">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Sessions by Engagement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      {sessionEngagement.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={sessionEngagement} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis type="number" />
+                            <YAxis 
+                              dataKey="name" 
+                              type="category" 
+                              width={100}
+                              tick={{ fontSize: 12 }}
+                            />
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '8px',
+                              }}
+                            />
+                            <Bar dataKey="events" fill="hsl(var(--primary))" radius={4} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center">
+                          <p className="text-muted-foreground">No session data yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Live Activity Feed - 1 column */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Live Activity Feed
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[400px]">
+                <div className="p-4 space-y-3">
+                  {recentActivity && recentActivity.length > 0 ? (
+                    recentActivity.map((event: any) => {
+                      const Icon = eventTypeIcons[event.event_type] || Activity;
+                      return (
+                        <div
+                          key={event.id}
+                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
                         >
-                          {eventDistribution.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Icon className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {eventTypeLabels[event.event_type] || event.event_type}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {event.showing_sessions?.client_name || 'Anonymous'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <p className="text-muted-foreground">No events recorded yet</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="sessions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Sessions by Engagement</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  {sessionEngagement.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={sessionEngagement} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis type="number" />
-                        <YAxis 
-                          dataKey="name" 
-                          type="category" 
-                          width={100}
-                          tick={{ fontSize: 12 }}
-                        />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                          }}
-                        />
-                        <Bar dataKey="events" fill="hsl(var(--primary))" radius={4} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <p className="text-muted-foreground">No session data yet</p>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No recent activity</p>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminLayout>
   );
