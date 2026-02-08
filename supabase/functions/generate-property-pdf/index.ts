@@ -264,7 +264,80 @@ serve(async (req) => {
     })}`, { size: 9, color: rgb(0.5, 0.5, 0.5) });
     drawText("Powered by HomeFolio", { size: 9, color: rgb(0.5, 0.5, 0.5) });
 
-    // Note: Documents are listed above - clients can access them via the app
+    // Bundle all uploaded documents after the summary pages
+    if (documents && documents.length > 0) {
+      for (const doc of documents) {
+        try {
+          // Generate signed URL for the document
+          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from("property-documents")
+            .createSignedUrl(doc.file_url, 60);
+
+          if (signedUrlError || !signedUrlData?.signedUrl) {
+            console.log(`Could not get signed URL for ${doc.name}:`, signedUrlError);
+            continue;
+          }
+
+          // Fetch the document
+          const response = await fetch(signedUrlData.signedUrl);
+          if (!response.ok) {
+            console.log(`Could not fetch ${doc.name}`);
+            continue;
+          }
+
+          const contentType = response.headers.get("content-type") || "";
+          const arrayBuffer = await response.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+
+          if (contentType.includes("pdf")) {
+            // Append PDF pages directly
+            try {
+              const externalPdf = await PDFDocument.load(uint8Array);
+              const pageIndices = externalPdf.getPageIndices();
+              const copiedPages = await pdfDoc.copyPages(externalPdf, pageIndices);
+              
+              for (const copiedPage of copiedPages) {
+                pdfDoc.addPage(copiedPage);
+              }
+              console.log(`Appended ${pageIndices.length} pages from ${doc.name}`);
+            } catch (pdfErr) {
+              console.log(`Could not embed PDF ${doc.name}:`, pdfErr);
+            }
+          } else if (contentType.includes("image")) {
+            // Add image as a new page
+            try {
+              let image;
+              if (contentType.includes("png")) {
+                image = await pdfDoc.embedPng(uint8Array);
+              } else if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+                image = await pdfDoc.embedJpg(uint8Array);
+              }
+
+              if (image) {
+                const imgDims = image.scale(1);
+                // Create page sized to image (max letter size)
+                const imgPageWidth = Math.min(imgDims.width, pageWidth);
+                const imgPageHeight = Math.min(imgDims.height, pageHeight);
+                const scale = Math.min(pageWidth / imgDims.width, pageHeight / imgDims.height, 1);
+                
+                const imgPage = pdfDoc.addPage([pageWidth, pageHeight]);
+                imgPage.drawImage(image, {
+                  x: (pageWidth - imgDims.width * scale) / 2,
+                  y: (pageHeight - imgDims.height * scale) / 2,
+                  width: imgDims.width * scale,
+                  height: imgDims.height * scale,
+                });
+                console.log(`Appended image ${doc.name}`);
+              }
+            } catch (imgErr) {
+              console.log(`Could not embed image ${doc.name}:`, imgErr);
+            }
+          }
+        } catch (docErr) {
+          console.log(`Error processing document ${doc.name}:`, docErr);
+        }
+      }
+    }
 
     const pdfBytes = await pdfDoc.save();
     const sanitizedAddress = property.address.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
