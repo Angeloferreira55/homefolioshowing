@@ -112,6 +112,25 @@ const Auth = () => {
           },
         });
         if (error) throw error;
+        
+        // Send signup notification
+        try {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-signup`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              email,
+              fullName: fullName || email,
+            }),
+          });
+        } catch (notifyError) {
+          console.error('Failed to send signup notification:', notifyError);
+          // Don't fail signup if notification fails
+        }
+        
         toast.success('Check your email to confirm your account!');
       }
     } catch (error: any) {

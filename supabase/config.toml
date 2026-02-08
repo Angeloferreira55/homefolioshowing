@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.spark-import]
 verify_jwt = false
+
+[functions.notify-signup]
+verify_jwt = false
