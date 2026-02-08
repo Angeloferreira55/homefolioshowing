@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -743,12 +743,21 @@ const PublicSession = () => {
             Properties ({properties.length})
           </h2>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.print()}
+              className="gap-2 text-sm print:hidden"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Print</span>
+            </Button>
             {getFavoriteCount() > 0 && (
               <Button
                 variant={showFavoritesOnly ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className="gap-2 text-sm"
+                className="gap-2 text-sm print:hidden"
               >
                 <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
                 Favorites ({getFavoriteCount()})
@@ -759,7 +768,7 @@ const PublicSession = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setCompareOpen(true)}
-                className="gap-2 text-sm"
+                className="gap-2 text-sm print:hidden"
               >
                 <Scale className="w-4 h-4" />
                 Compare
