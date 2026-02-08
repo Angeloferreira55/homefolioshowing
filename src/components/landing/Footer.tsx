@@ -1,23 +1,15 @@
 import { Link } from 'react-router-dom';
 import logoImage from '@/assets/homefolio-logo.png';
-
 const Footer = () => {
-  return (
-    <footer className="bg-primary text-primary-foreground py-10 sm:py-16 safe-area-bottom">
+  return <footer className="bg-primary text-primary-foreground py-10 sm:py-16 safe-area-bottom">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12 mb-8 sm:mb-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="inline-block mb-3 sm:mb-4">
-              <img 
-                src={logoImage} 
-                alt="HomeFolio" 
-                className="h-14 sm:h-20 w-auto brightness-0 invert"
-              />
+              <img src={logoImage} alt="HomeFolio" className="h-14 sm:h-20 w-auto brightness-0 invert" />
             </Link>
-            <p className="text-primary-foreground/70 text-sm">
-              One client. One link. Every home.
-            </p>
+            <p className="text-primary-foreground/70 text-sm">Everything your clients need, in one place they can always find.</p>
           </div>
 
           {/* Product */}
@@ -88,8 +80,6 @@ const Footer = () => {
           </p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
-
 export default Footer;
