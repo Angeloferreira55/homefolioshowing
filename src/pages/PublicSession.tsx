@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -551,6 +551,57 @@ const PublicSession = () => {
     }
   };
 
+  const handleDownloadPropertyPdf = async (property: SessionProperty) => {
+    try {
+      if (!token) {
+        toast.error('Invalid link');
+        return;
+      }
+
+      toast.loading('Generating PDF...', { id: 'pdf-gen' });
+
+      const { data, error } = await supabase.functions.invoke('generate-property-pdf', {
+        body: {
+          propertyId: property.id,
+          shareToken: token,
+        },
+      });
+
+      toast.dismiss('pdf-gen');
+
+      if (error) throw error;
+
+      // The response is a PDF blob
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const sanitizedAddress = property.address.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizedAddress}-details.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Track PDF download
+      if (session) {
+        trackEvent({
+          eventType: 'pdf_download',
+          sessionId: session.id,
+          propertyId: property.id,
+          adminId: session.admin_id,
+          metadata: { address: property.address },
+        });
+      }
+
+      toast.success('PDF downloaded!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.dismiss('pdf-gen');
+      toast.error('Failed to generate PDF');
+    }
+  };
 
   const getDocTypeLabel = (type: string | null) => {
     const labels: Record<string, string> = {
@@ -932,11 +983,11 @@ const PublicSession = () => {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 sm:gap-2 h-11 sm:h-10 text-xs sm:text-sm"
+                      className="gap-1 sm:gap-2 h-11 sm:h-10 text-xs sm:text-sm"
                       onClick={() => {
                         setDetailProperty(property);
                         setDetailOpen(true);
@@ -953,15 +1004,24 @@ const PublicSession = () => {
                       }}
                     >
                       <ExternalLink className="w-4 h-4" />
-                      VIEW DETAILS
+                      <span className="hidden xs:inline">DETAILS</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 sm:gap-2 h-11 sm:h-10 text-xs sm:text-sm print:hidden"
+                      onClick={() => handleDownloadPropertyPdf(property)}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="hidden xs:inline">PDF</span>
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 sm:gap-2 h-11 sm:h-10 bg-primary text-primary-foreground text-xs sm:text-sm"
+                      className="gap-1 sm:gap-2 h-11 sm:h-10 bg-primary text-primary-foreground text-xs sm:text-sm"
                       onClick={() => handleOpenFeedback(property)}
                     >
                       <Star className="w-4 h-4" />
-                      {ratings[property.id] ? 'EDIT RATING' : 'RATE HOME'}
+                      <span className="hidden xs:inline">{ratings[property.id] ? 'EDIT' : 'RATE'}</span>
                     </Button>
                   </div>
                 </div>
