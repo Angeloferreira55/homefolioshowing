@@ -274,3 +274,83 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Print styles for public session */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: white !important;
+  }
+
+  /* Hide interactive elements */
+  .print\\:hidden,
+  button:not(.print\\:block),
+  [role="dialog"],
+  [role="alert"],
+  .fixed,
+  nav,
+  footer {
+    display: none !important;
+  }
+
+  /* Reset backgrounds for readability */
+  .bg-primary,
+  header {
+    background: hsl(210 65% 28%) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure cards break nicely */
+  .bg-card,
+  [class*="rounded-xl"],
+  [class*="rounded-2xl"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid hsl(175 15% 88%) !important;
+  }
+
+  /* Property cards layout */
+  .space-y-6 > *,
+  .space-y-8 > * {
+    margin-bottom: 1rem !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure images print */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    break-inside: avoid;
+  }
+
+  /* Property image smaller for print */
+  [class*="aspect-"] {
+    max-height: 200px !important;
+    overflow: hidden;
+  }
+
+  /* Hide overflow on containers */
+  .overflow-hidden,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+
+  /* Ensure text is readable */
+  * {
+    color-adjust: exact !important;
+  }
+
+  /* Show URLs for links */
+  a[href]::after {
+    content: none !important;
+  }
+}
