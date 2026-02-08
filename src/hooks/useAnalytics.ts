@@ -7,7 +7,8 @@ export type AnalyticsEventType =
   | 'property_rating'
   | 'document_view'
   | 'session_share'
-  | 'photo_upload';
+  | 'photo_upload'
+  | 'pdf_download';
 
 interface TrackEventParams {
   eventType: AnalyticsEventType;

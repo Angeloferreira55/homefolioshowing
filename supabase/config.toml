@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.notify-signup]
 verify_jwt = false
+
+[functions.generate-property-pdf]
+verify_jwt = false
