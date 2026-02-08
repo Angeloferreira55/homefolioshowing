@@ -7,7 +7,7 @@ const Footer = () => {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="inline-block mb-3 sm:mb-4">
-              <img src={logoImage} alt="HomeFolio" className="h-14 sm:h-20 w-auto brightness-0 invert" />
+              <img src={logoImage} alt="HomeFolio" className="h-20 sm:h-28 w-auto brightness-0 invert" />
             </Link>
             <p className="text-primary-foreground/70 text-sm">Everything your clients need, in one place they can always find.</p>
           </div>
