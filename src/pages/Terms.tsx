@@ -89,10 +89,13 @@ const Terms = () => {
                   </li>
                   <li>
                     Upload content that infringes on intellectual property
-                    rights
+                    rights or copyrighted material
                   </li>
                   <li>
                     Transmit malware, viruses, or other harmful code
+                  </li>
+                  <li>
+                    Upload malicious, pornographic, or inappropriate content
                   </li>
                   <li>
                     Attempt to gain unauthorized access to the Service or
@@ -105,6 +108,11 @@ const Terms = () => {
                     Interfere with or disrupt the Service or servers
                   </li>
                 </ul>
+                <p className="text-muted-foreground mt-4">
+                  <strong className="text-foreground">Content Violations:</strong>{' '}
+                  HomeFolio reserves the right to suspend or terminate accounts 
+                  that violate these content policies without prior notice.
+                </p>
               </div>
 
               <div>

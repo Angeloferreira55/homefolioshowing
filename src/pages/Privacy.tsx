@@ -95,6 +95,25 @@ const Privacy = () => {
 
               <div>
                 <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+                  Client Privacy
+                </h2>
+                <p className="text-muted-foreground mb-4">
+                  <strong className="text-foreground">Important:</strong> HomeFolio 
+                  does not collect personal information from buyers or clients who 
+                  view shared Home Folios. Client contact details (name, email, phone) 
+                  are stored by the agent and are accessible exclusively to that agent—
+                  they are never shared with third parties or other users.
+                </p>
+                <p className="text-muted-foreground">
+                  When clients view a shared Home Folio link, we may collect anonymous 
+                  usage data (pages viewed, time spent) to help agents understand 
+                  engagement, but no personally identifiable information is collected 
+                  from viewers.
+                </p>
+              </div>
+
+              <div>
+                <h2 className="font-display text-2xl font-bold text-foreground mb-4">
                   Information Sharing
                 </h2>
                 <p className="text-muted-foreground mb-4">
