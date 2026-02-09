@@ -1065,7 +1065,7 @@ const PublicSession = () => {
                       }}
                     >
                       <ExternalLink className="w-4 h-4" />
-                      <span className="hidden xs:inline">See Details</span>
+                      <span>See Details</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -1074,7 +1074,7 @@ const PublicSession = () => {
                       onClick={() => handleDownloadPropertyPdf(property)}
                     >
                       <Download className="w-4 h-4" />
-                      <span className="hidden xs:inline">Download Docs</span>
+                      <span>Download Docs</span>
                     </Button>
                     <Button
                       size="sm"
@@ -1082,7 +1082,7 @@ const PublicSession = () => {
                       onClick={() => handleOpenFeedback(property)}
                     >
                       <Star className="w-4 h-4" />
-                      <span className="hidden xs:inline">Rate This Home</span>
+                      <span>Rate This Home</span>
                     </Button>
                   </div>
                 </div>
