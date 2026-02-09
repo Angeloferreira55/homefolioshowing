@@ -26,6 +26,16 @@ interface PropertyData {
   summary: string | null;
   features: string[] | null;
   order_index: number;
+  showing_time: string | null;
+}
+
+function formatShowingTime(time: string | null): string {
+  if (!time) return "";
+  const [hours, minutes] = time.split(":");
+  const h = parseInt(hours, 10);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${minutes} ${ampm}`;
 }
 
 interface DocumentData {
@@ -278,8 +288,14 @@ serve(async (req) => {
       const price = prop.price 
         ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(prop.price)
         : "";
+      const showingTime = formatShowingTime(prop.showing_time);
       
-      page.drawText(`${i + 1}. ${prop.address}`, {
+      // Address with optional showing time
+      const addressLine = showingTime 
+        ? `${i + 1}. ${prop.address}  —  ${showingTime}`
+        : `${i + 1}. ${prop.address}`;
+      
+      page.drawText(addressLine, {
         x: margin,
         y: summaryY,
         size: 11,
