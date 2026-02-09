@@ -222,9 +222,9 @@ export default function PublicPropertyDetailDialog({
                   label="Sq Ft" 
                 />
                 <StatCard 
-                  icon={<CalendarDays className="w-5 h-5" />} 
-                  value={property.year_built} 
-                  label="Built" 
+                  icon={<Tag className="w-5 h-5" />} 
+                  value={property.lot_size || '—'} 
+                  label="Lot" 
                 />
               </div>
 
@@ -240,13 +240,6 @@ export default function PublicPropertyDetailDialog({
                         icon={<CalendarDays className="w-4 h-4" />} 
                         label="Year Built" 
                         value={String(property.year_built)} 
-                      />
-                    )}
-                    {property.lot_size && (
-                      <DetailRow 
-                        icon={<Tag className="w-4 h-4" />} 
-                        label="Lot" 
-                        value={property.lot_size} 
                       />
                     )}
                     {property.price && property.sqft && (
