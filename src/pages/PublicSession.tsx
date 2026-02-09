@@ -560,22 +560,38 @@ const PublicSession = () => {
 
       toast.loading('Generating printable PDF with all documents...', { id: 'pdf-print' });
 
-      const { data, error } = await supabase.functions.invoke('generate-session-pdf', {
-        body: {
-          shareToken: token,
-        },
-      });
+      // Use fetch directly for binary response handling
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-session-pdf`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ shareToken: token }),
+        }
+      );
 
       toast.dismiss('pdf-print');
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate PDF');
+      }
 
-      // Create blob and open in new tab for printing
-      const blob = new Blob([data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      // Get the binary PDF data
+      const pdfBlob = await response.blob();
+      const url = URL.createObjectURL(pdfBlob);
       
-      // Open in new tab - user can print from there
-      window.open(url, '_blank');
+      // Create download link for reliability
+      const sanitizedTitle = session.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizedTitle}-complete.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       // Track print action
       trackEvent({
@@ -585,7 +601,10 @@ const PublicSession = () => {
         metadata: { property_count: properties.length },
       });
 
-      toast.success('PDF opened - use browser print (Ctrl/Cmd+P)');
+      toast.success('PDF downloaded!');
+      
+      // Cleanup after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (error) {
       console.error('Print PDF generation error:', error);
       toast.dismiss('pdf-print');
