@@ -551,6 +551,48 @@ const PublicSession = () => {
     }
   };
 
+  const handlePrintAll = async () => {
+    try {
+      if (!token || !session) {
+        toast.error('Invalid link');
+        return;
+      }
+
+      toast.loading('Generating printable PDF with all documents...', { id: 'pdf-print' });
+
+      const { data, error } = await supabase.functions.invoke('generate-session-pdf', {
+        body: {
+          shareToken: token,
+        },
+      });
+
+      toast.dismiss('pdf-print');
+
+      if (error) throw error;
+
+      // Create blob and open in new tab for printing
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      // Open in new tab - user can print from there
+      window.open(url, '_blank');
+
+      // Track print action
+      trackEvent({
+        eventType: 'session_print',
+        sessionId: session.id,
+        adminId: session.admin_id,
+        metadata: { property_count: properties.length },
+      });
+
+      toast.success('PDF opened - use browser print (Ctrl/Cmd+P)');
+    } catch (error) {
+      console.error('Print PDF generation error:', error);
+      toast.dismiss('pdf-print');
+      toast.error('Failed to generate printable PDF');
+    }
+  };
+
   const handleDownloadPropertyPdf = async (property: SessionProperty) => {
     try {
       if (!token) {
@@ -797,11 +839,11 @@ const PublicSession = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.print()}
+              onClick={handlePrintAll}
               className="gap-2 text-sm print:hidden"
             >
               <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print</span>
+              <span className="hidden sm:inline">Print All</span>
             </Button>
             {getFavoriteCount() > 0 && (
               <Button

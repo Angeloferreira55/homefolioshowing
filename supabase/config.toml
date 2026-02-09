@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.generate-property-pdf]
 verify_jwt = false
+
+[functions.generate-session-pdf]
+verify_jwt = false
