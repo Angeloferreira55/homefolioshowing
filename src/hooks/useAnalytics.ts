@@ -8,7 +8,8 @@ export type AnalyticsEventType =
   | 'document_view'
   | 'session_share'
   | 'photo_upload'
-  | 'pdf_download';
+  | 'pdf_download'
+  | 'session_print';
 
 interface TrackEventParams {
   eventType: AnalyticsEventType;
