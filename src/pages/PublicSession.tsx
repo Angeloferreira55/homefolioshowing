@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Home, Calendar, MapPin, Star, FileText, ExternalLink, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -750,17 +751,75 @@ const PublicSession = () => {
 
   return (
     <div className="min-h-[100dvh] bg-background safe-area-top safe-area-bottom">
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground py-6 sm:py-8">
+      {/* Header with integrated agent profile */}
+      <header className="bg-primary text-primary-foreground py-5 sm:py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-3 sm:mb-4">
+          {/* Top bar: logo */}
+          <div className="mb-4 sm:mb-5">
             <img 
               src={logoImage} 
               alt="HomeFolio" 
-              className="h-14 sm:h-[72px] w-auto brightness-0 invert"
+              className="h-10 sm:h-[72px] w-auto brightness-0 invert"
             />
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
+
+          {/* Agent profile inline */}
+          {agent && (
+            <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
+              <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-primary-foreground/30 flex-shrink-0">
+                <AvatarImage 
+                  src={agent.avatar_url || undefined} 
+                  alt={agent.full_name || 'Agent'} 
+                  className="object-cover"
+                />
+                <AvatarFallback className="text-lg bg-primary-foreground/20 text-primary-foreground">
+                  {agent.full_name ? agent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'A'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-base sm:text-lg font-semibold text-primary-foreground truncate">
+                  {agent.full_name || 'Your Agent'}
+                </p>
+                {agent.brokerage_name && (
+                  <p className="text-xs sm:text-sm text-primary-foreground/70 truncate">
+                    {agent.brokerage_name}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-1.5">
+                  {agent.phone && (
+                    <a 
+                      href={`tel:${agent.phone}`} 
+                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span className="hidden xs:inline">{agent.phone}</span>
+                      <span className="xs:hidden">Call</span>
+                    </a>
+                  )}
+                  {agent.email && (
+                    <a 
+                      href={`mailto:${agent.email}`} 
+                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span className="hidden sm:inline truncate max-w-[160px]">{agent.email}</span>
+                      <span className="sm:hidden">Email</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+              {agent.brokerage_logo_url && (
+                <img 
+                  src={agent.brokerage_logo_url} 
+                  alt={agent.brokerage_name || 'Brokerage'} 
+                  className="hidden sm:block h-10 max-w-[100px] object-contain brightness-0 invert opacity-80"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Session info */}
+          <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
             {session.title}
           </h1>
           <p className="text-primary-foreground/80 text-sm sm:text-base">
@@ -770,7 +829,7 @@ const PublicSession = () => {
             const [year, month, day] = session.session_date.split('-').map(Number);
             const localDate = new Date(year, month - 1, day);
             return (
-              <p className="flex items-center gap-2 text-primary-foreground/80 mt-2 text-sm sm:text-base">
+              <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 sm:mt-2 text-sm sm:text-base">
                 <Calendar className="w-4 h-4" />
                 {format(localDate, 'EEEE, MMMM d, yyyy')}
               </p>
@@ -784,9 +843,9 @@ const PublicSession = () => {
         </div>
       </header>
 
-      {/* Agent Profile */}
+      {/* Full Agent Profile Card - desktop only */}
       {agent && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 -mt-4 sm:-mt-6 relative z-10">
+        <div className="hidden lg:block container mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
           <AgentProfileCard agent={agent} />
         </div>
       )}
@@ -849,19 +908,19 @@ const PublicSession = () => {
       })()}
 
       {/* Properties */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between sm:gap-4 mb-5 sm:mb-6">
-          <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+          <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground whitespace-nowrap">
             Properties ({properties.length})
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={handlePrintAll}
-              className="gap-2 text-sm print:hidden"
+              className="gap-1.5 text-xs sm:text-sm h-9 px-2.5 sm:px-3 print:hidden whitespace-nowrap"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Print All</span>
             </Button>
             {getFavoriteCount() > 0 && (
@@ -869,9 +928,9 @@ const PublicSession = () => {
                 variant={showFavoritesOnly ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className="gap-2 text-sm print:hidden"
+                className="gap-1.5 text-xs sm:text-sm h-9 px-2.5 sm:px-3 print:hidden whitespace-nowrap"
               >
-                <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
                 Favorites ({getFavoriteCount()})
               </Button>
             )}
@@ -880,9 +939,9 @@ const PublicSession = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setCompareOpen(true)}
-                className="gap-2 text-sm print:hidden"
+                className="gap-1.5 text-xs sm:text-sm h-9 px-2.5 sm:px-3 print:hidden whitespace-nowrap"
               >
-                <Scale className="w-4 h-4" />
+                <Scale className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 Compare
               </Button>
             )}
