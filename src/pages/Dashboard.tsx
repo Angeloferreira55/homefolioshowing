@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ClientCard from '@/components/dashboard/ClientCard';
 import CreateClientDialog from '@/components/dashboard/CreateClientDialog';
-import { Plus, Search, Home, LogOut, User } from 'lucide-react';
+import { Plus, Search, Home, LogOut, User, Gift } from 'lucide-react';
+import RedeemBetaCodeDialog from '@/components/dashboard/RedeemBetaCodeDialog';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +23,8 @@ const Dashboard = () => {
   const [homefolios, setHomefolios] = useState<Homefolio[]>(mockHomefolios);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBetaCodeOpen, setIsBetaCodeOpen] = useState(false);
+  const { tier, isTrial, subscriptionEnd, redeemBetaCode } = useSubscription();
 
   const filteredHomefolios = homefolios.filter((hf) =>
     hf.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,10 +99,23 @@ const Dashboard = () => {
               Manage your client homefolios and property collections
             </p>
           </div>
-          <Button variant="accent" onClick={() => setIsCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Client
-          </Button>
+          <div className="flex items-center gap-3">
+            {tier !== 'starter' && isTrial && (
+              <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
+                Pro Trial · ends {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : ''}
+              </Badge>
+            )}
+            {tier === 'starter' && (
+              <Button variant="outline" onClick={() => setIsBetaCodeOpen(true)} className="gap-2">
+                <Gift className="w-4 h-4" />
+                <span className="hidden sm:inline">Redeem Code</span>
+              </Button>
+            )}
+            <Button variant="accent" onClick={() => setIsCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Client
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -145,6 +163,12 @@ const Dashboard = () => {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateClient}
+      />
+
+      <RedeemBetaCodeDialog
+        open={isBetaCodeOpen}
+        onOpenChange={setIsBetaCodeOpen}
+        onRedeem={redeemBetaCode}
       />
     </div>
   );

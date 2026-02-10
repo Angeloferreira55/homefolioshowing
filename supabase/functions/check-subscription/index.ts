@@ -49,6 +49,29 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // 1. Check for active beta trial first
+    const { data: trialData, error: trialError } = await supabaseClient
+      .from("beta_redemptions")
+      .select("tier, trial_ends_at")
+      .eq("user_id", user.id)
+      .gt("trial_ends_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (!trialError && trialData) {
+      logStep("Active beta trial found", { tier: trialData.tier, trialEndsAt: trialData.trial_ends_at });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        tier: trialData.tier,
+        subscription_end: trialData.trial_ends_at,
+        is_trial: true,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // 2. Check Stripe subscription
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
@@ -57,7 +80,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         subscribed: false, 
         tier: "starter",
-        subscription_end: null 
+        subscription_end: null,
+        is_trial: false,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -92,7 +116,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       tier,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      is_trial: false,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
