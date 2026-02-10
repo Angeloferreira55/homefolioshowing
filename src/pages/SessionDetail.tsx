@@ -957,6 +957,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
           </div>
         </div>
 
+        {/* Route Map - Temporarily disabled due to geocoding issues */}
+        {/* TODO: Debug and re-enable map feature */}
+
         {/* Properties List */}
         {properties.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
@@ -980,31 +983,53 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-3 sm:space-y-4">
-                  {properties.map((property, index) => (
-                    <SortablePropertyCard
-                      key={property.id}
-                      property={property}
-                      index={index}
-                      isSelected={selectedProperties.has(property.id)}
-                      onSelect={handleSelectProperty}
-                      onEditNotes={(prop) => {
-                        setEditDetailsPropertyId(prop.id);
-                        setEditDetailsPropertyAddress(
-                          `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
-                        );
-                      }}
-                      onManageDocs={(prop) => {
-                        setDocsPropertyId(prop.id);
-                        setDocsPropertyAddress(
-                          `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
-                        );
-                      }}
-                      onDelete={handleDeleteProperty}
-                      onPhotoUpdated={fetchProperties}
-                      onTimeUpdated={fetchProperties}
-                      formatPrice={formatPrice}
-                    />
-                  ))}
+                  {properties.map((property, index) => {
+                    // Find driving time to next property
+                    const nextProperty = properties[index + 1];
+                    const drivingTimeToNext = legDurations.find(
+                      leg => leg.from === property.id && leg.to === nextProperty?.id
+                    );
+                    const drivingMinutes = drivingTimeToNext
+                      ? Math.round(drivingTimeToNext.seconds / 60)
+                      : null;
+
+                    return (
+                      <div key={property.id}>
+                        <SortablePropertyCard
+                          property={property}
+                          index={index}
+                          isSelected={selectedProperties.has(property.id)}
+                          onSelect={handleSelectProperty}
+                          onEditNotes={(prop) => {
+                            setEditDetailsPropertyId(prop.id);
+                            setEditDetailsPropertyAddress(
+                              `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                            );
+                          }}
+                          onManageDocs={(prop) => {
+                            setDocsPropertyId(prop.id);
+                            setDocsPropertyAddress(
+                              `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`
+                            );
+                          }}
+                          onDelete={handleDeleteProperty}
+                          onPhotoUpdated={fetchProperties}
+                          onTimeUpdated={fetchProperties}
+                          formatPrice={formatPrice}
+                        />
+
+                        {/* Driving time indicator between properties */}
+                        {drivingMinutes !== null && nextProperty && (
+                          <div className="flex items-center justify-center py-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                              <Route className="w-4 h-4" />
+                              <span>{drivingMinutes} min drive</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </SortableContext>
             </DndContext>

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import { checkRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +81,35 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Share token is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting: 10 session PDF generations per hour per session
+    const identifier = `token:${shareToken}`;
+    const rateLimit = await checkRateLimit(identifier, {
+      maxRequests: 10,
+      windowSeconds: 3600, // 1 hour
+      operation: "generate-session-pdf",
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for ${identifier}`);
+      return new Response(
+        JSON.stringify({
+          error: rateLimit.error,
+          retryAfter: Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000)),
+            "X-RateLimit-Limit": "10",
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": rateLimit.resetAt.toISOString(),
+          },
+        }
       );
     }
 

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitIdentifier } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +113,35 @@ Deno.serve(async (req) => {
 
     const userId = claims.claims.sub;
     console.log("Authenticated user:", userId);
+
+    // Rate limiting: 100 geocoding requests per hour per user
+    const identifier = getRateLimitIdentifier(req, userId);
+    const rateLimit = await checkRateLimit(identifier, {
+      maxRequests: 100,
+      windowSeconds: 3600, // 1 hour
+      operation: "geocode-address",
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for ${identifier}`);
+      return new Response(
+        JSON.stringify({
+          error: rateLimit.error,
+          retryAfter: Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000)),
+            "X-RateLimit-Limit": "100",
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": rateLimit.resetAt.toISOString(),
+          },
+        }
+      );
+    }
 
     const locationIqKey = Deno.env.get("LOCATIONIQ_API_KEY");
     if (!locationIqKey) {

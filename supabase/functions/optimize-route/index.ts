@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitIdentifier } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,6 +165,35 @@ Deno.serve(async (req) => {
 
     const userId = claims.claims.sub;
     console.log("Authenticated user:", userId);
+
+    // Rate limiting: 30 route optimizations per hour per user
+    const identifier = getRateLimitIdentifier(req, userId);
+    const rateLimit = await checkRateLimit(identifier, {
+      maxRequests: 30,
+      windowSeconds: 3600, // 1 hour
+      operation: "optimize-route",
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for ${identifier}`);
+      return new Response(
+        JSON.stringify({
+          error: rateLimit.error,
+          retryAfter: Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000)),
+            "X-RateLimit-Limit": "30",
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+            "X-RateLimit-Reset": rateLimit.resetAt.toISOString(),
+          },
+        }
+      );
+    }
 
     const { properties, startingPoint, endingPoint } = await req.json();
 

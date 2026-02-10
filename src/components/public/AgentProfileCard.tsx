@@ -48,18 +48,18 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
       <CardContent className="p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           {/* Agent Avatar & Basic Info */}
-          <div className="flex flex-row sm:flex-col items-center sm:items-start gap-4">
+          <div className="flex flex-row sm:flex-col items-center sm:items-start gap-4 sm:flex-shrink-0">
             <Avatar className="w-20 h-20 sm:w-32 sm:h-32 border-4 border-background shadow-lg flex-shrink-0">
-              <AvatarImage 
-                src={agent.avatar_url || undefined} 
-                alt={agent.full_name || 'Agent'} 
+              <AvatarImage
+                src={agent.avatar_url || undefined}
+                alt={agent.full_name || 'Agent'}
                 className="object-cover"
               />
               <AvatarFallback className="text-xl sm:text-3xl bg-primary/10 text-primary">
                 {getInitials(agent.full_name)}
               </AvatarFallback>
             </Avatar>
-            
+
             {/* Mobile: Name & slogan next to avatar */}
             <div className="sm:hidden flex-1 min-w-0">
               <h3 className="font-display text-lg font-semibold text-foreground truncate">
@@ -74,7 +74,7 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
           </div>
 
           {/* Agent Details */}
-          <div className="flex-1 text-center sm:text-left">
+          <div className="flex-[2] text-center sm:text-left">
             {/* Desktop: Name & slogan */}
             <div className="hidden sm:block">
               <h3 className="font-display text-xl font-semibold text-foreground">
@@ -88,114 +88,97 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
             </div>
 
             {agent.bio && (
-              <p className="text-muted-foreground mt-2 sm:mt-3 text-sm leading-relaxed line-clamp-3 sm:line-clamp-none">
+              <p className="text-muted-foreground mt-2 sm:mt-3 text-sm sm:text-base leading-relaxed">
                 {agent.bio}
               </p>
             )}
 
-            {/* Contact Info */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 mt-3 sm:mt-4 text-sm">
+            {/* Contact Info - Mobile only */}
+            <div className="sm:hidden flex flex-wrap items-center justify-center gap-3 mt-3 text-sm">
               {agent.phone && (
-                <a 
-                  href={`tel:${agent.phone}`} 
+                <a
+                  href={`tel:${agent.phone}`}
                   className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors touch-target"
                 >
                   <Phone className="w-4 h-4" />
-                  <span className="text-xs sm:text-sm">{agent.phone}</span>
+                  <span className="text-xs">{agent.phone}</span>
                 </a>
               )}
               {agent.email && (
-                <a 
-                  href={`mailto:${agent.email}`} 
+                <a
+                  href={`mailto:${agent.email}`}
                   className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors touch-target"
                 >
                   <Mail className="w-4 h-4" />
-                  <span className="text-xs sm:text-sm truncate max-w-[180px] sm:max-w-none">{agent.email}</span>
+                  <span className="text-xs truncate max-w-[180px]">{agent.email}</span>
                 </a>
               )}
             </div>
 
-            {/* Social Links */}
+            {/* Social Links - Mobile only */}
             {hasSocialLinks && (
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mt-3 sm:mt-4">
+              <div className="sm:hidden flex flex-wrap items-center justify-center gap-2 mt-3">
                 {agent.linkedin_url && (
-                  <a 
-                    href={agent.linkedin_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.linkedin_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="LinkedIn"
                   >
                     <Linkedin className="w-4 h-4" />
                   </a>
                 )}
                 {agent.instagram_url && (
-                  <a 
-                    href={agent.instagram_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.instagram_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="Instagram"
                   >
                     <Instagram className="w-4 h-4" />
                   </a>
                 )}
                 {agent.facebook_url && (
-                  <a 
-                    href={agent.facebook_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.facebook_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="Facebook"
                   >
                     <Facebook className="w-4 h-4" />
                   </a>
                 )}
                 {agent.twitter_url && (
-                  <a 
-                    href={agent.twitter_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.twitter_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="X (Twitter)"
                   >
                     <XIcon className="w-4 h-4" />
                   </a>
                 )}
                 {agent.youtube_url && (
-                  <a 
-                    href={agent.youtube_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.youtube_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="YouTube"
                   >
                     <Youtube className="w-4 h-4" />
                   </a>
                 )}
                 {agent.website_url && (
-                  <a 
-                    href={agent.website_url} 
-                    target="_blank" 
+                  <a
+                    href={agent.website_url}
+                    target="_blank"
                     rel="noopener noreferrer"
-                    className="hidden sm:flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Website"
-                  >
-                    <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">
-                      <Globe className="w-4 h-4" />
-                    </span>
-                    <span className="text-sm underline underline-offset-2">
-                      {agent.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                    </span>
-                  </a>
-                )}
-                {/* Mobile-only website icon */}
-                {agent.website_url && (
-                  <a 
-                    href={agent.website_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="sm:hidden w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
+                    className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors touch-target"
                     aria-label="Website"
                   >
                     <Globe className="w-4 h-4" />
@@ -205,43 +188,143 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
             )}
           </div>
 
-          {/* Brokerage Info */}
-          {hasBrokerageInfo && (
-            <div className="flex flex-col items-center sm:items-end gap-2 sm:gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border sm:pl-6">
-              {agent.brokerage_logo_url ? (
-                <img 
-                  src={agent.brokerage_logo_url} 
-                  alt={agent.brokerage_name || 'Brokerage'} 
-                  className="h-10 sm:h-12 max-w-[100px] sm:max-w-[120px] object-contain"
-                />
-              ) : (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center">
-                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
-                </div>
-              )}
-              
-              {agent.brokerage_name && (
-                <p className="font-medium text-xs sm:text-sm text-foreground text-center sm:text-right">
-                  {agent.brokerage_name}
-                </p>
-              )}
-
-              <div className="flex flex-col items-center sm:items-end gap-1 text-xs text-muted-foreground">
-                {agent.brokerage_address && (
-                  <span className="flex items-center gap-1 text-center sm:text-right">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
-                    <span className="line-clamp-1">{agent.brokerage_address}</span>
-                  </span>
+          {/* Brokerage Info & Contact (Tablet+) */}
+          <div className="flex flex-col items-center sm:items-end gap-2 sm:gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border sm:pl-6">
+            {/* Brokerage Logo & Name */}
+            {hasBrokerageInfo && (
+              <>
+                {agent.brokerage_logo_url ? (
+                  <img
+                    src={agent.brokerage_logo_url}
+                    alt={agent.brokerage_name || 'Brokerage'}
+                    className="h-10 sm:h-12 max-w-[100px] sm:max-w-[120px] object-contain"
+                  />
+                ) : (
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center">
+                    <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+                  </div>
                 )}
-                {agent.brokerage_phone && (
-                  <a href={`tel:${agent.brokerage_phone}`} className="flex items-center gap-1 hover:text-foreground touch-target">
-                    <Phone className="w-3 h-3" />
-                    {agent.brokerage_phone}
+
+                {agent.brokerage_name && (
+                  <p className="font-medium text-xs sm:text-sm text-foreground text-center sm:text-right">
+                    {agent.brokerage_name}
+                  </p>
+                )}
+
+                <div className="flex flex-col items-center sm:items-end gap-1 text-xs text-muted-foreground">
+                  {agent.brokerage_address && (
+                    <span className="flex items-center gap-1 text-center sm:text-right">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <span className="line-clamp-1">{agent.brokerage_address}</span>
+                    </span>
+                  )}
+                  {agent.brokerage_phone && (
+                    <a href={`tel:${agent.brokerage_phone}`} className="flex items-center gap-1 hover:text-foreground touch-target">
+                      <Phone className="w-3 h-3" />
+                      {agent.brokerage_phone}
+                    </a>
+                  )}
+                </div>
+
+                {/* Divider between brokerage and agent contact */}
+                <div className="hidden sm:block w-full h-px bg-border my-1" />
+              </>
+            )}
+
+            {/* Agent Contact Info - Tablet+ only */}
+            <div className="hidden sm:flex flex-col items-end gap-2 text-sm w-full">
+              {agent.phone && (
+                <a
+                  href={`tel:${agent.phone}`}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span className="text-sm">{agent.phone}</span>
+                </a>
+              )}
+              {agent.email && (
+                <a
+                  href={`mailto:${agent.email}`}
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span className="text-sm truncate max-w-[200px]">{agent.email}</span>
+                </a>
+              )}
+            </div>
+
+            {/* Social Links - Tablet+ only */}
+            {hasSocialLinks && (
+              <div className="hidden sm:flex flex-wrap items-center justify-end gap-2 mt-1 w-full">
+                {agent.linkedin_url && (
+                  <a
+                    href={agent.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <Linkedin className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.instagram_url && (
+                  <a
+                    href={agent.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Instagram"
+                  >
+                    <Instagram className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.facebook_url && (
+                  <a
+                    href={agent.facebook_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Facebook"
+                  >
+                    <Facebook className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.twitter_url && (
+                  <a
+                    href={agent.twitter_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="X (Twitter)"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.youtube_url && (
+                  <a
+                    href={agent.youtube_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="YouTube"
+                  >
+                    <Youtube className="w-4 h-4" />
+                  </a>
+                )}
+                {agent.website_url && (
+                  <a
+                    href={agent.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label="Website"
+                  >
+                    <Globe className="w-4 h-4" />
                   </a>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

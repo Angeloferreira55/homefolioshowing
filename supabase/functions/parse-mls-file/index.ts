@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitIdentifier } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,6 +108,23 @@ async function processInBackground(
       return;
     }
 
+    // Validate file type based on actual content
+    const validatedFileType = await validateFileType(fileData);
+    if (!validatedFileType) {
+      console.error('Invalid file type detected');
+      await serviceSupabase
+        .from('mls_parsing_jobs')
+        .update({
+          status: 'error',
+          error: 'Invalid file type. Only PDF, CSV, and Excel files are supported.',
+        })
+        .eq('id', jobId);
+      return;
+    }
+
+    // Use validated file type instead of client-provided one
+    console.log(`File type validated: ${validatedFileType} (client provided: ${fileType})`);
+
     await serviceSupabase
       .from('mls_parsing_jobs')
       .update({ progress: 30 })
@@ -114,10 +132,10 @@ async function processInBackground(
 
     let extractedProperties: PropertyData[] = [];
 
-    if (fileType === 'csv' || fileType === 'excel') {
+    if (validatedFileType === 'csv' || validatedFileType === 'excel') {
       const text = await fileData.text();
       extractedProperties = await parseCSVWithAI(text, lovableApiKey);
-    } else if (fileType === 'pdf') {
+    } else if (validatedFileType === 'pdf') {
       // Use Vision API for PDFs - handles both text and scanned/image-based PDFs
       extractedProperties = await extractPdfWithVisionApi(fileData, lovableApiKey);
     }
@@ -147,6 +165,54 @@ async function processInBackground(
       .from('mls_parsing_jobs')
       .update({ status: 'error', error: errorMessage })
       .eq('id', jobId);
+  }
+}
+
+/**
+ * Validate file type based on file content (magic bytes)
+ * @param fileData - The file blob
+ * @returns The detected file type or null if invalid
+ */
+async function validateFileType(fileData: Blob): Promise<'pdf' | 'csv' | 'excel' | null> {
+  try {
+    // Check MIME type first
+    const mimeType = fileData.type;
+
+    // Read first few bytes to check magic bytes
+    const arrayBuffer = await fileData.slice(0, 10).arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    // PDF magic bytes: %PDF (25 50 44 46)
+    if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
+      return 'pdf';
+    }
+
+    // Excel magic bytes (PK for .xlsx): 50 4B (ZIP format)
+    if (bytes[0] === 0x50 && bytes[1] === 0x4B) {
+      // Could be xlsx or other ZIP format
+      if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+        return 'excel';
+      }
+    }
+
+    // CSV is text-based, check if it starts with printable ASCII
+    const isLikelyText = bytes.every(byte =>
+      (byte >= 0x20 && byte <= 0x7E) || byte === 0x09 || byte === 0x0A || byte === 0x0D
+    );
+
+    if (isLikelyText && (mimeType.includes('csv') || mimeType.includes('text'))) {
+      return 'csv';
+    }
+
+    // Fallback to MIME type check
+    if (mimeType.includes('pdf')) return 'pdf';
+    if (mimeType.includes('csv')) return 'csv';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'excel';
+
+    return null;
+  } catch (error) {
+    console.error('File type validation error:', error);
+    return null;
   }
 }
 
@@ -375,6 +441,36 @@ Deno.serve(async (req) => {
 
     const userId = claims.claims.sub;
     console.log('Authenticated user:', userId);
+
+    // Rate limiting: 10 MLS parsing requests per hour per user
+    const identifier = getRateLimitIdentifier(req, userId);
+    const rateLimit = await checkRateLimit(identifier, {
+      maxRequests: 10,
+      windowSeconds: 3600, // 1 hour
+      operation: 'parse-mls-file',
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`Rate limit exceeded for ${identifier}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: rateLimit.error,
+          retryAfter: Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000)),
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': String(rateLimit.remaining),
+            'X-RateLimit-Reset': rateLimit.resetAt.toISOString(),
+          },
+        }
+      );
+    }
 
     const { filePath, fileType } = await req.json();
 

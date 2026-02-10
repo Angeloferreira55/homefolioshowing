@@ -33,8 +33,8 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 160px but rendered at 320px
-const QR_RENDER_SIZE = 320;
+// Higher resolution for better quality - displayed at 160px but rendered at 512px for crisp logos
+const QR_RENDER_SIZE = 512;
 const QR_DISPLAY_SIZE = 160;
 
 const PRESET_COLORS = [
@@ -111,9 +111,13 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
         return;
       }
 
+      // Enable high-quality image smoothing for crisp logo rendering
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
       const logo = new window.Image();
       logo.crossOrigin = 'anonymous';
-      
+
       logo.onload = () => {
         const circleSize = canvas.width * 0.32; // Circle takes 32% of QR code
         const logoSize = circleSize * 0.7; // Logo is 70% of circle size for padding
