@@ -7,6 +7,7 @@ interface SubscriptionState {
   subscribed: boolean;
   tier: SubscriptionTier;
   subscriptionEnd: string | null;
+  isTrial: boolean;
   loading: boolean;
   error: string | null;
 }
@@ -28,6 +29,7 @@ export function useSubscription() {
     subscribed: false,
     tier: 'starter',
     subscriptionEnd: null,
+    isTrial: false,
     loading: true,
     error: null,
   });
@@ -40,6 +42,7 @@ export function useSubscription() {
           subscribed: false,
           tier: 'starter',
           subscriptionEnd: null,
+          isTrial: false,
           loading: false,
           error: null,
         });
@@ -58,6 +61,7 @@ export function useSubscription() {
         subscribed: data.subscribed,
         tier: data.tier as SubscriptionTier,
         subscriptionEnd: data.subscription_end,
+        isTrial: data.is_trial ?? false,
         loading: false,
         error: null,
       });
@@ -101,13 +105,23 @@ export function useSubscription() {
     }
   }, []);
 
+  const redeemBetaCode = useCallback(async (code: string) => {
+    const { data, error } = await supabase.rpc('redeem_beta_code', { p_code: code });
+    if (error) throw error;
+    const result = data as unknown as { success: boolean; error?: string; trial_ends_at?: string; tier?: string };
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to redeem code');
+    }
+    // Refresh subscription state
+    await checkSubscription();
+    return result;
+  }, [checkSubscription]);
+
   useEffect(() => {
     checkSubscription();
 
-    // Refresh subscription status every minute
     const interval = setInterval(checkSubscription, 60000);
     
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       checkSubscription();
     });
@@ -123,5 +137,6 @@ export function useSubscription() {
     checkSubscription,
     createCheckout,
     openCustomerPortal,
+    redeemBetaCode,
   };
 }

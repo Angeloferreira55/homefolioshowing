@@ -66,6 +66,71 @@ export type Database = {
           },
         ]
       }
+      beta_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          max_uses: number
+          times_used: number
+          trial_days: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number
+          times_used?: number
+          trial_days?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          max_uses?: number
+          times_used?: number
+          trial_days?: number
+        }
+        Relationships: []
+      }
+      beta_redemptions: {
+        Row: {
+          beta_code_id: string
+          id: string
+          redeemed_at: string
+          tier: string
+          trial_ends_at: string
+          user_id: string
+        }
+        Insert: {
+          beta_code_id: string
+          id?: string
+          redeemed_at?: string
+          tier?: string
+          trial_ends_at: string
+          user_id: string
+        }
+        Update: {
+          beta_code_id?: string
+          id?: string
+          redeemed_at?: string
+          tier?: string
+          trial_ends_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beta_redemptions_beta_code_id_fkey"
+            columns: ["beta_code_id"]
+            isOneToOne: false
+            referencedRelation: "beta_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_photos: {
         Row: {
           caption: string | null
@@ -588,6 +653,7 @@ export type Database = {
         Returns: boolean
       }
       is_valid_share_token: { Args: { token: string }; Returns: boolean }
+      redeem_beta_code: { Args: { p_code: string }; Returns: Json }
       restore_session: { Args: { p_session_id: string }; Returns: undefined }
       soft_delete_session: {
         Args: { p_session_id: string }
