@@ -125,14 +125,18 @@ serve(async (req) => {
       .single();
 
     let agentName = "Your Agent";
+    let agentAvatarUrl: string | null = null;
     if (sessionData?.admin_id) {
       const { data: profile } = await supabase
         .from("public_agent_profile")
-        .select("full_name, company")
+        .select("full_name, company, avatar_url")
         .eq("user_id", sessionData.admin_id)
         .single();
       if (profile?.full_name) {
         agentName = profile.full_name;
+      }
+      if (profile?.avatar_url) {
+        agentAvatarUrl = profile.avatar_url;
       }
     }
 
@@ -158,6 +162,27 @@ serve(async (req) => {
       }
     } catch (err) {
       console.log("Could not load logo:", err);
+    }
+
+    // Fetch agent avatar
+    let agentAvatar = null;
+    if (agentAvatarUrl) {
+      try {
+        const avatarResponse = await fetch(agentAvatarUrl);
+        if (avatarResponse.ok) {
+          const avatarArrayBuffer = await avatarResponse.arrayBuffer();
+          const avatarUint8Array = new Uint8Array(avatarArrayBuffer);
+          const contentType = avatarResponse.headers.get("content-type") || "";
+
+          if (contentType.includes("png")) {
+            agentAvatar = await pdfDoc.embedPng(avatarUint8Array);
+          } else if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+            agentAvatar = await pdfDoc.embedJpg(avatarUint8Array);
+          }
+        }
+      } catch (err) {
+        console.log("Could not load agent avatar:", err);
+      }
     }
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -244,7 +269,37 @@ serve(async (req) => {
     addSpace(8);
     drawText(fullAddress, { font: helveticaBold, size: 14 });
     addSpace(4);
-    drawText(`Prepared by ${agentName}`, { size: 10, color: rgb(0.4, 0.4, 0.4) });
+
+    // Draw "Prepared by [agent]" with avatar
+    const preparedByText = `Prepared by ${agentName}`;
+    if (agentAvatar) {
+      // Draw avatar
+      const avatarSize = 20;
+      page.drawImage(agentAvatar, {
+        x: margin,
+        y: yPosition - avatarSize + 4,
+        width: avatarSize,
+        height: avatarSize,
+      });
+
+      // Draw text next to avatar
+      page.drawText(preparedByText, {
+        x: margin + avatarSize + 6,
+        y: yPosition,
+        size: 10,
+        font: helvetica,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+    } else {
+      // No avatar, just draw the text
+      page.drawText(preparedByText, {
+        x: margin,
+        y: yPosition,
+        size: 10,
+        font: helvetica,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+    }
     addSpace(16);
 
     // Price

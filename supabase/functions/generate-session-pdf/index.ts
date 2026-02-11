@@ -184,13 +184,17 @@ serve(async (req) => {
 
     // Fetch agent info
     let agentName = "Your Agent";
+    let agentAvatarUrl: string | null = null;
     const { data: profile } = await supabase
       .from("public_agent_profile")
-      .select("full_name, company")
+      .select("full_name, company, avatar_url")
       .eq("user_id", sessionData.admin_id)
       .single();
     if (profile?.full_name) {
       agentName = profile.full_name;
+    }
+    if (profile?.avatar_url) {
+      agentAvatarUrl = profile.avatar_url;
     }
 
     // Generate PDF
@@ -262,6 +266,27 @@ serve(async (req) => {
       console.log("Could not load logo:", err);
     }
 
+    // Fetch agent avatar
+    let agentAvatar = null;
+    if (agentAvatarUrl) {
+      try {
+        const avatarResponse = await fetch(agentAvatarUrl);
+        if (avatarResponse.ok) {
+          const avatarArrayBuffer = await avatarResponse.arrayBuffer();
+          const avatarUint8Array = new Uint8Array(avatarArrayBuffer);
+          const contentType = avatarResponse.headers.get("content-type") || "";
+
+          if (contentType.includes("png")) {
+            agentAvatar = await pdfDoc.embedPng(avatarUint8Array);
+          } else if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+            agentAvatar = await pdfDoc.embedJpg(avatarUint8Array);
+          }
+        }
+      } catch (err) {
+        console.log("Could not load agent avatar:", err);
+      }
+    }
+
     // Cover page
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let drawer = createTextDrawer(page, pageHeight - margin - 180);
@@ -313,13 +338,42 @@ serve(async (req) => {
       color: rgb(0.4, 0.4, 0.4),
     });
 
-    page.drawText(`by ${agentName}`, {
-      x: margin,
-      y: pageHeight - margin - 205,
-      size: 12,
-      font: helvetica,
-      color: rgb(0.5, 0.5, 0.5),
-    });
+    // Draw agent name with avatar
+    const agentByText = `by ${agentName}`;
+    const agentByY = pageHeight - margin - 205;
+
+    if (agentAvatar) {
+      // Draw circular avatar next to agent name
+      const avatarSize = 24;
+      const avatarX = margin;
+      const avatarY = agentByY - 4;
+
+      // Draw avatar (circular crop approximation using a square for simplicity)
+      page.drawImage(agentAvatar, {
+        x: avatarX,
+        y: avatarY,
+        width: avatarSize,
+        height: avatarSize,
+      });
+
+      // Draw agent name next to avatar
+      page.drawText(agentByText, {
+        x: margin + avatarSize + 8,
+        y: agentByY,
+        size: 12,
+        font: helvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    } else {
+      // No avatar, just draw the text
+      page.drawText(agentByText, {
+        x: margin,
+        y: agentByY,
+        size: 12,
+        font: helvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
 
     if (sessionData.session_date) {
       const date = new Date(sessionData.session_date);
