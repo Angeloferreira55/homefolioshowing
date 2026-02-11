@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreatedUser {
@@ -240,6 +240,44 @@ const ManageUsers = () => {
     } catch (error) {
       console.error('Error regenerating token:', error);
       toast.error('Failed to generate welcome link');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteUser = async (email: string, fullName: string) => {
+    if (!confirm(`Are you sure you want to delete ${fullName} (${email})? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('admin-delete-user', {
+        body: { email },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success(`User ${fullName} deleted successfully`);
+
+      // Refresh the user lists
+      await fetchExistingUsers();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete user');
     } finally {
       setLoading(false);
     }
@@ -527,28 +565,39 @@ const ManageUsers = () => {
                                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                               </div>
                             </div>
-                            {user.welcomeToken ? (
+                            <div className="flex gap-2">
+                              {user.welcomeToken ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => copyWelcomeLink(user.welcomeToken!, index + 2000)}
+                                  className="flex-1 gap-2"
+                                >
+                                  <LinkIcon className="w-3.5 h-3.5" />
+                                  {copiedIndex === index + 2000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => regenerateWelcomeToken(user.email, user.fullName, index)}
+                                  disabled={loading}
+                                  className="flex-1 gap-2"
+                                >
+                                  <LinkIcon className="w-3.5 h-3.5" />
+                                  Generate Welcome Link
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => copyWelcomeLink(user.welcomeToken!, index + 2000)}
-                                className="w-full gap-2"
-                              >
-                                <LinkIcon className="w-3.5 h-3.5" />
-                                {copiedIndex === index + 2000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => regenerateWelcomeToken(user.email, user.fullName, index)}
+                                onClick={() => deleteUser(user.email, user.fullName)}
                                 disabled={loading}
-                                className="w-full gap-2"
+                                className="gap-2 text-destructive hover:text-destructive"
                               >
-                                <LinkIcon className="w-3.5 h-3.5" />
-                                Generate Welcome Link
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
-                            )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               Created: {user.timestamp}
                             </p>
