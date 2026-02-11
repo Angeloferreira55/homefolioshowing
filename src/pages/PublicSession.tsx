@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Phone, Mail } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -753,47 +754,98 @@ const PublicSession = () => {
       {/* Header with integrated agent profile */}
       <header className="bg-primary text-primary-foreground py-5 sm:py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-start justify-between gap-4 sm:gap-6">
-            {/* Session info - Left side */}
-            <div className="flex-1 min-w-0">
-              <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
-                {session.title}
-              </h1>
-              <p className="text-primary-foreground/80 text-sm sm:text-base">
-                Welcome, {session.client_name}
-              </p>
-              {session.session_date && (() => {
-                const [year, month, day] = session.session_date.split('-').map(Number);
-                const localDate = new Date(year, month - 1, day);
-                return (
-                  <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 sm:mt-2 text-sm sm:text-base">
-                    <Calendar className="w-4 h-4" />
-                    {format(localDate, 'EEEE, MMMM d, yyyy')}
-                  </p>
-                );
-              })()}
-              {session.notes && (
-                <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
-                  {session.notes}
+          {/* Top bar: logo */}
+          <div className="mb-4 sm:mb-5">
+            <img
+              src={logoImage}
+              alt="HomeFolio"
+              className="h-10 sm:h-[72px] w-auto brightness-0 invert"
+            />
+          </div>
+
+          {/* Agent profile inline - mobile & tablet */}
+          {agent && (
+            <div className="lg:hidden flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
+              <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-primary-foreground/30 flex-shrink-0">
+                <AvatarImage
+                  src={agent.avatar_url || undefined}
+                  alt={agent.full_name || 'Agent'}
+                  className="object-cover"
+                />
+                <AvatarFallback className="text-lg bg-primary-foreground/20 text-primary-foreground">
+                  {agent.full_name ? agent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'A'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-base sm:text-lg font-semibold text-primary-foreground truncate">
+                  {agent.full_name || 'Your Agent'}
                 </p>
+                {agent.brokerage_name && (
+                  <p className="text-xs sm:text-sm text-primary-foreground/70 truncate">
+                    {agent.brokerage_name}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-1.5">
+                  {agent.phone && (
+                    <a
+                      href={`tel:${agent.phone}`}
+                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span className="hidden xs:inline">{agent.phone}</span>
+                      <span className="xs:hidden">Call</span>
+                    </a>
+                  )}
+                  {agent.email && (
+                    <a
+                      href={`mailto:${agent.email}`}
+                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
+                    >
+                      <Mail className="w-3 h-3" />
+                      <span className="hidden sm:inline truncate max-w-[160px]">{agent.email}</span>
+                      <span className="sm:hidden">Email</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+              {agent.brokerage_logo_url && (
+                <img
+                  src={agent.brokerage_logo_url}
+                  alt={agent.brokerage_name || 'Brokerage'}
+                  className="hidden sm:block h-10 max-w-[100px] object-contain brightness-0 invert opacity-80"
+                />
               )}
             </div>
+          )}
 
-            {/* HomeFolio logo - Right side */}
-            <div className="flex-shrink-0">
-              <img
-                src={logoImage}
-                alt="HomeFolio"
-                className="h-20 sm:h-32 lg:h-36 w-auto brightness-0 invert"
-              />
-            </div>
-          </div>
+          {/* Session info */}
+          <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
+            {session.title}
+          </h1>
+          <p className="text-primary-foreground/80 text-sm sm:text-base">
+            Welcome, {session.client_name}
+          </p>
+          {session.session_date && (() => {
+            const [year, month, day] = session.session_date.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day);
+            return (
+              <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 sm:mt-2 text-sm sm:text-base">
+                <Calendar className="w-4 h-4" />
+                {format(localDate, 'EEEE, MMMM d, yyyy')}
+              </p>
+            );
+          })()}
+          {session.notes && (
+            <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
+              {session.notes}
+            </p>
+          )}
         </div>
       </header>
 
-      {/* Agent Profile Card */}
+      {/* Full Agent Profile Card - desktop only */}
       {agent && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 relative z-10">
+        <div className="hidden lg:block container mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
           <AgentProfileCard agent={agent} />
         </div>
       )}
