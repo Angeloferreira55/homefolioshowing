@@ -90,18 +90,32 @@ serve(async (req) => {
       });
     }
 
-    // Update profile with additional info if provided
-    if (newUser.user && (company || phone)) {
-      const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({
+    // Create/update profile in public_agent_profile with full information
+    if (newUser.user) {
+      const { error: profileError } = await supabaseAdmin
+        .from('public_agent_profile')
+        .upsert({
+          user_id: newUser.user.id,
+          full_name: fullName || email.split('@')[0],
+          email: email,
           company: company || null,
           phone: phone || null,
-        })
-        .eq('user_id', newUser.user.id);
+          // Set default values for other required fields
+          avatar_url: null,
+          slogan: null,
+          bio: null,
+          license_number: null,
+          brokerage_name: null,
+          brokerage_address: null,
+          brokerage_phone: null,
+          brokerage_email: null,
+          brokerage_logo_url: null,
+        }, {
+          onConflict: 'user_id'
+        });
 
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
+      if (profileError) {
+        console.error('Error creating/updating profile:', profileError);
         // Don't fail the whole operation if profile update fails
       }
     }
