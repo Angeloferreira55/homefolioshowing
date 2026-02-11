@@ -17,7 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
- import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
+import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
+import homefolioLogo from '@/assets/homefolio-logo.png';
 
 interface QRCodeDialogProps {
   open: boolean;
@@ -33,9 +34,9 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 160px but rendered at 512px for crisp logos
+// Higher resolution for better quality - displayed at 120px but rendered at 512px for crisp logos
 const QR_RENDER_SIZE = 512;
-const QR_DISPLAY_SIZE = 160;
+const QR_DISPLAY_SIZE = 120;
 
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
@@ -51,11 +52,12 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
   const [error, setError] = useState<string | null>(null);
   const [fgColor, setFgColor] = useState(DEFAULT_COLORS.foreground);
   const [bgColor, setBgColor] = useState(DEFAULT_COLORS.background);
-  const [showLogo, setShowLogo] = useState(!!logoUrl);
+  const [showLogo, setShowLogo] = useState(true); // Always show logo by default
   const [customLogoUrl, setCustomLogoUrl] = useState('');
-   const shareUrl = `${getPublicShareOrigin()}/s/${shareToken}`;
+  const shareUrl = `${getPublicShareOrigin()}/s/${shareToken}`;
 
-  const effectiveLogoUrl = customLogoUrl || logoUrl;
+  // Use home-folio logo by default for branding, allow custom override
+  const effectiveLogoUrl = customLogoUrl || homefolioLogo;
 
   useEffect(() => {
     if (open && shareToken) {
@@ -207,12 +209,12 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
         <div className="flex flex-col items-center justify-center py-2 w-full max-w-[280px] mx-auto">
           {/* QR Code Preview */}
-          <div 
-            className="p-4 rounded-lg shadow-sm mb-3 inline-flex items-center justify-center" 
+          <div
+            className="p-4 rounded-lg shadow-sm mb-3 inline-flex items-center justify-center"
             style={{ backgroundColor: bgColor }}
           >
             {error ? (
-              <div className="w-[160px] h-[160px] flex items-center justify-center text-destructive text-xs">
+              <div className="w-[120px] h-[120px] flex items-center justify-center text-destructive text-xs">
                 {error}
               </div>
             ) : (
@@ -306,30 +308,29 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
               </PopoverTrigger>
               <PopoverContent className="w-56" align="center">
                 <div className="space-y-4">
-                  <div className="text-sm font-medium">Add Logo to QR Code</div>
-                  
-                  {logoUrl && (
-                    <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                  <div className="text-sm font-medium">QR Code Branding</div>
+
+                  {/* Home-folio Default Logo */}
+                  {!customLogoUrl && (
+                    <div className="flex items-center gap-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
                       <img
-                        src={logoUrl}
-                        alt="Brokerage logo"
+                        src={homefolioLogo}
+                        alt="Home-folio logo"
                         className="w-8 h-8 rounded object-cover"
                       />
-                      <span className="text-xs flex-1">Brokerage Logo</span>
+                      <span className="text-xs flex-1 font-medium">Home-folio Logo</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setShowLogo(!showLogo || !!customLogoUrl);
-                          setCustomLogoUrl('');
-                        }}
+                        onClick={() => setShowLogo(!showLogo)}
                         className="h-6 text-xs"
                       >
-                        {showLogo && !customLogoUrl ? 'Remove' : 'Use'}
+                        {showLogo ? 'Hide' : 'Show'}
                       </Button>
                     </div>
                   )}
 
+                  {/* Custom Logo Override */}
                   {customLogoUrl && (
                     <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
                       <img
@@ -351,7 +352,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
 
                   <div className="border-t pt-4">
                     <Label className="text-xs text-muted-foreground mb-2 block">
-                      Upload Custom Logo
+                      Upload Custom Logo (Optional)
                     </Label>
                     <Input
                       type="file"
@@ -360,7 +361,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
                       className="text-xs h-8"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      Square images work best. Logo appears in center.
+                      Square images work best. Overrides default branding.
                     </p>
                   </div>
                 </div>

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Upload, FileText, X, Loader2, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getAdaptivePollingDelay, batchArray } from '@/lib/fileOptimization';
 
 interface PropertyData {
   address: string;
@@ -110,7 +111,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
     setProcessedCount(0);
   };
 
-  const pollForJobCompletion = async (jobId: string, fileIndex: number) => {
+  const pollForJobCompletion = async (jobId: string, fileIndex: number, attemptNumber: number = 1) => {
     try {
       const { data, error } = await supabase
         .from('mls_parsing_jobs')
@@ -126,7 +127,7 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
       if (data.status === 'complete') {
         // Job completed successfully
         const properties = (data.result as unknown as PropertyData[]) || [];
-        
+
         setFiles(prev => {
           const updated = [...prev];
           if (updated[fileIndex]) {
@@ -138,10 +139,10 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
           }
           return updated;
         });
-        
+
         setProcessedCount(prev => prev + 1);
         pollingRef.current.delete(jobId);
-        
+
         // Check if all files are done
         checkAllFilesProcessed();
         return;
@@ -160,17 +161,18 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
           }
           return updated;
         });
-        
+
         setProcessedCount(prev => prev + 1);
         pollingRef.current.delete(jobId);
-        
+
         // Check if all files are done
         checkAllFilesProcessed();
         return;
       }
 
-      // Still processing, poll again in 2 seconds
-      const timeout = setTimeout(() => pollForJobCompletion(jobId, fileIndex), 2000);
+      // Still processing, use adaptive polling delay (starts fast, slows down)
+      const delay = getAdaptivePollingDelay(attemptNumber);
+      const timeout = setTimeout(() => pollForJobCompletion(jobId, fileIndex, attemptNumber + 1), delay);
       pollingRef.current.set(jobId, timeout);
     } catch (err) {
       console.error('Polling error:', err);
@@ -203,73 +205,90 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
     setIsProcessing(true);
     setProcessedCount(0);
 
-    const updatedFiles = [...files];
+    // Get current user once at the start
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please sign in to upload files');
+      setIsProcessing(false);
+      return;
+    }
 
-    for (let i = 0; i < updatedFiles.length; i++) {
-      const fileStatus = updatedFiles[i];
-      
-      // Skip already processed files
-      if (fileStatus.status === 'success') {
-        setProcessedCount(prev => prev + 1);
-        continue;
-      }
+    // Process files in parallel batches (3 at a time for optimal performance)
+    const CONCURRENT_UPLOADS = 3;
+    const pendingFiles = files
+      .map((file, index) => ({ file, index }))
+      .filter(({ file }) => file.status !== 'success');
 
-      try {
-        // Update status to uploading
-        updatedFiles[i] = { ...fileStatus, status: 'uploading' };
-        setFiles([...updatedFiles]);
+    const batches = batchArray(pendingFiles, CONCURRENT_UPLOADS);
 
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('Please sign in to upload files');
-        }
+    for (const batch of batches) {
+      // Process each batch in parallel
+      await Promise.all(
+        batch.map(async ({ file: fileStatus, index: i }) => {
+          try {
+            // Update status to uploading
+            setFiles(prev => {
+              const updated = [...prev];
+              updated[i] = { ...fileStatus, status: 'uploading' };
+              return updated;
+            });
 
-        // Upload file to storage
-        const filePath = `${user.id}/${Date.now()}-${fileStatus.file.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from('mls-uploads')
-          .upload(filePath, fileStatus.file);
+            // Upload file to storage
+            const filePath = `${user.id}/${Date.now()}-${fileStatus.file.name}`;
+            const { error: uploadError } = await supabase.storage
+              .from('mls-uploads')
+              .upload(filePath, fileStatus.file);
 
-        if (uploadError) {
-          throw new Error(uploadError.message);
-        }
+            if (uploadError) {
+              throw new Error(uploadError.message);
+            }
 
-        // Update status to parsing
-        updatedFiles[i] = { ...fileStatus, status: 'parsing' };
-        setFiles([...updatedFiles]);
+            // Update status to parsing
+            setFiles(prev => {
+              const updated = [...prev];
+              updated[i] = { ...prev[i], status: 'parsing' };
+              return updated;
+            });
 
-        // Start the parsing job (returns immediately with job ID)
-        const { data, error } = await supabase.functions.invoke('parse-mls-file', {
-          body: { filePath, fileType: 'pdf' },
-        });
+            // Start the parsing job (returns immediately with job ID)
+            const { data, error } = await supabase.functions.invoke('parse-mls-file', {
+              body: { filePath, fileType: 'pdf' },
+            });
 
-        if (error) {
-          throw new Error(error.message);
-        }
+            if (error) {
+              throw new Error(error.message);
+            }
 
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to start parsing');
-        }
+            if (!data.success) {
+              throw new Error(data.error || 'Failed to start parsing');
+            }
 
-        const jobId = data.jobId;
-        updatedFiles[i] = { ...updatedFiles[i], jobId };
-        setFiles([...updatedFiles]);
+            const jobId = data.jobId;
+            setFiles(prev => {
+              const updated = [...prev];
+              updated[i] = { ...prev[i], jobId };
+              return updated;
+            });
 
-        // Start polling for this job
-        pollForJobCompletion(jobId, i);
-        
-      } catch (error: unknown) {
-        console.error(`Error processing ${fileStatus.file.name}:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
-        updatedFiles[i] = { 
-          ...fileStatus, 
-          status: 'error', 
-          error: errorMessage
-        };
-        setFiles([...updatedFiles]);
-        setProcessedCount(prev => prev + 1);
-      }
+            // Start polling for this job (adaptive polling)
+            pollForJobCompletion(jobId, i);
+
+          } catch (error: unknown) {
+            console.error(`Error processing ${fileStatus.file.name}:`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to process file';
+            setFiles(prev => {
+              const updated = [...prev];
+              updated[i] = {
+                ...fileStatus,
+                status: 'error',
+                error: errorMessage
+              };
+              return updated;
+            });
+            setProcessedCount(prev => prev + 1);
+          }
+        })
+      );
     }
 
     // Check if any files are still being polled

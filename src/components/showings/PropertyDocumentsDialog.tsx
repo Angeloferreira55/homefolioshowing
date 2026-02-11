@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { Upload, FileText, Trash2, ExternalLink, Loader2, File, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { optimizeFileForUpload } from '@/lib/fileOptimization';
 
 interface PropertyDocument {
   id: string;
@@ -151,44 +152,58 @@ const PropertyDocumentsDialog = ({
       return;
     }
 
-    const fileExt = selectedFile.name.split('.').pop();
-    const filePath = `${propertyId}/${Date.now()}.${fileExt}`;
+    try {
+      // Optimize file before upload (compress images)
+      const optimizedFile = await optimizeFileForUpload(selectedFile);
 
-    const result = await upload({
-      bucket: 'property-documents',
-      path: filePath,
-      file: selectedFile,
-      maxRetries: 1,
-    });
+      // Show compression feedback if file was compressed
+      if (optimizedFile.size < selectedFile.size) {
+        const savedPercent = Math.round((1 - optimizedFile.size / selectedFile.size) * 100);
+        toast.success(`File optimized - ${savedPercent}% smaller!`);
+      }
 
-    if (!result.success) {
-      toast.error(result.error || 'Failed to upload document. Please try again.');
-      return;
-    }
+      const fileExt = selectedFile.name.split('.').pop();
+      const filePath = `${propertyId}/${Date.now()}.${fileExt}`;
 
-    // Create document record
-    const { error: insertError } = await supabase
-      .from('property_documents')
-      .insert({
-        session_property_id: propertyId,
-        name: docName.trim(),
-        file_url: filePath,
-        doc_type: docType,
+      const result = await upload({
+        bucket: 'property-documents',
+        path: filePath,
+        file: optimizedFile,
+        maxRetries: 1,
       });
 
-    if (insertError) {
-      console.error('Database insert error:', insertError);
-      toast.error('File uploaded but failed to save record. Please try again.');
-      return;
-    }
+      if (!result.success) {
+        toast.error(result.error || 'Failed to upload document. Please try again.');
+        return;
+      }
 
-    toast.success('Document uploaded successfully!');
-    setSelectedFile(null);
-    setDocName('');
-    setDocType('other');
-    resetUpload();
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    fetchDocuments();
+      // Create document record
+      const { error: insertError } = await supabase
+        .from('property_documents')
+        .insert({
+          session_property_id: propertyId,
+          name: docName.trim(),
+          file_url: filePath,
+          doc_type: docType,
+        });
+
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        toast.error('File uploaded but failed to save record. Please try again.');
+        return;
+      }
+
+      toast.success('Document uploaded successfully!');
+      setSelectedFile(null);
+      setDocName('');
+      setDocType('other');
+      resetUpload();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      fetchDocuments();
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to process file. Please try again.');
+    }
   };
 
   const handleDelete = async (doc: PropertyDocument) => {

@@ -30,20 +30,41 @@ interface PropertyData {
   hoaFee?: number;
   hoaFeeFrequency?: string;
   hasPid?: boolean;
+  county?: string; // Especially for California
+  apn?: string; // California Assessor's Parcel Number
+  melloroos?: boolean; // California Mello-Roos tax
+  communityName?: string; // Subdivision/community name
+  schoolDistrict?: string; // School district
   publicRemarks?: string;
   summary?: string;
   features?: string[];
 }
 
-const extractionPrompt = `You are an expert MLS document parser. Your job is to extract ALL property listing data from MLS sheets with high accuracy.
+const extractionPrompt = `You are an expert MLS document parser supporting ALL regional MLS formats (New Mexico, California, Texas, etc.). Your job is to extract ALL property listing data with high accuracy.
 
 CRITICAL INSTRUCTIONS:
 1. Look CAREFULLY at the entire document for each data point
 2. Numbers like price, beds, baths, sqft are ALWAYS present - search thoroughly
-3. Price is usually prominent (e.g., "$499,000" or "List Price: 499000")
-4. Bedrooms/Baths often shown as "3 BR / 2 BA" or "Beds: 3, Baths: 2" or in a grid
-5. Square footage may be labeled "Sq Ft", "Living Area", "SqFt", "Approx SqFt"
-6. If a value appears multiple times, use the most specific/detailed one
+3. PRICE variations by region:
+   - Standard: "List Price:", "Asking Price:", "Price:"
+   - California MLS: "List Price:", "LP:", "Listing Price:"
+   - New Mexico MLS: "Price:", "List Price:"
+4. BEDROOM/BATH variations:
+   - "3 BR / 2 BA", "Beds: 3, Baths: 2", "3BD/2BA"
+   - California: "Bedrooms:", "# Bedrooms:", "BR:"
+   - Sometimes in property details grid or table
+5. SQUARE FOOTAGE variations:
+   - "Sq Ft", "Living Area", "SqFt", "Approx SqFt", "Total Sq Ft"
+   - California: "Approx. Living Area", "Living Space", "Interior Sq Ft"
+6. ADDRESS variations:
+   - Full address may be in header, footer, or property details section
+   - California often includes county name
+7. If a value appears multiple times, use the most specific/detailed one
+
+REGIONAL FORMAT SUPPORT:
+- California MLS (CRMLS, MLSListings, etc.): Look for "Parcel Number", "APN", "Mello-Roos", "HOA", community names
+- New Mexico MLS: Look for "MLS#", "DOM", standard fields
+- All formats: Adapt to table layouts, grid formats, or narrative descriptions
 
 Return a JSON array with one object per property. Use these EXACT field names:
 
@@ -58,24 +79,29 @@ REQUIRED FIELDS (search thoroughly, these should almost always be found):
 - sqft: number (living area square footage as integer)
 
 ADDITIONAL FIELDS (extract if present, use null if not found):
-- mlsNumber: string (MLS listing number/ID)
-- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse")
-- daysOnMarket: number (DOM or CDOM value)
+- mlsNumber: string (MLS listing number/ID, may be labeled "MLS#", "Listing ID", "Matrix ID")
+- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse", "SFR")
+- daysOnMarket: number (DOM, CDOM, or "Days on Market" value)
 - yearBuilt: number (4-digit year, e.g., 1985)
-- pricePerSqft: number (price per square foot)
+- pricePerSqft: number (price per square foot, may need to calculate)
 - lotSizeAcres: number (lot size in acres, convert from sqft if needed: sqft/43560)
-- garageSpaces: number (number of garage spaces)
+- garageSpaces: number (number of garage spaces, may be "attached" or "detached")
 - roof: string (roof type/material)
 - heating: string (heating type)
-- cooling: string (cooling type)
-- taxAnnualAmount: number (annual tax amount)
+- cooling: string (cooling type, CA often lists "Central Air", "AC")
+- taxAnnualAmount: number (annual tax amount, may be "Annual Taxes")
 - hasHoa: boolean (true if HOA/Association mentioned)
 - hoaFee: number (HOA fee amount if applicable)
 - hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
 - hasPid: boolean (true if PID/Special assessment is present)
+- county: string (county name, especially important for California MLS)
+- apn: string (California: Assessor's Parcel Number / APN)
+- melloroos: boolean (California: true if Mello-Roos tax mentioned)
+- communityName: string (planned community, subdivision, or development name)
+- schoolDistrict: string (school district name if mentioned)
 - publicRemarks: string (full public remarks/description text)
 - summary: string (generate 3-5 bullet points highlighting KEY selling features, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
-- features: string[] (array of notable features, e.g., ["Hardwood Floors", "Updated Kitchen", "Pool"])
+- features: string[] (array of notable features, e.g., ["Hardwood Floors", "Updated Kitchen", "Pool", "Mountain Views"])
 
 IMPORTANT:
 - Return ONLY a valid JSON array, no markdown code blocks or explanation
@@ -293,9 +319,9 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
           { 
             role: 'user', 
             content: [
-              { 
-                type: 'text', 
-                text: 'Extract ALL property data from this MLS document. Pay special attention to: PRICE (list price), BEDROOMS, BATHROOMS, and SQUARE FOOTAGE. These fields are critical and almost always present in MLS sheets. Look for labels like "List Price:", "BR/BA:", "Sq Ft:", "Living Area:", etc. Use OCR if this is a scanned document.' 
+              {
+                type: 'text',
+                text: 'Extract ALL property data from this MLS document (could be from California, New Mexico, Texas, or any US state). Pay special attention to: PRICE (list price), BEDROOMS, BATHROOMS, and SQUARE FOOTAGE. These fields are critical and almost always present in MLS sheets. Look for labels like "List Price:", "LP:", "BR/BA:", "Sq Ft:", "Living Area:", "Approx. Living Area:", etc. For California MLS, also look for APN, county, Mello-Roos, and community names. Use OCR if this is a scanned document.'
               },
               {
                 type: 'image_url',
