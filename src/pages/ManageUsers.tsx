@@ -28,6 +28,8 @@ const ManageUsers = () => {
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
+  const [existingUsers, setExistingUsers] = useState<CreatedUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -40,9 +42,57 @@ const ManageUsers = () => {
       }
 
       setUserRole('admin');
+      await fetchExistingUsers();
     };
     checkAuth();
   }, [navigate]);
+
+  const fetchExistingUsers = async () => {
+    try {
+      setLoadingUsers(true);
+
+      // Fetch all users from public_agent_profile
+      const { data: profiles, error } = await supabase
+        .from('public_agent_profile')
+        .select('user_id, email, full_name, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        return;
+      }
+
+      if (profiles) {
+        // Fetch welcome tokens for these users
+        const userIds = profiles.map(p => p.user_id);
+        const { data: tokens } = await supabase
+          .from('welcome_tokens')
+          .select('user_id, token, expires_at, used')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false });
+
+        // Map users with their latest tokens
+        const usersWithTokens = profiles.map(profile => {
+          const userTokens = tokens?.filter(t => t.user_id === profile.user_id) || [];
+          const latestToken = userTokens[0]; // Most recent token
+
+          return {
+            email: profile.email || '',
+            password: '••••••••', // Don't show actual password
+            fullName: profile.full_name || profile.email || '',
+            timestamp: new Date(profile.created_at).toLocaleString(),
+            welcomeToken: latestToken?.token || undefined,
+          };
+        });
+
+        setExistingUsers(usersWithTokens);
+      }
+    } catch (error) {
+      console.error('Error in fetchExistingUsers:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const generatePassword = () => {
     // Generate a strong password
@@ -116,6 +166,9 @@ const ManageUsers = () => {
 
       toast.success(`User created successfully: ${email}`);
 
+      // Refresh existing users list to include the new user
+      await fetchExistingUsers();
+
       // Clear form but keep company if they're creating multiple users from same company
       setEmail('');
       setPassword('');
@@ -144,6 +197,62 @@ const ManageUsers = () => {
     setCopiedIndex(index);
     toast.success('Welcome link copied! Share this with the realtor.');
     setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const regenerateWelcomeToken = async (email: string, fullName: string, index: number) => {
+    try {
+      setLoading(true);
+
+      // Find the user by email
+      const { data: profile } = await supabase
+        .from('public_agent_profile')
+        .select('user_id, company')
+        .eq('email', email)
+        .single();
+
+      if (!profile) {
+        toast.error('User not found');
+        return;
+      }
+
+      // Generate a new token
+      const token = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const { data: tokenData, error } = await supabase
+        .from('welcome_tokens')
+        .insert({
+          user_id: profile.user_id,
+          token: token,
+          email: email,
+          full_name: fullName,
+          company: profile.company,
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error || !tokenData) {
+        toast.error('Failed to generate welcome link');
+        return;
+      }
+
+      // Update the existing users list with the new token
+      setExistingUsers(prev => prev.map((user, i) =>
+        i === index ? { ...user, welcomeToken: tokenData.token } : user
+      ));
+
+      // Copy the new link
+      const welcomeUrl = `${window.location.origin}/welcome/${tokenData.token}`;
+      navigator.clipboard.writeText(welcomeUrl);
+      toast.success('New welcome link generated and copied!');
+    } catch (error) {
+      console.error('Error regenerating token:', error);
+      toast.error('Failed to generate welcome link');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const downloadCredentials = () => {
@@ -308,10 +417,11 @@ const ManageUsers = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Created Users ({createdUsers.length})
+                    Realtor Accounts ({existingUsers.length + createdUsers.length})
                   </CardTitle>
                   <CardDescription>
-                    Recently created accounts in this session
+                    {createdUsers.length > 0 && `${createdUsers.length} created this session • `}
+                    {existingUsers.length} total accounts
                   </CardDescription>
                 </div>
                 {createdUsers.length > 0 && (
@@ -320,13 +430,18 @@ const ManageUsers = () => {
                     size="sm"
                     onClick={downloadCredentials}
                   >
-                    Download All
+                    Download New
                   </Button>
                 )}
               </div>
             </CardHeader>
             <CardContent>
-              {createdUsers.length === 0 ? (
+              {loadingUsers ? (
+                <div className="text-center py-8">
+                  <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-primary" />
+                  <p className="text-muted-foreground text-sm">Loading users...</p>
+                </div>
+              ) : existingUsers.length === 0 && createdUsers.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                   <p>No users created yet</p>
@@ -334,65 +449,123 @@ const ManageUsers = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <Alert>
-                    <AlertDescription className="text-xs">
-                      ⚠️ Save these credentials! Passwords are only shown once during creation.
-                    </AlertDescription>
-                  </Alert>
+                  {createdUsers.length > 0 && (
+                    <Alert>
+                      <AlertDescription className="text-xs">
+                        ⚠️ Save these credentials! Passwords are only shown once during creation.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {createdUsers.map((user, index) => (
-                      <div
-                        key={index}
-                        className="p-4 bg-muted/50 rounded-lg border border-border space-y-2"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{user.fullName}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyCredentials(user, index)}
-                            className="flex-shrink-0 h-8 gap-1"
-                          >
-                            {copiedIndex === index ? (
-                              <>
-                                <Check className="w-3.5 h-3.5" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                Copy
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                        <div className="bg-background/80 rounded p-2 font-mono text-xs">
-                          <div className="flex items-center gap-2">
-                            <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <span className="text-muted-foreground">Password:</span>
-                            <code className="flex-1 truncate">{user.password}</code>
-                          </div>
-                        </div>
-                        {user.welcomeToken && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyWelcomeLink(user.welcomeToken!, index + 1000)}
-                            className="w-full gap-2"
-                          >
-                            <LinkIcon className="w-3.5 h-3.5" />
-                            {copiedIndex === index + 1000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
-                          </Button>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Created: {user.timestamp}
+                    {/* Newly created users in this session */}
+                    {createdUsers.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-primary uppercase tracking-wide px-1">
+                          Created This Session
                         </p>
+                        {createdUsers.map((user, index) => (
+                          <div
+                            key={`new-${index}`}
+                            className="p-4 bg-primary/5 rounded-lg border-2 border-primary/20 space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{user.fullName}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyCredentials(user, index)}
+                                className="flex-shrink-0 h-8 gap-1"
+                              >
+                                {copiedIndex === index ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3.5 h-3.5" />
+                                    Copy
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            <div className="bg-background/80 rounded p-2 font-mono text-xs">
+                              <div className="flex items-center gap-2">
+                                <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                <span className="text-muted-foreground">Password:</span>
+                                <code className="flex-1 truncate">{user.password}</code>
+                              </div>
+                            </div>
+                            {user.welcomeToken && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyWelcomeLink(user.welcomeToken!, index + 1000)}
+                                className="w-full gap-2"
+                              >
+                                <LinkIcon className="w-3.5 h-3.5" />
+                                {copiedIndex === index + 1000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
+                              </Button>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Created: {user.timestamp}
+                            </p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+
+                    {/* Existing users */}
+                    {existingUsers.length > 0 && (
+                      <div className="space-y-2">
+                        {createdUsers.length > 0 && <Separator className="my-4" />}
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                          All Accounts
+                        </p>
+                        {existingUsers.map((user, index) => (
+                          <div
+                            key={`existing-${index}`}
+                            className="p-4 bg-muted/50 rounded-lg border border-border space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{user.fullName}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              </div>
+                            </div>
+                            {user.welcomeToken ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyWelcomeLink(user.welcomeToken!, index + 2000)}
+                                className="w-full gap-2"
+                              >
+                                <LinkIcon className="w-3.5 h-3.5" />
+                                {copiedIndex === index + 2000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => regenerateWelcomeToken(user.email, user.fullName, index)}
+                                disabled={loading}
+                                className="w-full gap-2"
+                              >
+                                <LinkIcon className="w-3.5 h-3.5" />
+                                Generate Welcome Link
+                              </Button>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Created: {user.timestamp}
+                            </p>
+                          </div>
+                        )))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
