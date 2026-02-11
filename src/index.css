@@ -346,7 +346,7 @@
 
   /* Ensure text is readable */
   * {
-    color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Show URLs for links */
