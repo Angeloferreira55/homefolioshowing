@@ -40,26 +40,42 @@ interface PropertyData {
   features?: string[];
 }
 
-const extractionPrompt = `You are an expert MLS document parser supporting ALL regional MLS formats (New Mexico, California, Texas, etc.). Your job is to extract ALL property listing data with high accuracy.
+const extractionPrompt = `You are an expert MLS document parser supporting ALL regional MLS formats (New Mexico, California, Texas, etc.). Your job is to extract ALL property listing data with MAXIMUM accuracy.
 
 CRITICAL INSTRUCTIONS:
-1. Look CAREFULLY at the entire document for each data point
+1. Look CAREFULLY at the ENTIRE document for each data point - check ALL pages
 2. Numbers like price, beds, baths, sqft are ALWAYS present - search thoroughly
-3. PRICE variations by region:
-   - Standard: "List Price:", "Asking Price:", "Price:"
+3. Read field labels EXACTLY - don't guess or assume values
+4. For heating/cooling, copy the EXACT text from the document
+
+PRICE variations by region:
+   - Standard: "List Price:", "Asking Price:", "Price:", "Listing Price:"
    - California MLS: "List Price:", "LP:", "Listing Price:"
    - New Mexico MLS: "Price:", "List Price:"
-4. BEDROOM/BATH variations:
-   - "3 BR / 2 BA", "Beds: 3, Baths: 2", "3BD/2BA"
-   - California: "Bedrooms:", "# Bedrooms:", "BR:"
+   - Look in header, details section, or pricing grid
+
+BEDROOM/BATH variations:
+   - "3 BR / 2 BA", "Beds: 3, Baths: 2", "3BD/2BA", "Bedrooms: 3"
+   - California: "Bedrooms:", "# Bedrooms:", "BR:", "Total Bedrooms:"
    - Sometimes in property details grid or table
-5. SQUARE FOOTAGE variations:
-   - "Sq Ft", "Living Area", "SqFt", "Approx SqFt", "Total Sq Ft"
+   - Full baths + half baths = total (e.g., 2 full + 1 half = 2.5)
+
+SQUARE FOOTAGE variations:
+   - "Sq Ft", "Living Area", "SqFt", "Approx SqFt", "Total Sq Ft", "Square Feet"
    - California: "Approx. Living Area", "Living Space", "Interior Sq Ft"
-6. ADDRESS variations:
+   - Look for the LIVING area sqft, not lot size
+
+ADDRESS:
    - Full address may be in header, footer, or property details section
    - California often includes county name
-7. If a value appears multiple times, use the most specific/detailed one
+   - Format: street number + street name only (e.g., "123 Main Street")
+
+HEATING & COOLING - CRITICAL (Copy EXACTLY as written):
+   - Common heating: "Central Heat", "Forced Air", "Gas Heat", "Heat Pump", "Electric", "Radiant", "Baseboard", "Wall Heater", "None"
+   - Common cooling: "Central Air", "AC", "Air Conditioning", "Evaporative Cooler", "Swamp Cooler", "Window Unit", "None"
+   - DO NOT guess - only extract if clearly labeled as "Heating:" or "Cooling:"
+   - If it says "Central Air", use that EXACTLY, not "Air Conditioning"
+   - If multiple values listed, include all (e.g., "Forced Air, Heat Pump")
 
 REGIONAL FORMAT SUPPORT:
 - California MLS (CRMLS, MLSListings, etc.): Look for "Parcel Number", "APN", "Mello-Roos", "HOA", community names
@@ -86,9 +102,9 @@ ADDITIONAL FIELDS (extract if present, use null if not found):
 - pricePerSqft: number (price per square foot, may need to calculate)
 - lotSizeAcres: number (lot size in acres, convert from sqft if needed: sqft/43560)
 - garageSpaces: number (number of garage spaces, may be "attached" or "detached")
-- roof: string (roof type/material)
-- heating: string (heating type)
-- cooling: string (cooling type, CA often lists "Central Air", "AC")
+- roof: string (roof type/material, e.g., "Composition Shingle", "Tile", "Metal")
+- heating: string (EXACT heating type from document - Common: "Central Heat", "Forced Air", "Gas Heat", "Heat Pump", "Electric", "None")
+- cooling: string (EXACT cooling type from document - Common: "Central Air", "AC", "Air Conditioning", "Evaporative Cooler", "None")
 - taxAnnualAmount: number (annual tax amount, may be "Annual Taxes")
 - hasHoa: boolean (true if HOA/Association mentioned)
 - hoaFee: number (HOA fee amount if applicable)
@@ -243,25 +259,29 @@ async function validateFileType(fileData: Blob): Promise<'pdf' | 'csv' | 'excel'
 }
 
 async function validateAndNormalizeProperties(properties: PropertyData[]): Promise<PropertyData[]> {
+  // Common heating/cooling values for validation
+  const validHeatingTypes = ['central heat', 'forced air', 'gas heat', 'heat pump', 'electric', 'radiant', 'baseboard', 'wall heater', 'none', 'natural gas', 'propane', 'oil', 'wood'];
+  const validCoolingTypes = ['central air', 'ac', 'air conditioning', 'evaporative cooler', 'swamp cooler', 'window unit', 'none', 'ceiling fan'];
+
   return properties.map((prop, index) => {
     const normalized = { ...prop };
-    
+
     // Log extraction completeness for debugging
     const requiredFields = ['address', 'price', 'beds', 'baths', 'sqft'];
-    const missingRequired = requiredFields.filter(field => 
-      normalized[field as keyof PropertyData] === null || 
+    const missingRequired = requiredFields.filter(field =>
+      normalized[field as keyof PropertyData] === null ||
       normalized[field as keyof PropertyData] === undefined
     );
-    
+
     if (missingRequired.length > 0) {
       console.warn(`Property ${index + 1} (${normalized.address || 'unknown'}): Missing required fields: ${missingRequired.join(', ')}`);
     }
-    
+
     // Normalize price - ensure it's a clean number
     if (typeof normalized.price === 'string') {
       normalized.price = parseInt(String(normalized.price).replace(/[$,]/g, ''), 10) || undefined;
     }
-    
+
     // Normalize beds/baths - ensure they're numbers
     if (typeof normalized.beds === 'string') {
       normalized.beds = parseInt(normalized.beds, 10) || undefined;
@@ -269,21 +289,39 @@ async function validateAndNormalizeProperties(properties: PropertyData[]): Promi
     if (typeof normalized.baths === 'string') {
       normalized.baths = parseFloat(normalized.baths) || undefined;
     }
-    
+
     // Normalize sqft
     if (typeof normalized.sqft === 'string') {
       normalized.sqft = parseInt(String(normalized.sqft).replace(/,/g, ''), 10) || undefined;
     }
-    
+
     // Normalize yearBuilt
     if (typeof normalized.yearBuilt === 'string') {
       normalized.yearBuilt = parseInt(normalized.yearBuilt, 10) || undefined;
     }
-    
+
+    // Validate heating type
+    if (normalized.heating && typeof normalized.heating === 'string') {
+      const heatingLower = normalized.heating.toLowerCase();
+      const isValid = validHeatingTypes.some(valid => heatingLower.includes(valid));
+      if (!isValid) {
+        console.warn(`Property ${index + 1}: Unusual heating type "${normalized.heating}" - verify accuracy`);
+      }
+    }
+
+    // Validate cooling type
+    if (normalized.cooling && typeof normalized.cooling === 'string') {
+      const coolingLower = normalized.cooling.toLowerCase();
+      const isValid = validCoolingTypes.some(valid => coolingLower.includes(valid));
+      if (!isValid) {
+        console.warn(`Property ${index + 1}: Unusual cooling type "${normalized.cooling}" - verify accuracy`);
+      }
+    }
+
     // Log successful extraction
     const extractedCount = Object.values(normalized).filter(v => v !== null && v !== undefined).length;
-    console.log(`Property ${index + 1}: Extracted ${extractedCount} fields - ${normalized.address || 'No address'}, $${normalized.price || 'N/A'}, ${normalized.beds || '?'}bd/${normalized.baths || '?'}ba, ${normalized.sqft || '?'}sqft`);
-    
+    console.log(`Property ${index + 1}: Extracted ${extractedCount} fields - ${normalized.address || 'No address'}, $${normalized.price || 'N/A'}, ${normalized.beds || '?'}bd/${normalized.baths || '?'}ba, ${normalized.sqft || '?'}sqft, Heat: ${normalized.heating || 'N/A'}, Cool: ${normalized.cooling || 'N/A'}`);
+
     return normalized;
   });
 }
@@ -316,12 +354,12 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: extractionPrompt },
-          { 
-            role: 'user', 
+          {
+            role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Extract ALL property data from this MLS document (could be from California, New Mexico, Texas, or any US state). Pay special attention to: PRICE (list price), BEDROOMS, BATHROOMS, and SQUARE FOOTAGE. These fields are critical and almost always present in MLS sheets. Look for labels like "List Price:", "LP:", "BR/BA:", "Sq Ft:", "Living Area:", "Approx. Living Area:", etc. For California MLS, also look for APN, county, Mello-Roos, and community names. Use OCR if this is a scanned document.'
+                text: 'Extract ALL property data from this MLS document with MAXIMUM accuracy. Pay special attention to:\n\n1. CRITICAL FIELDS (must find): PRICE, BEDROOMS, BATHROOMS, SQUARE FOOTAGE, ADDRESS\n2. HEATING & COOLING: Copy the EXACT text as shown. Do NOT interpret or change the wording. If it says "Central Air", write "Central Air" (not "AC" or "Air Conditioning"). If it says "Forced Air", write "Forced Air" (not "Central Heat").\n3. Read ALL pages of the document carefully\n4. Look for data in tables, grids, and text sections\n5. For California MLS: also extract APN, county, Mello-Roos\n6. Use OCR for scanned documents\n\nCommon field locations:\n- Price: Usually near top as "List Price:", "LP:", or "Price:"\n- Beds/Baths: Often as "3BR/2BA" or in details grid\n- Sqft: Look for "Living Area:", "Sq Ft:", "Total Sq Ft:"\n- Heating/Cooling: Usually in property features or details section'
               },
               {
                 type: 'image_url',
