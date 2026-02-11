@@ -34,9 +34,9 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 80px but rendered at 512px for crisp logos
+// Higher resolution for better quality - displayed at 64px but rendered at 512px for crisp logos
 const QR_RENDER_SIZE = 512;
-const QR_DISPLAY_SIZE = 80;
+const QR_DISPLAY_SIZE = 64;
 
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
@@ -121,7 +121,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
       logo.crossOrigin = 'anonymous';
 
       logo.onload = () => {
-        const circleSize = canvas.width * 0.22; // Circle takes 22% of QR code (reduced for better scanning)
+        const circleSize = canvas.width * 0.18; // Circle takes 18% of QR code (reduced for better scanning)
         const logoSize = circleSize * 0.7; // Logo is 70% of circle size for padding
         const circleX = canvas.width / 2;
         const circleY = canvas.height / 2;
