@@ -120,6 +120,36 @@ serve(async (req) => {
       }
     }
 
+    // Generate welcome token for onboarding link
+    let welcomeToken = null;
+    if (newUser.user) {
+      // Generate a random token
+      const token = crypto.randomUUID();
+
+      // Token expires in 7 days
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const { data: tokenData, error: tokenError } = await supabaseAdmin
+        .from('welcome_tokens')
+        .insert({
+          user_id: newUser.user.id,
+          token: token,
+          email: email,
+          full_name: fullName || null,
+          company: company || null,
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (!tokenError && tokenData) {
+        welcomeToken = tokenData.token;
+      } else {
+        console.error('Error creating welcome token:', tokenError);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -128,6 +158,7 @@ serve(async (req) => {
           email: newUser.user?.email,
           fullName: fullName || email,
         },
+        welcomeToken: welcomeToken, // Include the welcome token in response
       }),
       {
         status: 200,

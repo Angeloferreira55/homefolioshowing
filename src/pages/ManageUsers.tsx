@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreatedUser {
@@ -16,6 +16,7 @@ interface CreatedUser {
   password: string;
   fullName: string;
   timestamp: string;
+  welcomeToken?: string;
 }
 
 const ManageUsers = () => {
@@ -108,6 +109,7 @@ const ManageUsers = () => {
           password,
           fullName,
           timestamp: new Date().toLocaleString(),
+          welcomeToken: data.welcomeToken || undefined,
         },
         ...prev,
       ]);
@@ -133,6 +135,14 @@ const ManageUsers = () => {
     navigator.clipboard.writeText(credentials);
     setCopiedIndex(index);
     toast.success('Credentials copied to clipboard!');
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const copyWelcomeLink = (welcomeToken: string, index: number) => {
+    const welcomeUrl = `${window.location.origin}/welcome/${welcomeToken}`;
+    navigator.clipboard.writeText(welcomeUrl);
+    setCopiedIndex(index);
+    toast.success('Welcome link copied! Share this with the realtor.');
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
@@ -367,6 +377,17 @@ const ManageUsers = () => {
                             <code className="flex-1 truncate">{user.password}</code>
                           </div>
                         </div>
+                        {user.welcomeToken && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyWelcomeLink(user.welcomeToken!, index + 1000)}
+                            className="w-full gap-2"
+                          >
+                            <LinkIcon className="w-3.5 h-3.5" />
+                            {copiedIndex === index + 1000 ? 'Welcome Link Copied!' : 'Copy Welcome Link'}
+                          </Button>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           Created: {user.timestamp}
                         </p>
@@ -391,15 +412,15 @@ const ManageUsers = () => {
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-primary">2.</span>
-              <p>Copy the credentials and share them securely with the realtor (email, Slack, etc.)</p>
+              <p><strong>Recommended:</strong> Click "Copy Welcome Link" and send it to the realtor via email. This link provides a professional onboarding experience.</p>
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-primary">3.</span>
-              <p>The realtor can immediately sign in at <code className="bg-muted px-1.5 py-0.5 rounded">/auth</code> - no email confirmation needed</p>
+              <p><strong>Alternative:</strong> Copy the credentials manually and share them securely (the password is temporary and should be changed)</p>
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-primary">4.</span>
-              <p>They can update their profile, add photos, and start creating showing sessions</p>
+              <p>The realtor can sign in at <code className="bg-muted px-1.5 py-0.5 rounded">/auth</code>, complete their profile, and start creating showing sessions</p>
             </div>
             <Separator className="my-4" />
             <p className="text-xs">

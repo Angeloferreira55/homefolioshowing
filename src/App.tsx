@@ -20,6 +20,7 @@ import PublicSession from "./pages/PublicSession";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import ManageUsers from "./pages/ManageUsers";
+import Welcome from "./pages/Welcome";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import About from "./pages/About";
@@ -58,6 +59,7 @@ const App = () => (
             {/* Showing Sessions Routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/welcome/:token" element={<Welcome />} />
             <Route path="/admin/showings" element={<ShowingHub />} />
             <Route path="/admin/session/:id" element={<SessionDetail />} />
             <Route path="/s/:token" element={<PublicSession />} />
