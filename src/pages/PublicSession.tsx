@@ -753,37 +753,41 @@ const PublicSession = () => {
       {/* Header with integrated agent profile */}
       <header className="bg-primary text-primary-foreground py-5 sm:py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top bar: logo */}
-          <div className="mb-4 sm:mb-5">
-            <img
-              src={logoImage}
-              alt="HomeFolio"
-              className="h-16 sm:h-20 lg:h-24 w-auto brightness-0 invert"
-            />
-          </div>
-
-          {/* Session info */}
-          <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
-            {session.title}
-          </h1>
-          <p className="text-primary-foreground/80 text-sm sm:text-base">
-            Welcome, {session.client_name}
-          </p>
-          {session.session_date && (() => {
-            const [year, month, day] = session.session_date.split('-').map(Number);
-            const localDate = new Date(year, month - 1, day);
-            return (
-              <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 sm:mt-2 text-sm sm:text-base">
-                <Calendar className="w-4 h-4" />
-                {format(localDate, 'EEEE, MMMM d, yyyy')}
+          <div className="flex items-start justify-between gap-4 sm:gap-6">
+            {/* Session info - Left side */}
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
+                {session.title}
+              </h1>
+              <p className="text-primary-foreground/80 text-sm sm:text-base">
+                Welcome, {session.client_name}
               </p>
-            );
-          })()}
-          {session.notes && (
-            <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
-              {session.notes}
-            </p>
-          )}
+              {session.session_date && (() => {
+                const [year, month, day] = session.session_date.split('-').map(Number);
+                const localDate = new Date(year, month - 1, day);
+                return (
+                  <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 sm:mt-2 text-sm sm:text-base">
+                    <Calendar className="w-4 h-4" />
+                    {format(localDate, 'EEEE, MMMM d, yyyy')}
+                  </p>
+                );
+              })()}
+              {session.notes && (
+                <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
+                  {session.notes}
+                </p>
+              )}
+            </div>
+
+            {/* HomeFolio logo - Right side (bigger) */}
+            <div className="flex-shrink-0">
+              <img
+                src={logoImage}
+                alt="HomeFolio"
+                className="h-24 sm:h-36 lg:h-44 w-auto brightness-0 invert"
+              />
+            </div>
+          </div>
         </div>
       </header>
 
