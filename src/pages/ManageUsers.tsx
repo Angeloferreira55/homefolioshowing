@@ -51,11 +51,10 @@ const ManageUsers = () => {
     try {
       setLoadingUsers(true);
 
-      // Fetch all users from public_agent_profile
+      // Fetch all users from public_agent_profile (without created_at which might not exist)
       const { data: profiles, error: profilesError } = await supabase
         .from('public_agent_profile')
-        .select('user_id, email, full_name, created_at')
-        .order('created_at', { ascending: false });
+        .select('user_id, email, full_name');
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
@@ -68,6 +67,8 @@ const ManageUsers = () => {
         setExistingUsers([]);
         return;
       }
+
+      console.log('Found profiles:', profiles.length);
 
       // Fetch all welcome tokens
       const { data: tokens, error: tokensError } = await supabase
@@ -95,7 +96,7 @@ const ManageUsers = () => {
         email: profile.email || '',
         password: '••••••••', // Don't show actual password
         fullName: profile.full_name || profile.email || '',
-        timestamp: new Date(profile.created_at).toLocaleString(),
+        timestamp: 'Account created',
         welcomeToken: tokenMap.get(profile.user_id) || undefined,
       }));
 
