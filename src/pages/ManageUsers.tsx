@@ -51,44 +51,52 @@ const ManageUsers = () => {
     try {
       setLoadingUsers(true);
 
-      // Fetch all users from public_agent_profile
-      const { data: profiles, error } = await supabase
-        .from('public_agent_profile')
-        .select('user_id, email, full_name, created_at')
+      // Try fetching from welcome_tokens table first (simpler approach)
+      const { data: tokens, error: tokensError } = await supabase
+        .from('welcome_tokens')
+        .select('user_id, email, full_name, token, expires_at, used, created_at')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching users:', error);
-        return;
+      if (tokensError) {
+        console.error('Error fetching welcome tokens:', tokensError);
+
+        // If table doesn't exist, try alternative approach
+        if (tokensError.message?.includes('does not exist')) {
+          console.log('Welcome tokens table not created yet - skipping existing users list');
+          setExistingUsers([]);
+          return;
+        }
       }
 
-      if (profiles) {
-        // Fetch welcome tokens for these users
-        const userIds = profiles.map(p => p.user_id);
-        const { data: tokens } = await supabase
-          .from('welcome_tokens')
-          .select('user_id, token, expires_at, used')
-          .in('user_id', userIds)
-          .order('created_at', { ascending: false });
+      if (tokens && tokens.length > 0) {
+        // Group by user_id and get the latest token for each user
+        const userMap = new Map<string, typeof tokens[0]>();
 
-        // Map users with their latest tokens
-        const usersWithTokens = profiles.map(profile => {
-          const userTokens = tokens?.filter(t => t.user_id === profile.user_id) || [];
-          const latestToken = userTokens[0]; // Most recent token
-
-          return {
-            email: profile.email || '',
-            password: '••••••••', // Don't show actual password
-            fullName: profile.full_name || profile.email || '',
-            timestamp: new Date(profile.created_at).toLocaleString(),
-            welcomeToken: latestToken?.token || undefined,
-          };
+        tokens.forEach(token => {
+          const existing = userMap.get(token.user_id);
+          if (!existing || new Date(token.created_at) > new Date(existing.created_at)) {
+            userMap.set(token.user_id, token);
+          }
         });
 
+        // Convert to array and format for display
+        const usersWithTokens = Array.from(userMap.values()).map(token => ({
+          email: token.email || '',
+          password: '••••••••', // Don't show actual password
+          fullName: token.full_name || token.email || '',
+          timestamp: new Date(token.created_at).toLocaleString(),
+          welcomeToken: token.token,
+        }));
+
+        console.log('Loaded existing users:', usersWithTokens.length);
         setExistingUsers(usersWithTokens);
+      } else {
+        console.log('No existing users found');
+        setExistingUsers([]);
       }
     } catch (error) {
       console.error('Error in fetchExistingUsers:', error);
+      setExistingUsers([]);
     } finally {
       setLoadingUsers(false);
     }
