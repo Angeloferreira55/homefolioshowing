@@ -146,8 +146,45 @@ serve(async (req) => {
     const margin = 50;
     const contentWidth = pageWidth - margin * 2;
 
+    // Fetch HomeFolio logo
+    let logoImage = null;
+    try {
+      const logoUrl = "https://storage.googleapis.com/gpt-engineer-file-uploads/RctDwzRtwzgNKOYbrreyhlinrR32/uploads/1770365379409-4A3B7777-C913-4A64-82CD-EE898D971633.PNG";
+      const logoResponse = await fetch(logoUrl);
+      if (logoResponse.ok) {
+        const logoArrayBuffer = await logoResponse.arrayBuffer();
+        const logoUint8Array = new Uint8Array(logoArrayBuffer);
+        logoImage = await pdfDoc.embedPng(logoUint8Array);
+      }
+    } catch (err) {
+      console.log("Could not load logo:", err);
+    }
+
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
-    let yPosition = pageHeight - margin;
+
+    // Add HomeFolio logo at top right
+    if (logoImage) {
+      const logoDims = logoImage.scale(1);
+      const logoWidth = 70;
+      const logoHeight = (logoDims.height / logoDims.width) * logoWidth;
+      page.drawImage(logoImage, {
+        x: pageWidth - margin - logoWidth,
+        y: pageHeight - margin - logoHeight - 10,
+        width: logoWidth,
+        height: logoHeight,
+      });
+    } else {
+      // Fallback text if logo doesn't load
+      page.drawText("HomeFolio", {
+        x: pageWidth - margin - 70,
+        y: pageHeight - margin - 20,
+        size: 14,
+        font: helveticaBold,
+        color: rgb(0.13, 0.27, 0.43),
+      });
+    }
+
+    let yPosition = pageHeight - margin - 90;
 
     const drawText = (text: string, options: { font?: any; size?: number; color?: any; maxWidth?: number } = {}) => {
       const font = options.font || helvetica;
@@ -175,7 +212,19 @@ serve(async (req) => {
       for (const ln of lines) {
         if (yPosition < margin + 20) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
-          yPosition = pageHeight - margin;
+          // Add logo to new page
+          if (logoImage) {
+            const logoDims = logoImage.scale(1);
+            const logoWidth = 60;
+            const logoHeight = (logoDims.height / logoDims.width) * logoWidth;
+            page.drawImage(logoImage, {
+              x: pageWidth - margin - logoWidth,
+              y: pageHeight - margin - logoHeight - 10,
+              width: logoWidth,
+              height: logoHeight,
+            });
+          }
+          yPosition = pageHeight - margin - 80;
         }
         page.drawText(ln, { x: margin, y: yPosition, size, font, color });
         yPosition -= size + 4;

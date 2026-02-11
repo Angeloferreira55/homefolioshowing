@@ -248,14 +248,50 @@ serve(async (req) => {
       return { drawText, addSpace, getY };
     };
 
+    // Fetch HomeFolio logo
+    let logoImage = null;
+    try {
+      const logoUrl = "https://storage.googleapis.com/gpt-engineer-file-uploads/RctDwzRtwzgNKOYbrreyhlinrR32/uploads/1770365379409-4A3B7777-C913-4A64-82CD-EE898D971633.PNG";
+      const logoResponse = await fetch(logoUrl);
+      if (logoResponse.ok) {
+        const logoArrayBuffer = await logoResponse.arrayBuffer();
+        const logoUint8Array = new Uint8Array(logoArrayBuffer);
+        logoImage = await pdfDoc.embedPng(logoUint8Array);
+      }
+    } catch (err) {
+      console.log("Could not load logo:", err);
+    }
+
     // Cover page
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
-    let drawer = createTextDrawer(page, pageHeight - margin - 100);
+    let drawer = createTextDrawer(page, pageHeight - margin - 180);
 
-    // Title
+    // Add HomeFolio logo at top right
+    if (logoImage) {
+      const logoDims = logoImage.scale(1);
+      const logoWidth = 80;
+      const logoHeight = (logoDims.height / logoDims.width) * logoWidth;
+      page.drawImage(logoImage, {
+        x: pageWidth - margin - logoWidth,
+        y: pageHeight - margin - logoHeight,
+        width: logoWidth,
+        height: logoHeight,
+      });
+    } else {
+      // Fallback text if logo doesn't load
+      page.drawText("HomeFolio", {
+        x: pageWidth - margin - 70,
+        y: pageHeight - margin - 20,
+        size: 16,
+        font: helveticaBold,
+        color: rgb(0.13, 0.27, 0.43),
+      });
+    }
+
+    // Title (with more top spacing)
     page.drawText("PROPERTY TOUR", {
       x: margin,
-      y: pageHeight - margin - 50,
+      y: pageHeight - margin - 120,
       size: 28,
       font: helveticaBold,
       color: rgb(0.13, 0.27, 0.43),
@@ -263,7 +299,7 @@ serve(async (req) => {
 
     page.drawText(sessionData.title, {
       x: margin,
-      y: pageHeight - margin - 85,
+      y: pageHeight - margin - 155,
       size: 18,
       font: helvetica,
       color: rgb(0.3, 0.3, 0.3),
@@ -271,7 +307,7 @@ serve(async (req) => {
 
     page.drawText(`Prepared for ${sessionData.client_name}`, {
       x: margin,
-      y: pageHeight - margin - 115,
+      y: pageHeight - margin - 185,
       size: 14,
       font: helvetica,
       color: rgb(0.4, 0.4, 0.4),
@@ -279,7 +315,7 @@ serve(async (req) => {
 
     page.drawText(`by ${agentName}`, {
       x: margin,
-      y: pageHeight - margin - 135,
+      y: pageHeight - margin - 205,
       size: 12,
       font: helvetica,
       color: rgb(0.5, 0.5, 0.5),
@@ -295,7 +331,7 @@ serve(async (req) => {
       });
       page.drawText(dateStr, {
         x: margin,
-        y: pageHeight - margin - 165,
+        y: pageHeight - margin - 235,
         size: 12,
         font: helvetica,
         color: rgb(0.5, 0.5, 0.5),
@@ -305,13 +341,13 @@ serve(async (req) => {
     // Properties summary
     page.drawText(`${properties.length} Properties`, {
       x: margin,
-      y: pageHeight - margin - 210,
+      y: pageHeight - margin - 280,
       size: 16,
       font: helveticaBold,
       color: rgb(0.13, 0.27, 0.43),
     });
 
-    let summaryY = pageHeight - margin - 240;
+    let summaryY = pageHeight - margin - 310;
     for (let i = 0; i < properties.length; i++) {
       const prop = properties[i];
       const propDocs = docsByProperty[prop.id] || [];
@@ -367,7 +403,21 @@ serve(async (req) => {
 
       // Property summary page
       page = pdfDoc.addPage([pageWidth, pageHeight]);
-      let yPosition = pageHeight - margin;
+
+      // Add HomeFolio logo at top right of each property page
+      if (logoImage) {
+        const logoDims = logoImage.scale(1);
+        const logoWidth = 60;
+        const logoHeight = (logoDims.height / logoDims.width) * logoWidth;
+        page.drawImage(logoImage, {
+          x: pageWidth - margin - logoWidth,
+          y: pageHeight - margin - logoHeight - 10,
+          width: logoWidth,
+          height: logoHeight,
+        });
+      }
+
+      let yPosition = pageHeight - margin - 80;
 
       const drawText = (text: string, options: { font?: typeof helvetica; size?: number; color?: ReturnType<typeof rgb>; maxWidth?: number } = {}) => {
         const font = options.font || helvetica;
