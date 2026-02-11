@@ -510,6 +510,12 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     window.open(link, '_blank');
   };
 
+  const handleCopyAccessCode = () => {
+    if (!session?.share_password) return;
+    navigator.clipboard.writeText(session.share_password);
+    toast.success('Access code copied to clipboard!');
+  };
+
   const handleCopyLink = async () => {
     if (!session) return;
     const link = `${window.location.origin}/s/${session.share_token}`;
@@ -827,6 +833,27 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               Delete
             </Button>
           </div>
+
+          {/* Access Code Display */}
+          {session.share_password && (
+            <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-1">Access Code</p>
+                  <p className="font-mono font-semibold text-sm">{session.share_password}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyAccessCode}
+                  className="flex-shrink-0"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1.5" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Properties Section */}
