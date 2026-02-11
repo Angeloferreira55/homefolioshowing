@@ -503,12 +503,19 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     setSelectedProperties(new Set());
   };
 
+  const handleOpenLink = () => {
+    if (!session) return;
+    const publicOrigin = getPublicShareOrigin();
+    const link = `${publicOrigin}/s/${session.share_token}`;
+    window.open(link, '_blank');
+  };
+
   const handleCopyLink = async () => {
     if (!session) return;
     const link = `${window.location.origin}/s/${session.share_token}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copied to clipboard!');
-    
+
     // Track session share
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -782,6 +789,15 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
             >
               <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Copy Link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
+              onClick={handleOpenLink}
+            >
+              <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Open Link
             </Button>
             <Button
               variant="outline"
