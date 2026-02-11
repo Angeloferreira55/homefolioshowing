@@ -29,6 +29,9 @@ export interface Profile {
   mls_api_secret: string | null;
   mls_board_id: string | null;
   mls_provider: string | null;
+  // Team fields
+  role: string | null;
+  team_id: string | null;
 }
 
 export interface ProfileUpdate {

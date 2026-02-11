@@ -28,12 +28,48 @@ const ManageUsers = () => {
   const [phone, setPhone] = useState('');
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [teamMemberCount, setTeamMemberCount] = useState<number>(0);
+  const [teamLimit, setTeamLimit] = useState<number>(10);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/auth');
+        return;
+      }
+
+      // Fetch user role and team info
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, team_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (profile) {
+        setUserRole(profile.role);
+
+        // If team leader, fetch team member count
+        if (profile.role === 'team_leader' && profile.team_id) {
+          const { data: teamData } = await supabase
+            .from('teams')
+            .select('max_members')
+            .eq('id', profile.team_id)
+            .single();
+
+          if (teamData) {
+            setTeamLimit(teamData.max_members);
+          }
+
+          // Get current team member count
+          const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('team_id', profile.team_id);
+
+          setTeamMemberCount(count || 0);
+        }
       }
     };
     checkAuth();
@@ -103,6 +139,11 @@ const ManageUsers = () => {
 
       toast.success(`User created successfully: ${email}`);
 
+      // Update team member count if team leader
+      if (userRole === 'team_leader') {
+        setTeamMemberCount(prev => prev + 1);
+      }
+
       // Clear form but keep company if they're creating multiple users from same company
       setEmail('');
       setPassword('');
@@ -152,6 +193,21 @@ const ManageUsers = () => {
           <p className="text-muted-foreground mt-1">
             Create accounts for realtors to test and use HomeFolio
           </p>
+
+          {/* Team info for team leaders */}
+          {userRole === 'team_leader' && (
+            <Alert className="mt-4">
+              <Users className="w-4 h-4" />
+              <AlertDescription>
+                Team Members: <strong>{teamMemberCount} / {teamLimit}</strong>
+                {teamMemberCount >= teamLimit && (
+                  <span className="text-destructive ml-2">
+                    (Limit reached - upgrade for more members)
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -163,7 +219,9 @@ const ManageUsers = () => {
                 Create New User
               </CardTitle>
               <CardDescription>
-                Add a new realtor account with pre-configured credentials
+                {userRole === 'team_leader'
+                  ? 'Add a new team member with pre-configured credentials'
+                  : 'Add a new realtor account with pre-configured credentials'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,7 +319,7 @@ const ManageUsers = () => {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={loading}
+                  disabled={loading || (userRole === 'team_leader' && teamMemberCount >= teamLimit)}
                 >
                   {loading ? (
                     <>
