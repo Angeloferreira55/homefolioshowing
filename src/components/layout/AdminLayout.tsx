@@ -17,12 +17,13 @@ import {
 import { NavLink } from '@/components/NavLink';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { 
-  Calendar, 
-  User, 
-  LogOut, 
+import {
+  Calendar,
+  User,
+  LogOut,
   Menu,
   BarChart3,
+  Users,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import logoImage from '@/assets/homefolio-logo.png';
@@ -31,6 +32,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 const navItems = [
   { title: 'Sessions', url: '/admin/showings', icon: Calendar },
   { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
+  { title: 'Manage Users', url: '/admin/manage-users', icon: Users },
   { title: 'My Profile', url: '/admin/profile', icon: User },
 ];
 
