@@ -689,7 +689,7 @@ serve(async (req) => {
 
     console.log(`Generated PDF with ${pdfDoc.getPageCount()} pages for session ${sessionData.id}`);
 
-    return new Response(pdfBytes, {
+    return new Response(pdfBytes as unknown as BodyInit, {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/pdf",
