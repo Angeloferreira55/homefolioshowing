@@ -34,9 +34,9 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 64px but rendered at 512px for crisp logos
-const QR_RENDER_SIZE = 512;
-const QR_DISPLAY_SIZE = 64;
+// Standard QR code size for reliable scanning
+const QR_RENDER_SIZE = 256;
+const QR_DISPLAY_SIZE = 200;
 
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
@@ -52,7 +52,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
   const [error, setError] = useState<string | null>(null);
   const [fgColor, setFgColor] = useState(DEFAULT_COLORS.foreground);
   const [bgColor, setBgColor] = useState(DEFAULT_COLORS.background);
-  const [showLogo, setShowLogo] = useState(true); // Always show logo by default
+  const [showLogo, setShowLogo] = useState(false); // Disable logo by default for better scanning
   const [customLogoUrl, setCustomLogoUrl] = useState('');
   const shareUrl = `${getPublicShareOrigin()}/s/${shareToken}`;
 
@@ -84,7 +84,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
     try {
       setError(null);
       
-      // Generate QR code at higher resolution for better quality
+      // Generate QR code with standard settings for reliable scanning
       await QRCode.toCanvas(canvas, shareUrl, {
         width: QR_RENDER_SIZE,
         margin: 2,
@@ -92,7 +92,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
           dark: fgColor,
           light: bgColor,
         },
-        errorCorrectionLevel: showLogo && effectiveLogoUrl ? 'H' : 'M',
+        errorCorrectionLevel: 'M', // Medium error correction - good balance
       });
 
       // Overlay logo if enabled
@@ -214,7 +214,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
             style={{ backgroundColor: bgColor }}
           >
             {error ? (
-              <div className="w-[120px] h-[120px] flex items-center justify-center text-destructive text-xs">
+              <div className="w-[200px] h-[200px] flex items-center justify-center text-destructive text-xs">
                 {error}
               </div>
             ) : (
