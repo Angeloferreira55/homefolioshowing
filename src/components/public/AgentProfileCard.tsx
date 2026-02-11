@@ -109,8 +109,8 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                   href={`mailto:${agent.email}`}
                   className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors touch-target"
                 >
-                  <Mail className="w-4 h-4" />
-                  <span className="text-xs truncate max-w-[180px]">{agent.email}</span>
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs break-all">{agent.email}</span>
                 </a>
               )}
             </div>
@@ -245,10 +245,10 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
               {agent.email && (
                 <a
                   href={`mailto:${agent.email}`}
-                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors w-full"
                 >
-                  <Mail className="w-4 h-4" />
-                  <span className="text-sm truncate max-w-[200px]">{agent.email}</span>
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm break-all text-right">{agent.email}</span>
                 </a>
               )}
             </div>
