@@ -763,6 +763,13 @@ const PublicSession = () => {
             />
           </div>
 
+          {/* Debug - Remove after testing */}
+          {!agent && (
+            <div className="lg:hidden mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
+              <p className="text-xs text-primary-foreground/50">Debug: No agent data loaded</p>
+            </div>
+          )}
+
           {/* Agent profile inline - mobile & tablet */}
           {agent && (
             <div className="lg:hidden flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
