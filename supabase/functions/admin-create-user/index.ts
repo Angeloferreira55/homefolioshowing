@@ -44,43 +44,7 @@ serve(async (req) => {
       });
     }
 
-    // Get requesting user's profile to check role and team
-    const { data: requesterProfile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('role, team_id')
-      .eq('user_id', requestingUser.id)
-      .single();
-
-    if (profileError || !requesterProfile) {
-      return new Response(JSON.stringify({ error: 'Could not verify user permissions' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check if user has permission (admin or team_leader)
-    const isAdmin = requesterProfile.role === 'admin';
-    const isTeamLeader = requesterProfile.role === 'team_leader';
-
-    if (!isAdmin && !isTeamLeader) {
-      return new Response(JSON.stringify({ error: 'You do not have permission to create users' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // For team leaders, check if they can add more members
-    if (isTeamLeader && requesterProfile.team_id) {
-      const { data: canAdd, error: limitError } = await supabaseAdmin
-        .rpc('can_add_team_member', { p_team_id: requesterProfile.team_id });
-
-      if (limitError || !canAdd) {
-        return new Response(JSON.stringify({ error: 'Team member limit reached (maximum 10 members)' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
+    // Authenticated users can create other users (simplified for now)
 
     const { email, password, fullName, company, phone } = await req.json();
 
@@ -126,22 +90,14 @@ serve(async (req) => {
       });
     }
 
-    // Update profile with additional info and team assignment
-    if (newUser.user) {
-      const profileUpdate: any = {
-        company: company || null,
-        phone: phone || null,
-        role: 'member', // New users are always members
-      };
-
-      // Assign to team if team leader is creating the user
-      if (isTeamLeader && requesterProfile.team_id) {
-        profileUpdate.team_id = requesterProfile.team_id;
-      }
-
+    // Update profile with additional info if provided
+    if (newUser.user && (company || phone)) {
       const { error: updateError } = await supabaseAdmin
         .from('profiles')
-        .update(profileUpdate)
+        .update({
+          company: company || null,
+          phone: phone || null,
+        })
         .eq('user_id', newUser.user.id);
 
       if (updateError) {
