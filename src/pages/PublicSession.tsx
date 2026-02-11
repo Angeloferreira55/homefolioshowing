@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Phone, Mail } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -759,71 +758,9 @@ const PublicSession = () => {
             <img
               src={logoImage}
               alt="HomeFolio"
-              className="h-10 sm:h-[72px] w-auto brightness-0 invert"
+              className="h-16 sm:h-20 lg:h-24 w-auto brightness-0 invert"
             />
           </div>
-
-          {/* Debug - Remove after testing */}
-          {!agent && (
-            <div className="lg:hidden mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
-              <p className="text-xs text-primary-foreground/50">Debug: No agent data loaded</p>
-            </div>
-          )}
-
-          {/* Agent profile inline - mobile & tablet */}
-          {agent && (
-            <div className="lg:hidden flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-primary-foreground/20">
-              <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-primary-foreground/30 flex-shrink-0">
-                <AvatarImage
-                  src={agent.avatar_url || undefined}
-                  alt={agent.full_name || 'Agent'}
-                  className="object-cover"
-                />
-                <AvatarFallback className="text-lg bg-primary-foreground/20 text-primary-foreground">
-                  {agent.full_name ? agent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'A'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-display text-base sm:text-lg font-semibold text-primary-foreground truncate">
-                  {agent.full_name || 'Your Agent'}
-                </p>
-                {agent.brokerage_name && (
-                  <p className="text-xs sm:text-sm text-primary-foreground/70 truncate">
-                    {agent.brokerage_name}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 mt-1.5">
-                  {agent.phone && (
-                    <a
-                      href={`tel:${agent.phone}`}
-                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
-                    >
-                      <Phone className="w-3 h-3" />
-                      <span className="hidden xs:inline">{agent.phone}</span>
-                      <span className="xs:hidden">Call</span>
-                    </a>
-                  )}
-                  {agent.email && (
-                    <a
-                      href={`mailto:${agent.email}`}
-                      className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground transition-colors touch-target"
-                    >
-                      <Mail className="w-3 h-3" />
-                      <span className="hidden sm:inline truncate max-w-[160px]">{agent.email}</span>
-                      <span className="sm:hidden">Email</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-              {agent.brokerage_logo_url && (
-                <img
-                  src={agent.brokerage_logo_url}
-                  alt={agent.brokerage_name || 'Brokerage'}
-                  className="hidden sm:block h-10 max-w-[100px] object-contain brightness-0 invert opacity-80"
-                />
-              )}
-            </div>
-          )}
 
           {/* Session info */}
           <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
@@ -850,9 +787,9 @@ const PublicSession = () => {
         </div>
       </header>
 
-      {/* Full Agent Profile Card - desktop only */}
+      {/* Full Agent Profile Card - all screens */}
       {agent && (
-        <div className="hidden lg:block container mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 lg:-mt-6 relative z-10">
           <AgentProfileCard agent={agent} />
         </div>
       )}
