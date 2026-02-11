@@ -86,8 +86,15 @@ const ManageUsers = () => {
         },
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
-        throw error;
+        console.error('Function invocation error:', error);
+        throw new Error(`Function error: ${error.message || JSON.stringify(error)}`);
+      }
+
+      if (!data) {
+        throw new Error('No response from function');
       }
 
       if (!data.success) {
