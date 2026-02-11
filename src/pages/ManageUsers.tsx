@@ -51,28 +51,56 @@ const ManageUsers = () => {
     try {
       setLoadingUsers(true);
 
-      const { data: profiles, error } = await supabase
+      // Fetch all users from public_agent_profile
+      const { data: profiles, error: profilesError } = await supabase
         .from('public_agent_profile')
-        .select('user_id, email, full_name');
+        .select('user_id, email, full_name, created_at')
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching users:', error);
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
         setExistingUsers([]);
         return;
       }
 
-      if (profiles && profiles.length > 0) {
-        const usersWithTokens = profiles.map(profile => ({
-          email: profile.email || '',
-          password: '••••••••',
-          fullName: profile.full_name || profile.email || '',
-          timestamp: '',
-          welcomeToken: undefined as string | undefined,
-        }));
-        setExistingUsers(usersWithTokens);
-      } else {
+      if (!profiles || profiles.length === 0) {
+        console.log('No users found');
         setExistingUsers([]);
+        return;
       }
+
+      // Fetch all welcome tokens
+      const { data: tokens, error: tokensError } = await supabase
+        .from('welcome_tokens')
+        .select('user_id, token, created_at')
+        .order('created_at', { ascending: false });
+
+      if (tokensError && !tokensError.message?.includes('does not exist')) {
+        console.error('Error fetching welcome tokens:', tokensError);
+      }
+
+      // Create a map of user_id to latest token
+      const tokenMap = new Map<string, string>();
+      if (tokens && tokens.length > 0) {
+        tokens.forEach(token => {
+          const existing = tokenMap.get(token.user_id);
+          if (!existing) {
+            tokenMap.set(token.user_id, token.token);
+          }
+        });
+      }
+
+      // Combine profiles with tokens
+      const allUsers = profiles.map(profile => ({
+        email: profile.email || '',
+        password: '••••••••', // Don't show actual password
+        fullName: profile.full_name || profile.email || '',
+        timestamp: new Date(profile.created_at).toLocaleString(),
+        welcomeToken: tokenMap.get(profile.user_id) || undefined,
+      }));
+
+      console.log('Loaded existing users:', allUsers.length);
+      setExistingUsers(allUsers);
     } catch (error) {
       console.error('Error in fetchExistingUsers:', error);
       setExistingUsers([]);
