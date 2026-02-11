@@ -51,58 +51,32 @@ const ManageUsers = () => {
     try {
       setLoadingUsers(true);
 
-      // Fetch all users from public_agent_profile (without created_at which might not exist)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('public_agent_profile')
-        .select('user_id, email, full_name');
+      // Use admin function to bypass RLS and fetch ALL users
+      const response = await supabase.functions.invoke('admin-list-users');
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+      if (response.error) {
+        console.error('Error fetching users:', response.error);
         setExistingUsers([]);
         return;
       }
 
-      if (!profiles || profiles.length === 0) {
-        console.log('No users found');
+      if (response.data?.error) {
+        console.error('Error from admin-list-users:', response.data.error);
         setExistingUsers([]);
         return;
       }
 
-      console.log('Found profiles:', profiles.length);
-      console.log('Profile emails:', profiles.map(p => p.email).join(', '));
-      console.log('All profile data:', JSON.stringify(profiles, null, 2));
+      const users = response.data?.users || [];
 
-      // Fetch all welcome tokens
-      const { data: tokens, error: tokensError } = await supabase
-        .from('welcome_tokens')
-        .select('user_id, token, created_at')
-        .order('created_at', { ascending: false });
+      console.log('Found users via admin function:', users.length);
+      console.log('User emails:', users.map((u: any) => u.email).join(', '));
 
-      if (tokensError && !tokensError.message?.includes('does not exist')) {
-        console.error('Error fetching welcome tokens:', tokensError);
-      }
-
-      // Create a map of user_id to latest token
-      const tokenMap = new Map<string, string>();
-      if (tokens && tokens.length > 0) {
-        tokens.forEach(token => {
-          const existing = tokenMap.get(token.user_id);
-          if (!existing) {
-            tokenMap.set(token.user_id, token.token);
-          }
-        });
-      }
-
-      // Combine profiles with tokens
-      const allUsers = profiles.map(profile => ({
-        email: profile.email || '',
-        password: '••••••••', // Don't show actual password
-        fullName: profile.full_name || profile.email || '',
-        timestamp: 'Account created',
-        welcomeToken: tokenMap.get(profile.user_id) || undefined,
+      // Add password field for display consistency
+      const allUsers = users.map((user: any) => ({
+        ...user,
+        password: '••••••••',
       }));
 
-      console.log('Loaded existing users:', allUsers.length);
       setExistingUsers(allUsers);
     } catch (error) {
       console.error('Error in fetchExistingUsers:', error);
