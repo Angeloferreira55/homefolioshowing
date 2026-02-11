@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitIdentifier } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
@@ -129,7 +129,7 @@ async function processInBackground(
   jobId: string,
   filePath: string,
   fileType: string,
-  serviceSupabase: ReturnType<typeof createClient>,
+  serviceSupabase: SupabaseClient,
   lovableApiKey: string
 ) {
   console.log(`Background processing started for job ${jobId}`);
@@ -582,9 +582,9 @@ Deno.serve(async (req) => {
     console.log('Created job:', job.id);
 
     // Start background processing (non-blocking)
-    EdgeRuntime.waitUntil(
+    (globalThis as any).EdgeRuntime?.waitUntil?.(
       processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey)
-    );
+    ) ?? processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey);
 
     // Return immediately with job ID
     return new Response(

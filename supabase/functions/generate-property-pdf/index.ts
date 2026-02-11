@@ -476,7 +476,7 @@ serve(async (req) => {
     const pdfBytes = await pdfDoc.save();
     const sanitizedAddress = property.address.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
 
-    return new Response(pdfBytes, {
+    return new Response(pdfBytes as unknown as BodyInit, {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/pdf",
