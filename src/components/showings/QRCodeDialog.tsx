@@ -121,7 +121,7 @@ const QRCodeDialog = ({ open, onOpenChange, shareToken, sessionTitle, logoUrl, a
       logo.crossOrigin = 'anonymous';
 
       logo.onload = () => {
-        const circleSize = canvas.width * 0.32; // Circle takes 32% of QR code
+        const circleSize = canvas.width * 0.22; // Circle takes 22% of QR code (reduced for better scanning)
         const logoSize = circleSize * 0.7; // Logo is 70% of circle size for padding
         const circleX = canvas.width / 2;
         const circleY = canvas.height / 2;
