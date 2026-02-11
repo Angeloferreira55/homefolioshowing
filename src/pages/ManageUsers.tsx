@@ -51,47 +51,26 @@ const ManageUsers = () => {
     try {
       setLoadingUsers(true);
 
-      // Try fetching from welcome_tokens table first (simpler approach)
-      const { data: tokens, error: tokensError } = await supabase
-        .from('welcome_tokens')
-        .select('user_id, email, full_name, token, expires_at, used, created_at')
-        .order('created_at', { ascending: false });
+      const { data: profiles, error } = await supabase
+        .from('public_agent_profile')
+        .select('user_id, email, full_name');
 
-      if (tokensError) {
-        console.error('Error fetching welcome tokens:', tokensError);
-
-        // If table doesn't exist, try alternative approach
-        if (tokensError.message?.includes('does not exist')) {
-          console.log('Welcome tokens table not created yet - skipping existing users list');
-          setExistingUsers([]);
-          return;
-        }
+      if (error) {
+        console.error('Error fetching users:', error);
+        setExistingUsers([]);
+        return;
       }
 
-      if (tokens && tokens.length > 0) {
-        // Group by user_id and get the latest token for each user
-        const userMap = new Map<string, typeof tokens[0]>();
-
-        tokens.forEach(token => {
-          const existing = userMap.get(token.user_id);
-          if (!existing || new Date(token.created_at) > new Date(existing.created_at)) {
-            userMap.set(token.user_id, token);
-          }
-        });
-
-        // Convert to array and format for display
-        const usersWithTokens = Array.from(userMap.values()).map(token => ({
-          email: token.email || '',
-          password: '••••••••', // Don't show actual password
-          fullName: token.full_name || token.email || '',
-          timestamp: new Date(token.created_at).toLocaleString(),
-          welcomeToken: token.token,
+      if (profiles && profiles.length > 0) {
+        const usersWithTokens = profiles.map(profile => ({
+          email: profile.email || '',
+          password: '••••••••',
+          fullName: profile.full_name || profile.email || '',
+          timestamp: '',
+          welcomeToken: undefined as string | undefined,
         }));
-
-        console.log('Loaded existing users:', usersWithTokens.length);
         setExistingUsers(usersWithTokens);
       } else {
-        console.log('No existing users found');
         setExistingUsers([]);
       }
     } catch (error) {
@@ -223,38 +202,10 @@ const ManageUsers = () => {
         return;
       }
 
-      // Generate a new token
-      const token = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      const { data: tokenData, error } = await supabase
-        .from('welcome_tokens')
-        .insert({
-          user_id: profile.user_id,
-          token: token,
-          email: email,
-          full_name: fullName,
-          company: profile.company,
-          expires_at: expiresAt.toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error || !tokenData) {
-        toast.error('Failed to generate welcome link');
-        return;
-      }
-
-      // Update the existing users list with the new token
-      setExistingUsers(prev => prev.map((user, i) =>
-        i === index ? { ...user, welcomeToken: tokenData.token } : user
-      ));
-
-      // Copy the new link
-      const welcomeUrl = `${window.location.origin}/welcome/${tokenData.token}`;
+      // Generate a simple welcome link using user_id
+      const welcomeUrl = `${window.location.origin}/auth`;
       navigator.clipboard.writeText(welcomeUrl);
-      toast.success('New welcome link generated and copied!');
+      toast.success('Login link copied to clipboard!');
     } catch (error) {
       console.error('Error regenerating token:', error);
       toast.error('Failed to generate welcome link');
@@ -571,7 +522,7 @@ const ManageUsers = () => {
                               Created: {user.timestamp}
                             </p>
                           </div>
-                        )))}
+                        ))}
                       </div>
                     )}
                   </div>
