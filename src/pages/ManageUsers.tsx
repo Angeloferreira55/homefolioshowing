@@ -69,6 +69,8 @@ const ManageUsers = () => {
       }
 
       console.log('Found profiles:', profiles.length);
+      console.log('Profile emails:', profiles.map(p => p.email).join(', '));
+      console.log('All profile data:', JSON.stringify(profiles, null, 2));
 
       // Fetch all welcome tokens
       const { data: tokens, error: tokensError } = await supabase
