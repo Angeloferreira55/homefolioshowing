@@ -34,9 +34,9 @@ const DEFAULT_COLORS = {
   background: '#ffffff',
 };
 
-// Higher resolution for better quality - displayed at 120px but rendered at 512px for crisp logos
+// Higher resolution for better quality - displayed at 100px but rendered at 512px for crisp logos
 const QR_RENDER_SIZE = 512;
-const QR_DISPLAY_SIZE = 120;
+const QR_DISPLAY_SIZE = 100;
 
 const PRESET_COLORS = [
   { name: 'Navy', fg: '#1e3a5f', bg: '#ffffff' },
