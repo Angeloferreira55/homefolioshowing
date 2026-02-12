@@ -1010,26 +1010,52 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       return;
     }
 
-    // Check if route has been optimized
-    if (legDurations.length === 0) {
-      toast.info('Please optimize the route first to get driving times');
+    // Check if route has been optimized (need at least properties.length - 1 legs)
+    if (legDurations.length === 0 && properties.length > 1) {
+      toast.error('Please optimize the route first!', {
+        description: 'Click "Optimize Route" to calculate driving times between properties'
+      });
       return;
     }
 
     try {
+      console.log('[Auto-Schedule] Starting with', properties.length, 'properties');
+      console.log('[Auto-Schedule] Leg durations:', legDurations);
+
       // Get start time from first property or ask user
       let startTime = properties[0].showing_time;
 
       if (!startTime) {
-        const userInput = prompt('Enter start time for first showing (e.g., 14:00 for 2:00 PM):');
-        if (!userInput) return; // User cancelled
+        // Use window.prompt for start time
+        const userInput = window.prompt('Enter start time for first showing\n\nFormat: HH:MM (e.g., 14:00 for 2:00 PM)');
+        if (!userInput) {
+          toast.info('Auto-schedule cancelled');
+          return;
+        }
+
+        // Validate format
+        if (!/^\d{1,2}:\d{2}$/.test(userInput)) {
+          toast.error('Invalid time format. Use HH:MM (e.g., 14:00)');
+          return;
+        }
+
         startTime = userInput;
       }
 
-      // Parse start time
-      const [startHours, startMinutes] = startTime.split(':').map(Number);
-      let currentTimeMinutes = startHours * 60 + startMinutes;
+      console.log('[Auto-Schedule] Starting time:', startTime);
 
+      // Parse start time
+      const timeParts = startTime.split(':');
+      const startHours = parseInt(timeParts[0], 10);
+      const startMinutes = parseInt(timeParts[1], 10);
+
+      // Validate parsed time
+      if (isNaN(startHours) || isNaN(startMinutes) || startHours > 23 || startMinutes > 59) {
+        toast.error('Invalid time. Hours: 0-23, Minutes: 0-59');
+        return;
+      }
+
+      let currentTimeMinutes = startHours * 60 + startMinutes;
       const updates = [];
 
       // Schedule each property
@@ -1040,6 +1066,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         const hours = Math.floor(currentTimeMinutes / 60);
         const minutes = currentTimeMinutes % 60;
         const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+        console.log(`[Auto-Schedule] Property ${i + 1}/${properties.length}: ${timeString}`);
 
         // Update this property's time
         updates.push(
@@ -1061,17 +1089,26 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
           if (drivingData) {
             const drivingMinutes = Math.ceil(drivingData.seconds / 60);
+            console.log(`[Auto-Schedule] + ${drivingMinutes} min drive to next property`);
             currentTimeMinutes += drivingMinutes;
+          } else {
+            // If no driving data found, add 15 min buffer
+            console.log('[Auto-Schedule] No driving data, adding 15 min buffer');
+            currentTimeMinutes += 15;
           }
         }
       }
 
+      console.log('[Auto-Schedule] Saving', updates.length, 'time updates');
+
       await Promise.all(updates);
       await fetchProperties();
 
-      toast.success('Times auto-scheduled! (30 min per showing + driving time)');
+      toast.success(`${properties.length} properties scheduled!`, {
+        description: '30 min per showing + driving time'
+      });
     } catch (error: any) {
-      console.error('Error auto-scheduling times:', error);
+      console.error('[Auto-Schedule] Error:', error);
       toast.error(error.message || 'Failed to auto-schedule times');
     }
   };
