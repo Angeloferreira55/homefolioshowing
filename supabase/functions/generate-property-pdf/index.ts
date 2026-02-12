@@ -125,18 +125,14 @@ serve(async (req) => {
       .single();
 
     let agentName = "Your Agent";
-    let agentAvatarUrl: string | null = null;
     if (sessionData?.admin_id) {
       const { data: profile } = await supabase
         .from("public_agent_profile")
-        .select("full_name, company, avatar_url")
+        .select("full_name, company")
         .eq("user_id", sessionData.admin_id)
         .single();
       if (profile?.full_name) {
         agentName = profile.full_name;
-      }
-      if (profile?.avatar_url) {
-        agentAvatarUrl = profile.avatar_url;
       }
     }
 
@@ -162,27 +158,6 @@ serve(async (req) => {
       }
     } catch (err) {
       console.log("Could not load logo:", err);
-    }
-
-    // Fetch agent avatar
-    let agentAvatar = null;
-    if (agentAvatarUrl) {
-      try {
-        const avatarResponse = await fetch(agentAvatarUrl);
-        if (avatarResponse.ok) {
-          const avatarArrayBuffer = await avatarResponse.arrayBuffer();
-          const avatarUint8Array = new Uint8Array(avatarArrayBuffer);
-          const contentType = avatarResponse.headers.get("content-type") || "";
-
-          if (contentType.includes("png")) {
-            agentAvatar = await pdfDoc.embedPng(avatarUint8Array);
-          } else if (contentType.includes("jpeg") || contentType.includes("jpg")) {
-            agentAvatar = await pdfDoc.embedJpg(avatarUint8Array);
-          }
-        }
-      } catch (err) {
-        console.log("Could not load agent avatar:", err);
-      }
     }
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -260,49 +235,15 @@ serve(async (req) => {
       yPosition -= height;
     };
 
-    // Header
+    // Header with Address
     const fullAddress = [property.address, property.city, property.state, property.zip_code]
       .filter(Boolean)
       .join(", ");
 
-    drawText("PROPERTY DETAILS", { font: helveticaBold, size: 20, color: rgb(0.13, 0.27, 0.43) });
-    addSpace(8);
-    drawText(fullAddress, { font: helveticaBold, size: 14 });
-    addSpace(4);
+    drawText(fullAddress, { font: helveticaBold, size: 14, color: rgb(0.13, 0.27, 0.43) });
+    addSpace(6);
 
-    // Draw "Prepared by [agent]" with avatar
-    const preparedByText = `Prepared by ${agentName}`;
-    if (agentAvatar) {
-      // Draw avatar
-      const avatarSize = 20;
-      page.drawImage(agentAvatar, {
-        x: margin,
-        y: yPosition - avatarSize + 4,
-        width: avatarSize,
-        height: avatarSize,
-      });
-
-      // Draw text next to avatar
-      page.drawText(preparedByText, {
-        x: margin + avatarSize + 6,
-        y: yPosition,
-        size: 10,
-        font: helvetica,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-    } else {
-      // No avatar, just draw the text
-      page.drawText(preparedByText, {
-        x: margin,
-        y: yPosition,
-        size: 10,
-        font: helvetica,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-    }
-    addSpace(16);
-
-    // Price
+    // Price (prominent)
     if (property.price) {
       const formattedPrice = new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -310,36 +251,32 @@ serve(async (req) => {
         maximumFractionDigits: 0,
       }).format(property.price);
       drawText(formattedPrice, { font: helveticaBold, size: 24, color: rgb(0.13, 0.27, 0.43) });
-      addSpace(12);
+      addSpace(4);
     }
 
-    // Quick stats
-    const stats: string[] = [];
-    if (property.beds) stats.push(`${property.beds} Beds`);
-    if (property.baths) stats.push(`${property.baths} Baths`);
-    if (property.sqft) stats.push(`${property.sqft.toLocaleString()} Sq Ft`);
-    if (property.year_built) stats.push(`Built ${property.year_built}`);
-    if (stats.length > 0) {
-      drawText(stats.join("  •  "), { font: helveticaBold, size: 12 });
+    // Quick stats (basic info)
+    const quickStats: string[] = [];
+    if (property.beds) quickStats.push(`${property.beds} Bd`);
+    if (property.baths) quickStats.push(`${property.baths} Ba`);
+    if (property.sqft) quickStats.push(`${property.sqft.toLocaleString()} Sq Ft`);
+    if (quickStats.length > 0) {
+      drawText(quickStats.join("  •  "), { size: 11, color: rgb(0.4, 0.4, 0.4) });
+      addSpace(3);
+    }
+
+    // Estimated monthly payment
+    if (property.price) {
+      const monthlyRate = 0.07 / 12;
+      const numPayments = 30 * 12;
+      const monthlyPayment = (property.price * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+                             (Math.pow(1 + monthlyRate, numPayments) - 1);
+      const formattedMonthly = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(monthlyPayment);
+      drawText(`Est. ${formattedMonthly}/mo`, { size: 10, color: rgb(0.4, 0.4, 0.4) });
       addSpace(16);
-    }
-
-    // Property Details Section
-    const details: { label: string; value: string }[] = [];
-    if (property.year_built) details.push({ label: "Year Built", value: String(property.year_built) });
-    if (property.lot_size) details.push({ label: "Lot Size", value: property.lot_size });
-    if (property.garage) details.push({ label: "Parking", value: property.garage });
-    if (property.price && property.sqft) {
-      details.push({ label: "Price/Sq Ft", value: `$${Math.round(property.price / property.sqft).toLocaleString()}` });
-    }
-
-    if (details.length > 0) {
-      drawText("PROPERTY DETAILS", { font: helveticaBold, size: 13, color: rgb(0.13, 0.27, 0.43) });
-      addSpace(6);
-      for (const detail of details) {
-        drawText(`${detail.label}: ${detail.value}`, { size: 11 });
-      }
-      addSpace(12);
     }
 
     // Agent Notes
@@ -378,6 +315,27 @@ serve(async (req) => {
       addSpace(12);
     }
 
+    // Comprehensive Property Details Section
+    const allDetails: { label: string; value: string }[] = [];
+    if (property.beds) allDetails.push({ label: "Bedrooms", value: String(property.beds) });
+    if (property.baths) allDetails.push({ label: "Bathrooms", value: String(property.baths) });
+    if (property.sqft) allDetails.push({ label: "Square Feet", value: property.sqft.toLocaleString() });
+    if (property.year_built) allDetails.push({ label: "Year Built", value: String(property.year_built) });
+    if (property.lot_size) allDetails.push({ label: "Lot Size", value: property.lot_size });
+    if (property.price && property.sqft) {
+      allDetails.push({ label: "Price/Sq Ft", value: `$${Math.round(property.price / property.sqft).toLocaleString()}` });
+    }
+    if (property.garage) allDetails.push({ label: "Parking", value: property.garage });
+
+    if (allDetails.length > 0) {
+      drawText("PROPERTY DETAILS", { font: helveticaBold, size: 13, color: rgb(0.13, 0.27, 0.43) });
+      addSpace(6);
+      for (const detail of allDetails) {
+        drawText(`${detail.label}: ${detail.value}`, { size: 11 });
+      }
+      addSpace(12);
+    }
+
     // Documents list
     if (documents && documents.length > 0) {
       drawText("ATTACHED DOCUMENTS", { font: helveticaBold, size: 13, color: rgb(0.13, 0.27, 0.43) });
@@ -389,12 +347,19 @@ serve(async (req) => {
       addSpace(12);
     }
 
-    // Footer
+    // Footer with Agent Info
     addSpace(20);
-    drawText(`Generated on ${new Date().toLocaleDateString("en-US", { 
-      year: "numeric", 
-      month: "long", 
-      day: "numeric" 
+
+    // Agent information at bottom
+    if (agentName && agentName !== "Your Agent") {
+      drawText(`Prepared by ${agentName}`, { font: helveticaBold, size: 10, color: rgb(0.3, 0.3, 0.3) });
+      addSpace(4);
+    }
+
+    drawText(`Generated on ${new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
     })}`, { size: 9, color: rgb(0.5, 0.5, 0.5) });
     drawText("Powered by HomeFolio", { size: 9, color: rgb(0.5, 0.5, 0.5) });
 
