@@ -28,7 +28,7 @@ const ManageUsers = () => {
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
-  const [tier, setTier] = useState<'starter' | 'pro' | 'team'>('pro');
+  const [tier, setTier] = useState<'starter' | 'pro' | 'team5' | 'team'>('pro');
   const [trialDays, setTrialDays] = useState<number>(30);
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [existingUsers, setExistingUsers] = useState<CreatedUser[]>([]);
@@ -390,13 +390,14 @@ const ManageUsers = () => {
                   <Label htmlFor="tier">Plan Type *</Label>
                   <div className="relative">
                     <Crown className="absolute left-3 top-3 w-4 h-4 text-muted-foreground z-10" />
-                    <Select value={tier} onValueChange={(value: 'starter' | 'pro' | 'team') => setTier(value)}>
+                    <Select value={tier} onValueChange={(value: 'starter' | 'pro' | 'team5' | 'team') => setTier(value)}>
                       <SelectTrigger id="tier" className="pl-10">
                         <SelectValue placeholder="Select plan" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="starter">Starter (Free)</SelectItem>
                         <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="team5">Teams (up to 5)</SelectItem>
                         <SelectItem value="team">Team</SelectItem>
                       </SelectContent>
                     </Select>

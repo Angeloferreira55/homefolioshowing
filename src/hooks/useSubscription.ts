@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type SubscriptionTier = 'starter' | 'pro' | 'team';
+export type SubscriptionTier = 'starter' | 'pro' | 'team5' | 'team';
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -17,6 +17,10 @@ export const PRICE_IDS = {
   pro: {
     monthly: 'price_1SypiGGny8WPy9rqHPf37JT8',
     yearly: 'price_1SypiZGny8WPy9rqwlNEXlso',
+  },
+  team5: {
+    monthly: 'price_1SzntmGny8WPy9rqZ2isM8rG',
+    yearly: 'price_1SznrEGny8WPy9rqaQ69H1Ki',
   },
   team: {
     monthly: 'price_1SypipGny8WPy9rqbWEZZuKU',

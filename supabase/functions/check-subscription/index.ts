@@ -16,6 +16,8 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 const PRICE_TO_TIER: Record<string, string> = {
   "price_1SypiGGny8WPy9rqHPf37JT8": "pro",    // Pro Monthly
   "price_1SypiZGny8WPy9rqwlNEXlso": "pro",    // Pro Yearly
+  "price_1SzntmGny8WPy9rqZ2isM8rG": "team5",  // Team5 Monthly
+  "price_1SznrEGny8WPy9rqaQ69H1Ki": "team5",  // Team5 Yearly
   "price_1SypipGny8WPy9rqbWEZZuKU": "team",   // Team Monthly
   "price_1Sypj4Gny8WPy9rqW7raQeaH": "team",   // Team Yearly
 };
