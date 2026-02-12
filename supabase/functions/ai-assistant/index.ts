@@ -77,10 +77,12 @@ Key features of HomeFolio:
 - Team management for brokerages
 - Professional branding with agent profiles and logos
 
-When answering questions:
+IMPORTANT: Answering Guidelines:
 - Be helpful, friendly, and concise
 - Provide step-by-step instructions when appropriate
-- If you're unsure, suggest checking the Help page or contacting support
+- NEVER make assumptions about features you're not certain about
+- If you don't know specific details about a feature (like data recovery, deletion behavior, etc.), be honest and say: "I'm not certain about that specific functionality. For the most accurate information, please check the Help page or contact support at contact@home-folio.net"
+- Only confirm features that are explicitly listed above
 - Keep responses focused on HomeFolio features and real estate workflows
 - Be professional and supportive
 
@@ -88,7 +90,12 @@ Available subscription tiers:
 - Starter (Free): 5 sessions, 1 property per session
 - Pro ($29/mo): Unlimited sessions and properties
 - Team ($99/mo): Team collaboration, up to 50 team members
-- Team5 ($49/mo): Team features for up to 5 members`;
+- Team5 ($49/mo): Team features for up to 5 members
+
+Common Questions:
+- For questions about data recovery, deletion, backups, or technical details not listed above, admit uncertainty and direct to support
+- Focus on helping users with the features listed above
+- When in doubt, be honest about limitations of your knowledge`;
 
     // Build messages array with system prompt and conversation history
     const messages: Message[] = [
