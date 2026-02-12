@@ -28,6 +28,7 @@ interface CreateSessionDialogProps {
     notes?: string;
     sharePassword?: string;
   }) => void;
+  isOnboarding?: boolean;
 }
 
 const generateAccessCode = (): string => {
@@ -40,7 +41,7 @@ const generateAccessCode = (): string => {
   return code;
 };
 
-const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDialogProps) => {
+const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false }: CreateSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
@@ -49,6 +50,24 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [sharePassword, setSharePassword] = useState('');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+
+  // Mark field as touched when user interacts with it
+  const handleFieldFocus = (fieldName: string) => {
+    if (isOnboarding) {
+      setTouchedFields(prev => new Set(prev).add(fieldName));
+    }
+  };
+
+  // Helper to get highlight class for required fields during onboarding
+  const getRequiredFieldClass = (fieldName: string, fieldValue: string) => {
+    if (!isOnboarding) return '';
+    // Remove highlight only if field has been touched (not based on content)
+    if (touchedFields.has(fieldName)) {
+      return '';
+    }
+    return 'border-2 border-primary bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.3)]';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +113,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
     setPasswordEnabled(false);
     setSharePassword('');
     setDatePickerOpen(false);
+    setTouchedFields(new Set());
   };
 
   const handleGenerateCode = () => {
@@ -121,14 +141,18 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Session Title *</Label>
+            <Label htmlFor="title" className={isOnboarding ? 'text-primary font-semibold' : ''}>
+              Session Title {isOnboarding && <span className="text-primary">*</span>}
+            </Label>
             <Input
               id="title"
               placeholder="Saturday Home Tour - North Valley"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onFocus={() => handleFieldFocus('title')}
               maxLength={200}
               required
+              className={getRequiredFieldClass('title', title)}
             />
             {errors.title && (
               <p className="text-sm text-destructive">{errors.title}</p>
@@ -166,14 +190,18 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="clientName">Client Name *</Label>
+            <Label htmlFor="clientName" className={isOnboarding ? 'text-primary font-semibold' : ''}>
+              Client Name {isOnboarding && <span className="text-primary">*</span>}
+            </Label>
             <Input
               id="clientName"
               placeholder="John & Jane Smith"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
+              onFocus={() => handleFieldFocus('clientName')}
               maxLength={100}
               required
+              className={getRequiredFieldClass('clientName', clientName)}
             />
             {errors.clientName && (
               <p className="text-sm text-destructive">{errors.clientName}</p>
@@ -197,7 +225,9 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
           </div>
 
           {/* Password Protection Section */}
-          <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+          <div className={`border rounded-lg p-4 space-y-3 bg-muted/30 ${
+            isOnboarding ? 'border-2 border-amber-500 bg-amber-500/10' : ''
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {passwordEnabled ? (
@@ -206,7 +236,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
                   <LockOpen className="w-4 h-4 text-muted-foreground" />
                 )}
                 <Label htmlFor="password-toggle" className="font-medium cursor-pointer">
-                  Password Protect Link
+                  Password Protect Link {isOnboarding && <span className="text-amber-600">(Recommended)</span>}
                 </Label>
               </div>
               <Switch
@@ -215,6 +245,11 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate }: CreateSessionDial
                 onCheckedChange={handlePasswordToggle}
               />
             </div>
+            {isOnboarding && !passwordEnabled && (
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                💡 Tip: We highly recommend enabling password protection to keep your client's showing session private and secure.
+              </p>
+            )}
             
             {passwordEnabled && (
               <div className="space-y-2">

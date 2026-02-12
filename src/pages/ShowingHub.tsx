@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,11 @@ import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { useProfile } from '@/hooks/useProfile';
+import WelcomeModal from '@/components/onboarding/WelcomeModal';
+import OnboardingTooltip from '@/components/onboarding/OnboardingTooltip';
+import { createDemoSession } from '@/lib/demoSession';
 
 interface ShowingSession {
   id: string;
@@ -50,10 +55,29 @@ const ShowingHub = () => {
   const [deletingSession, setDeletingSession] = useState<ShowingSession | null>(null);
   const [permanentDeleteSession, setPermanentDeleteSession] = useState<ShowingSession | null>(null);
   const [activeTab, setActiveTab] = useState<SessionTab>('active');
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false);
+
+  // Onboarding state
+  const onboarding = useOnboarding();
+  const { profile } = useProfile();
+  const newSessionButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
+  const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
 
   useEffect(() => {
     fetchSessions();
   }, []);
+
+  // Auto-mark all tour steps as complete (simple click-through tour)
+  useEffect(() => {
+    if (!onboarding.showTour) return;
+
+    // Auto-complete current step
+    if (!onboarding.isStepComplete(onboarding.currentStep)) {
+      onboarding.markStepComplete(onboarding.currentStep);
+    }
+  }, [onboarding]);
 
   const fetchSessions = async () => {
     try {
@@ -308,6 +332,85 @@ const ShowingHub = () => {
     return Math.max(0, daysLeft);
   };
 
+  // Onboarding handlers
+  const handleTakeTour = () => {
+    onboarding.startTour();
+  };
+
+  const handleCreateDemo = async () => {
+    setIsCreatingDemo(true);
+    try {
+      const { sessionId, error } = await createDemoSession();
+
+      if (error) {
+        toast.error(error);
+        return;
+      }
+
+      toast.success('Demo session created! Explore the features.');
+      onboarding.completeOnboarding();
+
+      // Navigate to the demo session after a brief delay
+      setTimeout(() => {
+        navigate(`/admin/session/${sessionId}`);
+      }, 500);
+    } catch (error) {
+      console.error('Failed to create demo session:', error);
+      toast.error('Failed to create demo session');
+    } finally {
+      setIsCreatingDemo(false);
+    }
+  };
+
+  const handleSkipOnboarding = () => {
+    onboarding.skipOnboarding();
+  };
+
+  // Define tour steps
+  const tourSteps = [
+    {
+      title: 'Welcome to HomeFolio! 👋',
+      description: 'Create personalized showing sessions for your clients featuring property details, documents, notes, ratings, and real-time feedback. Let\'s get you up and running in just a few simple steps.',
+      targetRef: null,
+    },
+    {
+      title: 'Step 1: Complete Your Profile',
+      description: 'Add your professional details to your profile. Click "My Profile" in the sidebar, upload your photo, fill in your phone number, bio, brokerage information, social media, etc. Don\'t forget to click save when you are done',
+      targetRef: null,
+    },
+    {
+      title: 'Step 2: Create Your First Session',
+      description: 'Click this button to create your first showing session. You\'ll add a session name (like "Downtown Condos Tour"), client name, and optional date. We highly suggest protecting your link with a code by checking the password protection box at the bottom!',
+      targetRef: newSessionButtonRef,
+    },
+    {
+      title: 'Step 3: Add Properties',
+      description: 'After creating a session, you\'ll add properties. 3 different ways to do that: You can Upload a PDF of the MLS sheet of the property as well as a picture at the bottom. You can Copy & Paste a property link from Realtor.com or you can enter all the property information manually (a lot more work).',
+      targetRef: null,
+    },
+    {
+      title: 'Step 4: Upload Documents & Add Notes',
+      description: 'Once your properties are added, you can upload and attach documents you\'d like to share with your clients by clicking the "Doc" button on each property. You can also include personal notes and remarks by selecting the "Edit" button to update property information.',
+      targetRef: null,
+    },
+    {
+      title: 'Step 5: Route Optimization',
+      description: 'Once everything is set and all the properties you plan to show are added, click the Route Optimization button to generate the most efficient route based on your starting location. Note that you can save addresses to the system like home, office, etc to make it even faster for future use.',
+      targetRef: null,
+    },
+    {
+      title: 'Step 6: Schedule Showing Times',
+      description: 'Once your optimized route is generated, you\'ll see the estimated travel time from your starting location to the first showing, as well as the drive time between each property. With that information, you can efficiently schedule the showing times for every home on your tour.',
+      targetRef: null,
+    },
+    {
+      title: 'You\'re All Set! 🎉',
+      description: 'You are all set! You can now share the HomeFolio link with your clients (don\'t forget the password). They can view properties, access the documents, get direction to each house, leave ratings, and provide feedback - all from their phone!',
+      targetRef: null,
+    },
+  ];
+
+
   const renderSessionCard = (session: ShowingSession, variant: 'active' | 'archived' | 'trash') => (
     <div
       key={session.id}
@@ -466,6 +569,7 @@ const ShowingHub = () => {
 
         {/* New Session Button */}
         <Button
+          ref={newSessionButtonRef}
           onClick={() => setIsCreateOpen(true)}
           className="w-full sm:w-auto mb-6 h-14 bg-primary text-primary-foreground font-semibold uppercase tracking-wide gap-2"
         >
@@ -681,6 +785,35 @@ const ShowingHub = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Onboarding - Welcome Modal */}
+      <WelcomeModal
+        open={showWelcome}
+        onTakeTour={handleTakeTour}
+        onCreateDemo={handleCreateDemo}
+        onSkip={handleSkipOnboarding}
+        isCreatingDemo={isCreatingDemo}
+      />
+
+      {/* Onboarding - Tour Tooltips */}
+      {onboarding.showTour && (
+        <OnboardingTooltip
+          title={tourSteps[onboarding.currentStep]?.title || ''}
+          description={tourSteps[onboarding.currentStep]?.description || ''}
+          step={onboarding.currentStep}
+          totalSteps={tourSteps.length}
+          onNext={onboarding.currentStep < tourSteps.length - 1 ? onboarding.nextStep : undefined}
+          onPrev={onboarding.currentStep > 0 ? onboarding.prevStep : undefined}
+          onSkip={() => {
+            onboarding.completeOnboarding();
+          }}
+          onComplete={onboarding.currentStep === tourSteps.length - 1 ? () => {
+            onboarding.completeOnboarding();
+            toast.success('Tour complete! Create your first session to get started.');
+          } : undefined}
+          position="bottom"
+        />
+      )}
     </AdminLayout>
   );
 };

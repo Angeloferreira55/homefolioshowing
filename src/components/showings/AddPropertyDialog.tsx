@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2, Upload, FileText, X, ImagePlus } from 'lucide-react';
+import { Link2, Loader2, Upload, FileText, X, ImagePlus, AlertCircle } from 'lucide-react';
+import { validateProperty, ERROR_MESSAGES } from '@/lib/errorHandling';
 
 interface PropertyData {
   address: string;
@@ -66,6 +67,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   const [sqft, setSqft] = useState('');
   const [description, setDescription] = useState('');
   const [summary, setSummary] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   
   // Extra scraped fields
   const [yearBuilt, setYearBuilt] = useState<number | undefined>();
@@ -403,31 +405,54 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (address.trim()) {
-      onAdd({
-        address: address.trim(),
-        city: city.trim() || undefined,
-        state: state.trim() || undefined,
-        zipCode: zipCode.trim() || undefined,
-        price: price ? parseFloat(price.replace(/[^0-9.]/g, '')) : undefined,
-        photoUrl: photoUrl.trim() || undefined,
-        beds: beds ? parseInt(beds) : undefined,
-        baths: baths ? parseFloat(baths) : undefined,
-        sqft: sqft ? parseInt(sqft) : undefined,
-        description: description.trim() || undefined,
-        summary: summary.trim() || undefined,
-        yearBuilt: yearBuilt,
-        lotSize: lotSize.trim() || undefined,
-        propertyType: propertyType.trim() || undefined,
-        hoaFee: hoaFee,
-        garage: garage.trim() || undefined,
-        heating: heating.trim() || undefined,
-        cooling: cooling.trim() || undefined,
-        features: features.length > 0 ? features : undefined,
-      });
-      resetForm();
-      onOpenChange(false);
+
+    // Parse values for validation
+    const parsedPrice = price ? parseFloat(price.replace(/[^0-9.]/g, '')) : undefined;
+    const parsedBeds = beds ? parseInt(beds) : undefined;
+    const parsedBaths = baths ? parseFloat(baths) : undefined;
+    const parsedSqft = sqft ? parseInt(sqft) : undefined;
+
+    // Validate the property data
+    const validation = validateProperty({
+      address: address.trim(),
+      price: parsedPrice,
+      beds: parsedBeds,
+      baths: parsedBaths,
+      sqft: parsedSqft,
+    });
+
+    if (!validation.valid) {
+      setValidationErrors(validation.errors);
+      toast.error(ERROR_MESSAGES.VALIDATION_ERROR);
+      return;
     }
+
+    // Clear validation errors
+    setValidationErrors({});
+
+    onAdd({
+      address: address.trim(),
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      zipCode: zipCode.trim() || undefined,
+      price: parsedPrice,
+      photoUrl: photoUrl.trim() || undefined,
+      beds: parsedBeds,
+      baths: parsedBaths,
+      sqft: parsedSqft,
+      description: description.trim() || undefined,
+      summary: summary.trim() || undefined,
+      yearBuilt: yearBuilt,
+      lotSize: lotSize.trim() || undefined,
+      propertyType: propertyType.trim() || undefined,
+      hoaFee: hoaFee,
+      garage: garage.trim() || undefined,
+      heating: heating.trim() || undefined,
+      cooling: cooling.trim() || undefined,
+      features: features.length > 0 ? features : undefined,
+    });
+    resetForm();
+    onOpenChange(false);
   };
 
   const resetForm = () => {
@@ -453,6 +478,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setListingUrl('');
     setSelectedFile(null);
     setParsedProperties([]);
+    setValidationErrors({});
     // Reset extended MLS fields
     setMlsNumber('');
     setDaysOnMarket(undefined);
@@ -962,9 +988,25 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                   id="address-manual"
                   placeholder="123 Main Street"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (validationErrors.address) {
+                      setValidationErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors.address;
+                        return newErrors;
+                      });
+                    }
+                  }}
                   required
+                  className={validationErrors.address ? 'border-destructive' : ''}
                 />
+                {validationErrors.address && (
+                  <div className="flex items-center gap-1 text-sm text-destructive">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{validationErrors.address}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -1005,8 +1047,24 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                     id="price-manual"
                     placeholder="$500,000"
                     value={price}
-                    onChange={(e) => setPrice(e.target.value)}
+                    onChange={(e) => {
+                      setPrice(e.target.value);
+                      if (validationErrors.price) {
+                        setValidationErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.price;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    className={validationErrors.price ? 'border-destructive' : ''}
                   />
+                  {validationErrors.price && (
+                    <div className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{validationErrors.price}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="beds-manual">Beds</Label>
@@ -1014,9 +1072,25 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                     id="beds-manual"
                     placeholder="3"
                     value={beds}
-                    onChange={(e) => setBeds(e.target.value)}
+                    onChange={(e) => {
+                      setBeds(e.target.value);
+                      if (validationErrors.beds) {
+                        setValidationErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.beds;
+                          return newErrors;
+                        });
+                      }
+                    }}
                     type="number"
+                    className={validationErrors.beds ? 'border-destructive' : ''}
                   />
+                  {validationErrors.beds && (
+                    <div className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{validationErrors.beds}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="baths-manual">Baths</Label>
@@ -1024,8 +1098,24 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                     id="baths-manual"
                     placeholder="2"
                     value={baths}
-                    onChange={(e) => setBaths(e.target.value)}
+                    onChange={(e) => {
+                      setBaths(e.target.value);
+                      if (validationErrors.baths) {
+                        setValidationErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.baths;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    className={validationErrors.baths ? 'border-destructive' : ''}
                   />
+                  {validationErrors.baths && (
+                    <div className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{validationErrors.baths}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sqft-manual">Sqft</Label>
@@ -1033,9 +1123,25 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                     id="sqft-manual"
                     placeholder="1,800"
                     value={sqft}
-                    onChange={(e) => setSqft(e.target.value)}
+                    onChange={(e) => {
+                      setSqft(e.target.value);
+                      if (validationErrors.sqft) {
+                        setValidationErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.sqft;
+                          return newErrors;
+                        });
+                      }
+                    }}
                     type="number"
+                    className={validationErrors.sqft ? 'border-destructive' : ''}
                   />
+                  {validationErrors.sqft && (
+                    <div className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{validationErrors.sqft}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

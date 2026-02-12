@@ -24,11 +24,14 @@ import {
   Menu,
   BarChart3,
   Users,
+  RotateCcw,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { toast } from 'sonner';
 
 // Admin emails - only these users can see "Manage Users"
 const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
@@ -56,6 +59,7 @@ function AppSidebar() {
   const collapsed = state === 'collapsed';
   const { profile } = useProfile();
   const { subscribed, tier } = useSubscription();
+  const onboarding = useOnboarding();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +73,14 @@ function AppSidebar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
+  };
+
+  const handleResetOnboarding = () => {
+    onboarding.resetOnboarding();
+    toast.success('Onboarding reset! Reload to see the welcome modal.');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   // Filter nav items based on user role
@@ -106,20 +118,22 @@ function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors"
-                      activeClassName="bg-muted text-primary font-medium"
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {filteredNavItems.map((item) => {
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-all border border-transparent"
+                        activeClassName="bg-muted text-primary font-medium"
+                      >
+                        <item.icon className="w-5 h-5 shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -140,15 +154,29 @@ function AppSidebar() {
               </div>
             )}
           </div>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size={collapsed ? 'icon' : 'sm'}
-            onClick={handleLogout} 
+            onClick={handleLogout}
             className={`mt-3 ${collapsed ? 'w-9 h-9' : 'w-full justify-start gap-2'}`}
           >
             <LogOut className="w-4 h-4 shrink-0" />
             {!collapsed && <span>Logout</span>}
           </Button>
+
+          {/* Dev-only: Reset Onboarding */}
+          {import.meta.env.DEV && (
+            <Button
+              variant="ghost"
+              size={collapsed ? 'icon' : 'sm'}
+              onClick={handleResetOnboarding}
+              className={`mt-2 ${collapsed ? 'w-9 h-9' : 'w-full justify-start gap-2'} text-muted-foreground hover:text-foreground`}
+              title="Reset onboarding (Dev only)"
+            >
+              <RotateCcw className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="text-xs">Reset Onboarding</span>}
+            </Button>
+          )}
         </div>
       </SidebarContent>
     </Sidebar>

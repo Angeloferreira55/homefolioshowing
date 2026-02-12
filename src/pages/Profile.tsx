@@ -35,10 +35,12 @@ const XIcon = ({ className }: { className?: string }) => (
 import AdminLayout from '@/components/layout/AdminLayout';
 import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
 import { toast } from 'sonner';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { profile, loading, saving, updateProfile, uploadImage } = useProfile();
+  const onboarding = useOnboarding();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +49,7 @@ const Profile = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -129,12 +132,43 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    await updateProfile(formData);
+    const success = await updateProfile(formData);
+
+    // If in onboarding mode and save was successful, navigate back to showing hub
+    if (success && onboarding.showTour && onboarding.currentStep === 1) {
+      setTimeout(() => {
+        navigate('/admin/showings');
+      }, 500);
+    }
   };
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Check if we're on onboarding step 1 (profile completion)
+  const isOnboardingProfileStep = onboarding.showTour && onboarding.currentStep === 1;
+
+  // Mark field as touched when user interacts with it
+  const handleFieldFocus = (fieldName: string) => {
+    if (isOnboardingProfileStep) {
+      setTouchedFields(prev => new Set(prev).add(fieldName));
+    }
+  };
+
+  // Helper to get highlight class for required fields during onboarding
+  const getRequiredFieldClass = (fieldName: string) => {
+    if (!isOnboardingProfileStep) return '';
+    const requiredFields = ['phone', 'license_number', 'brokerage_name'];
+    if (!requiredFields.includes(fieldName)) return '';
+
+    // Remove highlight only if field has been touched (not based on content)
+    if (touchedFields.has(fieldName)) {
+      return '';
+    }
+
+    return 'border-2 border-primary bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.3)]';
   };
 
   if (loading) {
@@ -231,28 +265,34 @@ const Profile = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone" className={isOnboardingProfileStep ? 'text-primary font-semibold' : ''}>
+                    Phone {isOnboardingProfileStep && <span className="text-primary">*</span>}
+                  </Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="phone"
                       value={formData.phone || ''}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
+                      onFocus={() => handleFieldFocus('phone')}
                       placeholder="(555) 123-4567"
-                      className="pl-10"
+                      className={`pl-10 ${getRequiredFieldClass('phone')}`}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="license_number">License Number</Label>
+                  <Label htmlFor="license_number" className={isOnboardingProfileStep ? 'text-primary font-semibold' : ''}>
+                    License Number {isOnboardingProfileStep && <span className="text-primary">*</span>}
+                  </Label>
                   <div className="relative">
                     <Award className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="license_number"
                       value={formData.license_number || ''}
                       onChange={(e) => handleInputChange('license_number', e.target.value)}
+                      onFocus={() => handleFieldFocus('license_number')}
                       placeholder="DRE# 01234567"
-                      className="pl-10"
+                      className={`pl-10 ${getRequiredFieldClass('license_number')}`}
                     />
                   </div>
                 </div>
@@ -330,12 +370,16 @@ const Profile = () => {
               {/* Brokerage Fields */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="brokerage_name">Brokerage Name</Label>
+                  <Label htmlFor="brokerage_name" className={isOnboardingProfileStep ? 'text-primary font-semibold' : ''}>
+                    Brokerage Name {isOnboardingProfileStep && <span className="text-primary">*</span>}
+                  </Label>
                   <Input
                     id="brokerage_name"
                     value={formData.brokerage_name || ''}
                     onChange={(e) => handleInputChange('brokerage_name', e.target.value)}
+                    onFocus={() => handleFieldFocus('brokerage_name')}
                     placeholder="Coldwell Banker Premier"
+                    className={getRequiredFieldClass('brokerage_name')}
                   />
                 </div>
                 <div className="space-y-2">
@@ -474,6 +518,27 @@ const Profile = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Bottom Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+              className="h-11 px-8 font-semibold"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
 
         </div>
       </div>
