@@ -32,6 +32,12 @@ import {
   Upload,
   Loader2,
   Share2,
+  LayoutGrid,
+  List,
+  Star,
+  Clock,
+  Pencil,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -153,6 +159,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
 
   // DnD sensors
   const sensors = useSensors(
@@ -954,7 +961,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
           </div>
           
           {/* Secondary actions row */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex flex-wrap gap-2">
             <Popover open={isRoutePopoverOpen} onOpenChange={setIsRoutePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button 
@@ -1210,6 +1218,29 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <span className="hidden sm:inline">Bulk Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-7 px-2"
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'gallery' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('gallery')}
+                className="h-7 px-2"
+                title="Gallery view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1219,27 +1250,30 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         {/* Properties List */}
         {properties.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
-            {/* Bulk Actions Bar */}
-            <BulkActionsBar
-              selectedCount={selectedProperties.size}
-              onClear={handleClearSelection}
-              onSelectAll={handleSelectAll}
-              onDelete={handleBulkDelete}
-              totalCount={properties.length}
-            />
+            {/* Bulk Actions Bar - Only in List View */}
+            {viewMode === 'list' && (
+              <BulkActionsBar
+                selectedCount={selectedProperties.size}
+                onClear={handleClearSelection}
+                onSelectAll={handleSelectAll}
+                onDelete={handleBulkDelete}
+                totalCount={properties.length}
+              />
+            )}
 
-            {/* Drag and Drop List */}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={properties.map((p) => p.id)}
-                strategy={verticalListSortingStrategy}
+            {viewMode === 'list' ? (
+              /* List View - Drag and Drop */
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-3 sm:space-y-4">
-                  {properties.map((property, index) => {
+                <SortableContext
+                  items={properties.map((p) => p.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3 sm:space-y-4">
+                    {properties.map((property, index) => {
                     // Find driving time to next property
                     const nextProperty = properties[index + 1];
                     const drivingTimeToNext = legDurations.find(
@@ -1289,6 +1323,120 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 </div>
               </SortableContext>
             </DndContext>
+            ) : (
+              /* Gallery View - Grid Layout */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {properties.map((property, index) => (
+                  <div
+                    key={property.id}
+                    className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    {/* Large Image */}
+                    <div className="relative aspect-[4/3] bg-muted group">
+                      {property.photo_url ? (
+                        <img
+                          src={property.photo_url}
+                          alt={property.address}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Home className="w-12 h-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      {/* Property number badge */}
+                      <div className="absolute top-3 left-3 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+                        #{index + 1}
+                      </div>
+                      {/* Rating badge */}
+                      {property.rating && property.rating.rating !== null && (
+                        <div className="absolute top-3 right-3 px-2.5 py-1 bg-background/90 backdrop-blur-sm rounded-md flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="text-sm font-semibold">{property.rating.rating}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4 space-y-3">
+                      {/* Price */}
+                      {property.price && (
+                        <div className="text-2xl font-display font-bold text-foreground">
+                          {formatPrice(property.price)}
+                        </div>
+                      )}
+
+                      {/* Address */}
+                      <div>
+                        <p className="font-semibold text-foreground text-sm leading-snug">
+                          {property.address}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
+                        </p>
+                      </div>
+
+                      {/* Stats */}
+                      {(property.beds || property.baths || property.sqft) && (
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          {property.beds && <span>{property.beds} Bd</span>}
+                          {property.baths && <span>• {property.baths} Ba</span>}
+                          {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
+                        </div>
+                      )}
+
+                      {/* Showing Time */}
+                      {property.showing_time && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {property.showing_time}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditDetailsPropertyId(property.id);
+                            setEditDetailsPropertyAddress(
+                              `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
+                            );
+                          }}
+                          className="flex-1 gap-1.5"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDocsPropertyId(property.id);
+                            setDocsPropertyAddress(
+                              `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
+                            );
+                          }}
+                          className="flex-1 gap-1.5"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          {property.doc_count ? `Docs (${property.doc_count})` : 'Docs'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteProperty(property.id)}
+                          className="px-2 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-16 bg-card rounded-xl">
