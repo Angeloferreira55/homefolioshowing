@@ -29,10 +29,20 @@ import { useProfile } from '@/hooks/useProfile';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
-const navItems = [
+// Admin emails - only these users can see "Manage Users"
+const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
+
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof Calendar;
+  adminOnly?: boolean;
+};
+
+const navItems: NavItem[] = [
   { title: 'Sessions', url: '/admin/showings', icon: Calendar },
   { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
-  { title: 'Manage Users', url: '/admin/manage-users', icon: Users },
+  { title: 'Manage Users', url: '/admin/manage-users', icon: Users, adminOnly: true },
   { title: 'My Profile', url: '/admin/profile', icon: User },
 ];
 
@@ -42,11 +52,24 @@ function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { profile } = useProfile();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUserEmail = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUserEmail(session?.user?.email || null);
+    };
+    getUserEmail();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
   };
+
+  // Filter nav items based on user role
+  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
+  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -74,7 +97,7 @@ function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink

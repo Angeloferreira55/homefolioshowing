@@ -9,7 +9,6 @@ import InstallPromptBanner from "@/components/InstallPromptBanner";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
-import Dashboard from "./pages/Dashboard";
 import HomefolioEdit from "./pages/HomefolioEdit";
 import ClientView from "./pages/ClientView";
 import Auth from "./pages/Auth";
@@ -53,7 +52,6 @@ const App = () => (
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/install" element={<Install />} />
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/homefolio/:id" element={<HomefolioEdit />} />
             <Route path="/view/:link" element={<ClientView />} />
             {/* Showing Sessions Routes */}
