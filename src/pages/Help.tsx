@@ -1,12 +1,21 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/layout/AdminLayout';
 import PageHeader from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { HelpCircle, BookOpen, Video, Mail, MessageCircle, ExternalLink } from 'lucide-react';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const Help = () => {
+  const navigate = useNavigate();
+  const { startTour } = useOnboarding();
+
+  const handleGetStarted = () => {
+    startTour();
+    navigate('/admin/dashboard');
+  };
   const faqs = [
     {
       question: 'How do I create a showing session?',
@@ -61,7 +70,7 @@ const Help = () => {
       <div className="space-y-6">
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={handleGetStarted}>
             <CardHeader>
               <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
                 <BookOpen className="w-6 h-6 text-blue-600" />
