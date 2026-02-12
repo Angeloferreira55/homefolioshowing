@@ -761,6 +761,16 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     }).format(price);
   };
 
+  const formatDisplayTime = (time: string | null | undefined) => {
+    if (!time) return null;
+    // Convert 24h format (HH:mm:ss or HH:mm) to 12h format
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
+  };
+
   const handleOptimizeRoute = async () => {
     if (properties.length < 2) {
       toast.info('Need at least 2 properties to optimize route');
@@ -1387,9 +1397,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
                       {/* Showing Time */}
                       {property.showing_time && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="w-3.5 h-3.5" />
-                          {property.showing_time}
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <Clock className="w-4 h-4" />
+                          {formatDisplayTime(property.showing_time)}
                         </div>
                       )}
 
