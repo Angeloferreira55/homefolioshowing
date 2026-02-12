@@ -1386,20 +1386,22 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                         </p>
                       </div>
 
+                      {/* Showing Time - Prominent Display */}
+                      {property.showing_time && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                          <Clock className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-semibold text-foreground">
+                            {formatDisplayTime(property.showing_time)}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Stats */}
                       {(property.beds || property.baths || property.sqft) && (
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                           {property.beds && <span>{property.beds} Bd</span>}
                           {property.baths && <span>• {property.baths} Ba</span>}
                           {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
-                        </div>
-                      )}
-
-                      {/* Showing Time */}
-                      {property.showing_time && (
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                          <Clock className="w-4 h-4" />
-                          {formatDisplayTime(property.showing_time)}
                         </div>
                       )}
 
