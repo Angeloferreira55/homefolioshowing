@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, Crown, Pencil } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, Crown, Pencil, KeyRound } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -45,6 +45,12 @@ const ManageUsers = () => {
   const [editPhone, setEditPhone] = useState('');
   const [editTier, setEditTier] = useState<'starter' | 'pro' | 'team5' | 'team'>('pro');
   const [editTrialDays, setEditTrialDays] = useState<number>(30);
+
+  // Password reset state
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<CreatedUser | null>(null);
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Admin emails - only these users can access this page
   const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
@@ -325,6 +331,55 @@ const ManageUsers = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResetPassword = async (user: CreatedUser) => {
+    setResetPasswordUser(user);
+    setNewResetPassword('');
+    setResetPasswordDialogOpen(true);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetPasswordUser) return;
+
+    try {
+      setResettingPassword(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('admin-reset-password', {
+        body: {
+          email: resetPasswordUser.email,
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      setNewResetPassword(response.data.newPassword);
+      toast.success(`Password reset for ${resetPasswordUser.fullName}`);
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to reset password');
+      setResetPasswordDialogOpen(false);
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const copyResetPassword = () => {
+    if (!newResetPassword) return;
+    navigator.clipboard.writeText(newResetPassword);
+    toast.success('New password copied to clipboard!');
   };
 
   const downloadCredentials = () => {
@@ -681,8 +736,19 @@ const ManageUsers = () => {
                                 onClick={() => openEditDialog(user)}
                                 disabled={loading}
                                 className="gap-2"
+                                title="Edit user"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleResetPassword(user)}
+                                disabled={loading}
+                                className="gap-2"
+                                title="Reset password"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
                               </Button>
                               <Button
                                 variant="outline"
@@ -690,6 +756,7 @@ const ManageUsers = () => {
                                 onClick={() => deleteUser(user.email, user.fullName)}
                                 disabled={loading}
                                 className="gap-2 text-destructive hover:text-destructive"
+                                title="Delete user"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
@@ -832,6 +899,88 @@ const ManageUsers = () => {
                 ) : (
                   'Save Changes'
                 )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogDescription>
+                Generate a new password for this user
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <p className="font-medium text-sm">{resetPasswordUser?.fullName}</p>
+                <p className="text-xs text-muted-foreground">{resetPasswordUser?.email}</p>
+              </div>
+
+              {!newResetPassword ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Click the button below to generate a new secure password for this user.
+                  </p>
+                  <Button
+                    onClick={confirmResetPassword}
+                    disabled={resettingPassword}
+                    className="w-full"
+                  >
+                    {resettingPassword ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating New Password...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        Generate New Password
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Alert>
+                    <AlertDescription className="text-xs">
+                      ✅ Password has been reset successfully. Copy and share it with the user.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="space-y-2">
+                    <Label>New Password</Label>
+                    <div className="flex gap-2">
+                      <div className="flex-1 bg-background rounded-md p-3 border font-mono text-sm break-all">
+                        {newResetPassword}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyResetPassword}
+                        className="flex-shrink-0"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    💡 The user can use this password to sign in immediately. They should change it after signing in.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setResetPasswordDialogOpen(false);
+                  setNewResetPassword('');
+                }}
+                disabled={resettingPassword}
+              >
+                {newResetPassword ? 'Done' : 'Cancel'}
               </Button>
             </div>
           </DialogContent>
