@@ -200,48 +200,15 @@ export default function PublicPropertyDetailDialog({
                   <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{fullAddress}</span>
                 </div>
+                {quickStats && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {quickStats}
+                  </p>
+                )}
                 {property.price && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Est. <span className="text-foreground font-medium">{formatMonthlyPayment(property.price)}/mo</span>
                   </p>
-                )}
-              </div>
-
-              {/* Key Stats */}
-              <div className="grid grid-cols-4 gap-2">
-                <StatCard icon={<Bed className="w-4 h-4" />} value={property.beds} label="Beds" />
-                <StatCard icon={<Bath className="w-4 h-4" />} value={property.baths} label="Baths" />
-                <StatCard
-                  icon={<Square className="w-4 h-4" />}
-                  value={property.sqft ? property.sqft.toLocaleString() : null}
-                  label="Sq Ft"
-                />
-                <StatCard
-                  icon={<Tag className="w-4 h-4" />}
-                  value={property.lot_size || '—'}
-                  label="Lot"
-                />
-              </div>
-
-              {/* Additional Details - No duplicates */}
-              <div className="text-xs grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                {property.year_built && (
-                  <>
-                    <span>Year Built:</span>
-                    <span className="font-medium text-foreground">{property.year_built}</span>
-                  </>
-                )}
-                {property.price && property.sqft && (
-                  <>
-                    <span>Price/Sq.Ft:</span>
-                    <span className="font-medium text-foreground">{formatPricePerSqFt(property.price, property.sqft)}</span>
-                  </>
-                )}
-                {property.garage && (
-                  <>
-                    <span>Parking:</span>
-                    <span className="font-medium text-foreground">{property.garage}</span>
-                  </>
                 )}
               </div>
 
@@ -279,6 +246,112 @@ export default function PublicPropertyDetailDialog({
                   </p>
                 </div>
               )}
+
+              {/* Property Details */}
+              <div className="text-xs">
+                <h3 className="font-semibold mb-2">Property Details</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {property.beds && (
+                    <div className="flex items-center gap-2">
+                      <Bed className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Bedrooms:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.beds}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.baths && (
+                    <div className="flex items-center gap-2">
+                      <Bath className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Bathrooms:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.baths}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.sqft && (
+                    <div className="flex items-center gap-2">
+                      <Square className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Square Feet:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.sqft.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.year_built && (
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Year Built:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.year_built}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.lot_size && (
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Lot Size:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.lot_size}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.price && property.sqft && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Price/Sq Ft:</span>
+                        <span className="ml-1 font-medium text-foreground">{formatPricePerSqFt(property.price, property.sqft)}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.garage && (
+                    <div className="flex items-center gap-2">
+                      <Car className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Parking:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.garage}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.property_type && (
+                    <div className="flex items-center gap-2">
+                      <Square className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Property Type:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.property_type}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.hoa_fee && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">HOA Fee:</span>
+                        <span className="ml-1 font-medium text-foreground">${property.hoa_fee}/mo</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.heating && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0">🔥</span>
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Heating:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.heating}</span>
+                      </div>
+                    </div>
+                  )}
+                  {property.cooling && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0">❄️</span>
+                      <div className="flex-1">
+                        <span className="text-muted-foreground">Cooling:</span>
+                        <span className="ml-1 font-medium text-foreground">{property.cooling}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Features */}
               {property.features && property.features.length > 0 && (
