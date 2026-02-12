@@ -195,19 +195,7 @@ const ManageUsers = () => {
     try {
       setLoading(true);
 
-      // Find the user by email
-      const { data: profile } = await supabase
-        .from('public_agent_profile')
-        .select('user_id, company')
-        .eq('email', email)
-        .single();
-
-      if (!profile) {
-        toast.error('User not found');
-        return;
-      }
-
-      // Generate a simple welcome link using user_id
+      // Generate a simple welcome link
       const welcomeUrl = `${window.location.origin}/auth`;
       navigator.clipboard.writeText(welcomeUrl);
       toast.success('Login link copied to clipboard!');
