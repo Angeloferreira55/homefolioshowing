@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Admin emails - only these users can create other users
-const ADMIN_EMAILS = ['angelo@houseforsaleabq.com'];
+const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

@@ -37,7 +37,7 @@ const ManageUsers = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   // Admin emails - only these users can access this page
-  const ADMIN_EMAILS = ['angelo@houseforsaleabq.com'];
+  const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
 
   useEffect(() => {
     const checkAuth = async () => {
