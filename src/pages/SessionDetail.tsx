@@ -193,7 +193,7 @@ const SortableGalleryCard = ({
         <div className="mb-3 flex items-center justify-center">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
             <Route className="w-4 h-4" />
-            <span>{drivingFromStart} min from start</span>
+            <span>{drivingFromStart} min from starting point</span>
           </div>
         </div>
       )}
@@ -1541,7 +1541,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           <div className="flex items-center justify-center py-2 mb-2">
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
                               <Route className="w-4 h-4" />
-                              <span>{startDrivingMinutes} min from start</span>
+                              <span>{startDrivingMinutes} min from starting point</span>
                             </div>
                           </div>
                         )}
