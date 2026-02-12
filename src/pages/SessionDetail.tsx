@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { retryOperation, getErrorMessage, ERROR_MESSAGES, logError } from '@/lib/errorHandling';
 import {
   DndContext,
   closestCenter,
@@ -1005,30 +1006,52 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
   const handleOptimizeRoute = async () => {
     if (properties.length < 2) {
-      toast.info('Need at least 2 properties to optimize route');
+      toast.info(ERROR_MESSAGES.ROUTE_NO_PROPERTIES);
       return;
     }
 
     setIsOptimizing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('optimize-route', {
-        body: {
-          properties: properties.map(p => ({
-            id: p.id,
-            address: p.address,
-            city: p.city,
-            state: p.state,
-            zip_code: p.zip_code,
-          })),
-          startingPoint: [startingAddress.street, startingAddress.city, startingAddress.state, startingAddress.zip].filter(Boolean).join(', ') || undefined,
-          endingPoint: [endingAddress.street, endingAddress.city, endingAddress.state, endingAddress.zip].filter(Boolean).join(', ') || undefined,
-        },
-      });
+    let retryCount = 0;
 
-      if (error) throw error;
+    try {
+      // Use retry logic for the route optimization call
+      const { data, error } = await retryOperation(
+        async () => {
+          return await supabase.functions.invoke('optimize-route', {
+            body: {
+              properties: properties.map(p => ({
+                id: p.id,
+                address: p.address,
+                city: p.city,
+                state: p.state,
+                zip_code: p.zip_code,
+              })),
+              startingPoint: [startingAddress.street, startingAddress.city, startingAddress.state, startingAddress.zip].filter(Boolean).join(', ') || undefined,
+              endingPoint: [endingAddress.street, endingAddress.city, endingAddress.state, endingAddress.zip].filter(Boolean).join(', ') || undefined,
+            },
+          });
+        },
+        {
+          maxRetries: 2,
+          initialDelay: 1000,
+          onRetry: (attempt, error) => {
+            retryCount = attempt;
+            toast.info(`Retrying route optimization (attempt ${attempt}/2)...`);
+            logError(error, { context: 'route-optimization-retry', attempt });
+          },
+        }
+      );
+
+      if (error) {
+        logError(error, { context: 'route-optimization', properties: properties.length });
+        throw error;
+      }
 
       if (data.error) {
-        toast.error(data.error);
+        const errorMsg = data.error.includes('geocod')
+          ? ERROR_MESSAGES.GEOCODE_FAILED
+          : data.error;
+        toast.error(errorMsg);
         return;
       }
 
@@ -1043,8 +1066,14 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       setLegDurations(routeLegDurations);
       setRouteCoordinates(routeCoords);
       setIsRoutePopoverOpen(false); // Close popover after success
-      toast.success(`Route optimized! Total drive time: ${timeStr}`);
-      const updates = optimizedOrder.map((propId, newIndex) => 
+
+      const successMessage = retryCount > 0
+        ? `Route optimized after ${retryCount} ${retryCount === 1 ? 'retry' : 'retries'}! Total drive time: ${timeStr}`
+        : `Route optimized! Total drive time: ${timeStr}`;
+
+      toast.success(successMessage);
+
+      const updates = optimizedOrder.map((propId, newIndex) =>
         supabase
           .from('session_properties')
           .update({ order_index: newIndex })
@@ -1052,12 +1081,11 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       );
 
       await Promise.all(updates);
-      
-      toast.success('Route optimized for efficient driving!');
       fetchProperties();
     } catch (error: any) {
-      console.error('Route optimization error:', error);
-      toast.error(error.message || 'Failed to optimize route');
+      logError(error, { context: 'route-optimization-final', properties: properties.length });
+      const userMessage = getErrorMessage(error);
+      toast.error(userMessage);
     } finally {
       setIsOptimizing(false);
       setStartingAddress({ street: '', city: '', state: '', zip: '' });
