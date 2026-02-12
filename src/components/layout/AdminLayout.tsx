@@ -26,6 +26,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { useSubscription } from '@/hooks/useSubscription';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 
@@ -37,12 +38,14 @@ type NavItem = {
   url: string;
   icon: typeof Calendar;
   adminOnly?: boolean;
+  teamLeaderOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
   { title: 'Sessions', url: '/admin/showings', icon: Calendar },
   { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
   { title: 'Manage Users', url: '/admin/manage-users', icon: Users, adminOnly: true },
+  { title: 'Team Management', url: '/admin/team-management', icon: Users, teamLeaderOnly: true },
   { title: 'My Profile', url: '/admin/profile', icon: User },
 ];
 
@@ -52,6 +55,7 @@ function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { profile } = useProfile();
+  const { subscribed, tier } = useSubscription();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +73,12 @@ function AppSidebar() {
 
   // Filter nav items based on user role
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+  const isTeamLeader = subscribed && (tier === 'team' || tier === 'team5');
+  const filteredNavItems = navItems.filter(item => {
+    if (item.adminOnly) return isAdmin;
+    if (item.teamLeaderOnly) return isTeamLeader;
+    return true;
+  });
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';

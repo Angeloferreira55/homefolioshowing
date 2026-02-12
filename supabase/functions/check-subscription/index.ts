@@ -12,6 +12,68 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+// Helper function to ensure team exists for team/team5 users
+const ensureTeamExists = async (
+  supabaseClient: any,
+  userId: string,
+  tier: string
+) => {
+  if (tier !== 'team' && tier !== 'team5') {
+    return; // Only create teams for team/team5 tiers
+  }
+
+  try {
+    // Check if user already has a team
+    const { data: existingTeam } = await supabaseClient
+      .from('teams')
+      .select('id')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (existingTeam) {
+      logStep('Team already exists', { teamId: existingTeam.id });
+      return; // Team already exists
+    }
+
+    // Create team for this user
+    const maxMembers = tier === 'team5' ? 5 : 50;
+    logStep('Creating new team', { tier, maxMembers });
+
+    const { data: newTeam, error: teamError } = await supabaseClient
+      .from('teams')
+      .insert({
+        owner_id: userId,
+        max_members: maxMembers,
+      })
+      .select('id')
+      .single();
+
+    if (teamError) {
+      console.error('Error creating team:', teamError);
+      return;
+    }
+
+    logStep('Team created successfully', { teamId: newTeam.id });
+
+    // Update user's profile to link to their team and set role
+    const { error: profileError } = await supabaseClient
+      .from('profiles')
+      .update({
+        team_id: newTeam.id,
+        role: 'team_leader'
+      })
+      .eq('user_id', userId);
+
+    if (profileError) {
+      console.error('Error updating profile with team:', profileError);
+    } else {
+      logStep('Profile updated with team', { teamId: newTeam.id, role: 'team_leader' });
+    }
+  } catch (error) {
+    console.error('Error in ensureTeamExists:', error);
+  }
+};
+
 // Price IDs mapped to tiers
 const PRICE_TO_TIER: Record<string, string> = {
   "price_1SypiGGny8WPy9rqHPf37JT8": "pro",    // Pro Monthly
@@ -62,6 +124,10 @@ serve(async (req) => {
 
     if (!trialError && trialData) {
       logStep("Active beta trial found", { tier: trialData.tier, trialEndsAt: trialData.trial_ends_at });
+
+      // Ensure team exists for team/team5 trial users
+      await ensureTeamExists(supabaseClient, user.id, trialData.tier);
+
       return new Response(JSON.stringify({
         subscribed: true,
         tier: trialData.tier,
@@ -107,10 +173,13 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
-      
+
       const priceId = subscription.items.data[0].price.id;
       tier = PRICE_TO_TIER[priceId] || "pro";
       logStep("Determined subscription tier", { priceId, tier });
+
+      // Ensure team exists for team/team5 Stripe subscribers
+      await ensureTeamExists(supabaseClient, user.id, tier);
     } else {
       logStep("No active subscription found");
     }
