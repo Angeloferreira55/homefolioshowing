@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, Crown } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreatedUser {
@@ -27,6 +28,8 @@ const ManageUsers = () => {
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
   const [phone, setPhone] = useState('');
+  const [tier, setTier] = useState<'starter' | 'pro' | 'team'>('pro');
+  const [trialDays, setTrialDays] = useState<number>(30);
   const [createdUsers, setCreatedUsers] = useState<CreatedUser[]>([]);
   const [existingUsers, setExistingUsers] = useState<CreatedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -126,6 +129,8 @@ const ManageUsers = () => {
           fullName,
           company,
           phone,
+          tier,
+          trialDays,
         },
       });
 
@@ -377,6 +382,48 @@ const ManageUsers = () => {
                       className="pl-10"
                     />
                   </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="tier">Plan Type *</Label>
+                  <div className="relative">
+                    <Crown className="absolute left-3 top-3 w-4 h-4 text-muted-foreground z-10" />
+                    <Select value={tier} onValueChange={(value: 'starter' | 'pro' | 'team') => setTier(value)}>
+                      <SelectTrigger id="tier" className="pl-10">
+                        <SelectValue placeholder="Select plan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="starter">Starter (Free)</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="team">Team</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select which plan tier this user will have access to
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="trialDays">Trial Period *</Label>
+                  <Select value={String(trialDays)} onValueChange={(value) => setTrialDays(Number(value))}>
+                    <SelectTrigger id="trialDays">
+                      <SelectValue placeholder="Select trial period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="14">14 days</SelectItem>
+                      <SelectItem value="30">30 days</SelectItem>
+                      <SelectItem value="60">60 days</SelectItem>
+                      <SelectItem value="90">90 days</SelectItem>
+                      <SelectItem value="365">1 year</SelectItem>
+                      <SelectItem value="3650">10 years (Unlimited)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    How long they can use the platform without payment
+                  </p>
                 </div>
 
                 <Button

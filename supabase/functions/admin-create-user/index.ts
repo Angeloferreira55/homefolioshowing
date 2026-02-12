@@ -46,7 +46,7 @@ serve(async (req) => {
 
     // Authenticated users can create other users (simplified for now)
 
-    const { email, password, fullName, company, phone } = await req.json();
+    const { email, password, fullName, company, phone, tier, trialDays } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: 'Email and password are required' }), {
@@ -150,6 +150,67 @@ serve(async (req) => {
       }
     }
 
+    // Create trial access for the user if tier and trialDays are provided
+    if (newUser.user && tier && trialDays) {
+      const userTier = tier || 'pro';
+      const days = trialDays || 30;
+
+      // First, create or get an admin beta code for this trial
+      const adminCodeName = `ADMIN_${userTier.toUpperCase()}_${days}D`;
+
+      let betaCodeId = null;
+
+      // Try to find existing admin code
+      const { data: existingCode } = await supabaseAdmin
+        .from('beta_codes')
+        .select('id')
+        .eq('code', adminCodeName)
+        .single();
+
+      if (existingCode) {
+        betaCodeId = existingCode.id;
+      } else {
+        // Create a new admin code
+        const { data: newCode, error: codeError } = await supabaseAdmin
+          .from('beta_codes')
+          .insert({
+            code: adminCodeName,
+            trial_days: days,
+            max_uses: 999999, // Unlimited uses for admin code
+            times_used: 0,
+          })
+          .select('id')
+          .single();
+
+        if (newCode) {
+          betaCodeId = newCode.id;
+        } else {
+          console.error('Error creating beta code:', codeError);
+        }
+      }
+
+      // Create the beta redemption for the user
+      if (betaCodeId) {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + days);
+
+        const { error: redemptionError } = await supabaseAdmin
+          .from('beta_redemptions')
+          .insert({
+            user_id: newUser.user.id,
+            beta_code_id: betaCodeId,
+            trial_ends_at: trialEndsAt.toISOString(),
+            tier: userTier,
+          });
+
+        if (redemptionError) {
+          console.error('Error creating beta redemption:', redemptionError);
+        } else {
+          console.log(`Trial access granted: ${userTier} tier for ${days} days`);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -159,6 +220,8 @@ serve(async (req) => {
           fullName: fullName || email,
         },
         welcomeToken: welcomeToken, // Include the welcome token in response
+        tier: tier || 'starter',
+        trialDays: trialDays || 0,
       }),
       {
         status: 200,
