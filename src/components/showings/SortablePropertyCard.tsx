@@ -85,6 +85,7 @@ export function SortablePropertyCard({
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(property.showing_time || '');
+  const [currentShowingTime, setCurrentShowingTime] = useState(property.showing_time);
   const [savingTime, setSavingTime] = useState(false);
 
   const {
@@ -165,6 +166,8 @@ export function SortablePropertyCard({
 
       if (error) throw error;
 
+      // Immediately update local state for instant UI feedback
+      setCurrentShowingTime(timeValue || null);
       toast.success('Time saved!');
       setEditingTime(false);
       onTimeUpdated?.();
@@ -283,7 +286,7 @@ export function SortablePropertyCard({
                   className="h-6 px-1 text-xs"
                   onClick={() => {
                     setEditingTime(false);
-                    setTimeValue(property.showing_time || '');
+                    setTimeValue(currentShowingTime || '');
                   }}
                 >
                   ✕
@@ -298,7 +301,7 @@ export function SortablePropertyCard({
                 className="flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium rounded transition-colors"
               >
                 <Clock className="w-3 h-3" />
-                {formatDisplayTime(property.showing_time) || 'Add time'}
+                {formatDisplayTime(currentShowingTime) || 'Add time'}
               </button>
             )}
           </div>
@@ -335,7 +338,7 @@ export function SortablePropertyCard({
                     className="h-7 px-1 text-xs"
                     onClick={() => {
                       setEditingTime(false);
-                      setTimeValue(property.showing_time || '');
+                      setTimeValue(currentShowingTime || '');
                     }}
                   >
                     ✕
@@ -350,7 +353,7 @@ export function SortablePropertyCard({
                   className="flex items-center gap-1 px-2 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium rounded transition-colors"
                 >
                   <Clock className="w-3 h-3" />
-                  {formatDisplayTime(property.showing_time) || 'Add time'}
+                  {formatDisplayTime(currentShowingTime) || 'Add time'}
                 </button>
               )}
             </div>
