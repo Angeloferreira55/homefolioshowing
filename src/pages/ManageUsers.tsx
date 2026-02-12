@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, Crown } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, Crown, Pencil } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface CreatedUser {
   email: string;
@@ -35,6 +36,15 @@ const ManageUsers = () => {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Edit user state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<CreatedUser | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editCompany, setEditCompany] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editTier, setEditTier] = useState<'starter' | 'pro' | 'team5' | 'team'>('pro');
+  const [editTrialDays, setEditTrialDays] = useState<number>(30);
 
   // Admin emails - only these users can access this page
   const ADMIN_EMAILS = ['angelo@houseforsaleabq.com', 'contact@home-folio.net'];
@@ -257,6 +267,61 @@ const ManageUsers = () => {
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to delete user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditDialog = (user: CreatedUser) => {
+    setEditingUser(user);
+    setEditFullName(user.fullName);
+    setEditCompany((user as any).company || '');
+    setEditPhone((user as any).phone || '');
+    setEditTier((user as any).tier || 'pro');
+    setEditTrialDays(30); // Default to 30 days
+    setEditDialogOpen(true);
+  };
+
+  const saveEditUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      setLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('admin-update-user', {
+        body: {
+          email: editingUser.email,
+          fullName: editFullName,
+          company: editCompany,
+          phone: editPhone,
+          tier: editTier,
+          trialDays: editTrialDays,
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast.success(`User ${editFullName} updated successfully`);
+
+      // Close dialog and refresh users
+      setEditDialogOpen(false);
+      setEditingUser(null);
+      await fetchExistingUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update user');
     } finally {
       setLoading(false);
     }
@@ -613,6 +678,15 @@ const ManageUsers = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => openEditDialog(user)}
+                                disabled={loading}
+                                className="gap-2"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => deleteUser(user.email, user.fullName)}
                                 disabled={loading}
                                 className="gap-2 text-destructive hover:text-destructive"
@@ -662,6 +736,106 @@ const ManageUsers = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update user information and access settings
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email (read-only)</Label>
+                <Input
+                  id="edit-email"
+                  value={editingUser?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-fullName">Full Name</Label>
+                <Input
+                  id="edit-fullName"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-company">Company</Label>
+                <Input
+                  id="edit-company"
+                  value={editCompany}
+                  onChange={(e) => setEditCompany(e.target.value)}
+                  placeholder="Coldwell Banker"
+                />
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="edit-tier">Plan Type</Label>
+                <Select value={editTier} onValueChange={(value: 'starter' | 'pro' | 'team5' | 'team') => setEditTier(value)}>
+                  <SelectTrigger id="edit-tier">
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="starter">Starter (Free)</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="team5">Teams (up to 5)</SelectItem>
+                    <SelectItem value="team">Team</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-trialDays">Trial Period</Label>
+                <Select value={String(editTrialDays)} onValueChange={(value) => setEditTrialDays(Number(value))}>
+                  <SelectTrigger id="edit-trialDays">
+                    <SelectValue placeholder="Select trial period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="14">14 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
+                    <SelectItem value="60">60 days</SelectItem>
+                    <SelectItem value="90">90 days</SelectItem>
+                    <SelectItem value="365">1 year</SelectItem>
+                    <SelectItem value="3650">10 years (Unlimited)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveEditUser} disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
