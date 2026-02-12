@@ -23,12 +23,7 @@ import {
   Instagram,
   Facebook,
   Youtube,
-  Globe,
-  Database,
-  Key,
-  CheckCircle2,
-  XCircle,
-  RefreshCw
+  Globe
 } from 'lucide-react';
 
 // X/Twitter icon (not in lucide-react)
@@ -52,8 +47,6 @@ const Profile = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [testingMls, setTestingMls] = useState(false);
-  const [mlsTestResult, setMlsTestResult] = useState<'success' | 'error' | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -83,16 +76,9 @@ const Profile = () => {
         twitter_url: profile.twitter_url || '',
         youtube_url: profile.youtube_url || '',
         website_url: profile.website_url || '',
-        // MLS credentials
-        mls_api_key: profile.mls_api_key || '',
-        mls_api_secret: profile.mls_api_secret || '',
-        mls_board_id: profile.mls_board_id || '',
-        mls_provider: profile.mls_provider || 'spark',
       });
       setAvatarPreview(profile.avatar_url);
       setLogoPreview(profile.brokerage_logo_url);
-      // Reset test result when profile loads
-      setMlsTestResult(null);
     }
   }, [profile]);
 
@@ -144,51 +130,6 @@ const Profile = () => {
 
   const handleSave = async () => {
     await updateProfile(formData);
-  };
-
-  const handleTestMlsConnection = async () => {
-    if (!formData.mls_api_key || !formData.mls_api_secret) {
-      toast.error('Please enter your API key and secret first');
-      return;
-    }
-
-    // First save the credentials
-    setTestingMls(true);
-    setMlsTestResult(null);
-    
-    const saved = await updateProfile({
-      mls_api_key: formData.mls_api_key,
-      mls_api_secret: formData.mls_api_secret,
-      mls_board_id: formData.mls_board_id,
-      mls_provider: formData.mls_provider,
-    });
-
-    if (!saved) {
-      setTestingMls(false);
-      setMlsTestResult('error');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('spark-import', {
-        body: { action: 'test_connection' },
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        setMlsTestResult('success');
-        toast.success('MLS connection successful!');
-      } else {
-        throw new Error(data?.error || 'Connection test failed');
-      }
-    } catch (error: any) {
-      console.error('MLS test error:', error);
-      setMlsTestResult('error');
-      toast.error(error.message || 'Failed to connect to MLS');
-    } finally {
-      setTestingMls(false);
-    }
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -534,100 +475,6 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* MLS Integration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                MLS Integration (Spark API)
-              </CardTitle>
-              <CardDescription>
-                Connect to your MLS to import property listings directly. Get your API credentials from your MLS provider.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mls_api_key">API Key (Client ID)</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="mls_api_key"
-                      type="password"
-                      value={formData.mls_api_key || ''}
-                      onChange={(e) => handleInputChange('mls_api_key', e.target.value)}
-                      placeholder="Your Spark API client ID"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mls_api_secret">API Secret (Client Secret)</Label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="mls_api_secret"
-                      type="password"
-                      value={formData.mls_api_secret || ''}
-                      onChange={(e) => handleInputChange('mls_api_secret', e.target.value)}
-                      placeholder="Your Spark API client secret"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mls_board_id">MLS Board ID (Optional)</Label>
-                  <Input
-                    id="mls_board_id"
-                    value={formData.mls_board_id || ''}
-                    onChange={(e) => handleInputChange('mls_board_id', e.target.value)}
-                    placeholder="e.g., CRMLS, MRIS"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Connection Status</Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleTestMlsConnection}
-                      disabled={testingMls || !formData.mls_api_key || !formData.mls_api_secret}
-                      className="gap-2"
-                    >
-                      {testingMls ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      Test Connection
-                    </Button>
-                    {mlsTestResult === 'success' && (
-                      <span className="flex items-center gap-1 text-sm text-green-dark">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Connected
-                      </span>
-                    )}
-                    {mlsTestResult === 'error' && (
-                      <span className="flex items-center gap-1 text-sm text-destructive">
-                        <XCircle className="w-4 h-4" />
-                        Failed
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-medium text-sm mb-2">How to get Spark API credentials:</h4>
-                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Contact your MLS provider and request Spark API access</li>
-                  <li>Complete any required data licensing agreements</li>
-                  <li>Your MLS will provide a Client ID and Client Secret</li>
-                  <li>Enter those credentials above and click "Test Connection"</li>
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </AdminLayout>
