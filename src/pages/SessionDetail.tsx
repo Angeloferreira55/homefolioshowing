@@ -12,11 +12,14 @@ import {
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  rectSortingStrategy,
+  useSortable,
 } from '@dnd-kit/sortable';
 import {
   ArrowLeft,
@@ -131,6 +134,214 @@ interface ShowingSession {
   notes: string | null;
   share_password: string | null;
 }
+
+// Sortable Gallery Card Component
+interface SortableGalleryCardProps {
+  property: SessionProperty;
+  index: number;
+  onEditTime: (id: string, time: string) => void;
+  onSaveTime: (id: string) => void;
+  onCancelEditTime: () => void;
+  onEditDetails: (id: string, address: string) => void;
+  onManageDocs: (id: string, address: string) => void;
+  onDelete: (id: string) => void;
+  editingTimeId: string | null;
+  timeValue: string;
+  setTimeValue: (value: string) => void;
+  formatDisplayTime: (time: string | null | undefined) => string | null;
+  formatPrice: (price: number | null) => string | null;
+  drivingMinutes: number | null;
+  drivingFromStart: number | null;
+}
+
+const SortableGalleryCard = ({
+  property,
+  index,
+  onEditTime,
+  onSaveTime,
+  onCancelEditTime,
+  onEditDetails,
+  onManageDocs,
+  onDelete,
+  editingTimeId,
+  timeValue,
+  setTimeValue,
+  formatDisplayTime,
+  formatPrice,
+  drivingMinutes,
+  drivingFromStart,
+}: SortableGalleryCardProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: property.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {/* Driving time from start indicator */}
+      {drivingFromStart !== null && index === 0 && (
+        <div className="mb-3 flex items-center justify-center">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
+            <Route className="w-4 h-4" />
+            <span>{drivingFromStart} min from start</span>
+          </div>
+        </div>
+      )}
+
+      {/* Driving time from previous property */}
+      {drivingMinutes !== null && index > 0 && (
+        <div className="mb-3 flex items-center justify-center">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+            <Route className="w-4 h-4" />
+            <span>{drivingMinutes} min drive</span>
+          </div>
+        </div>
+      )}
+
+      <div
+        {...attributes}
+        {...listeners}
+        className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
+      >
+        {/* Large Image */}
+        <div className="relative aspect-[4/3] bg-muted group">
+          {property.photo_url ? (
+            <img
+              src={property.photo_url}
+              alt={property.address}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Home className="w-12 h-12 text-muted-foreground" />
+            </div>
+          )}
+          {/* Property number badge */}
+          <div className="absolute top-3 left-3 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+            #{index + 1}
+          </div>
+          {/* Rating badge */}
+          {property.rating && property.rating.rating !== null && (
+            <div className="absolute top-3 right-3 px-2.5 py-1 bg-background/90 backdrop-blur-sm rounded-md flex items-center gap-1">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm font-semibold">{property.rating.rating}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          {/* Price */}
+          {property.price && (
+            <div className="text-2xl font-display font-bold text-foreground">
+              {formatPrice(property.price)}
+            </div>
+          )}
+
+          {/* Address */}
+          <div>
+            <p className="font-semibold text-foreground text-sm leading-snug">
+              {property.address}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
+            </p>
+          </div>
+
+          {/* Showing Time - Editable */}
+          {editingTimeId === property.id ? (
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <Input
+                type="time"
+                value={timeValue}
+                onChange={(e) => setTimeValue(e.target.value)}
+                className="h-9 flex-1 text-sm"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                className="h-9 px-3"
+                onClick={() => onSaveTime(property.id)}
+              >
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 px-2"
+                onClick={onCancelEditTime}
+              >
+                ✕
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTime(property.id, property.showing_time || '');
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-lg transition-colors cursor-pointer"
+            >
+              <Clock className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                {formatDisplayTime(property.showing_time) || 'Add time'}
+              </span>
+            </button>
+          )}
+
+          {/* Stats */}
+          {(property.beds || property.baths || property.sqft) && (
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              {property.beds && <span>{property.beds} Bd</span>}
+              {property.baths && <span>• {property.baths} Ba</span>}
+              {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditDetails(property.id, `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`)}
+              className="flex-1 gap-1.5"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onManageDocs(property.id, `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`)}
+              className="flex-1 gap-1.5"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              {property.doc_count ? `Docs (${property.doc_count})` : 'Docs'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(property.id)}
+              className="px-2 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -1355,154 +1566,72 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               </SortableContext>
             </DndContext>
             ) : (
-              /* Gallery View - Grid Layout */
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {properties.map((property, index) => (
-                  <div
-                    key={property.id}
-                    className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    {/* Large Image */}
-                    <div className="relative aspect-[4/3] bg-muted group">
-                      {property.photo_url ? (
-                        <img
-                          src={property.photo_url}
-                          alt={property.address}
-                          className="w-full h-full object-cover"
+              /* Gallery View - Grid Layout with Drag & Drop */
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={properties.map((p) => p.id)}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {properties.map((property, index) => {
+                      // Calculate driving times
+                      const prevProperty = properties[index - 1];
+                      const drivingTimeFromPrev = legDurations.find(
+                        leg => leg.from === prevProperty?.id && leg.to === property.id
+                      );
+                      const drivingMinutes = drivingTimeFromPrev
+                        ? Math.round(drivingTimeFromPrev.seconds / 60)
+                        : null;
+
+                      // Check for driving time from start
+                      const isFirstProperty = index === 0;
+                      const drivingFromStart = isFirstProperty ? legDurations.find(
+                        leg => leg.from === 'start' && leg.to === property.id
+                      ) : null;
+                      const startDrivingMinutes = drivingFromStart
+                        ? Math.round(drivingFromStart.seconds / 60)
+                        : null;
+
+                      return (
+                        <SortableGalleryCard
+                          key={property.id}
+                          property={property}
+                          index={index}
+                          onEditTime={(id, time) => {
+                            setEditingTimeId(id);
+                            setTimeValue(time);
+                          }}
+                          onSaveTime={handleSaveTime}
+                          onCancelEditTime={() => {
+                            setEditingTimeId(null);
+                            setTimeValue('');
+                          }}
+                          onEditDetails={(id, address) => {
+                            setEditDetailsPropertyId(id);
+                            setEditDetailsPropertyAddress(address);
+                          }}
+                          onManageDocs={(id, address) => {
+                            setDocsPropertyId(id);
+                            setDocsPropertyAddress(address);
+                          }}
+                          onDelete={handleDeleteProperty}
+                          editingTimeId={editingTimeId}
+                          timeValue={timeValue}
+                          setTimeValue={setTimeValue}
+                          formatDisplayTime={formatDisplayTime}
+                          formatPrice={formatPrice}
+                          drivingMinutes={drivingMinutes}
+                          drivingFromStart={startDrivingMinutes}
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Home className="w-12 h-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      {/* Property number badge */}
-                      <div className="absolute top-3 left-3 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold">
-                        #{index + 1}
-                      </div>
-                      {/* Rating badge */}
-                      {property.rating && property.rating.rating !== null && (
-                        <div className="absolute top-3 right-3 px-2.5 py-1 bg-background/90 backdrop-blur-sm rounded-md flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-semibold">{property.rating.rating}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-4 space-y-3">
-                      {/* Price */}
-                      {property.price && (
-                        <div className="text-2xl font-display font-bold text-foreground">
-                          {formatPrice(property.price)}
-                        </div>
-                      )}
-
-                      {/* Address */}
-                      <div>
-                        <p className="font-semibold text-foreground text-sm leading-snug">
-                          {property.address}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
-
-                      {/* Showing Time - Editable */}
-                      {editingTimeId === property.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="time"
-                            value={timeValue}
-                            onChange={(e) => setTimeValue(e.target.value)}
-                            className="h-9 flex-1 text-sm"
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            className="h-9 px-3"
-                            onClick={() => handleSaveTime(property.id)}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-9 px-2"
-                            onClick={() => {
-                              setEditingTimeId(null);
-                              setTimeValue('');
-                            }}
-                          >
-                            ✕
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setEditingTimeId(property.id);
-                            setTimeValue(property.showing_time || '');
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Clock className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-semibold text-foreground">
-                            {formatDisplayTime(property.showing_time) || 'Add time'}
-                          </span>
-                        </button>
-                      )}
-
-                      {/* Stats */}
-                      {(property.beds || property.baths || property.sqft) && (
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          {property.beds && <span>{property.beds} Bd</span>}
-                          {property.baths && <span>• {property.baths} Ba</span>}
-                          {property.sqft && <span>• {property.sqft.toLocaleString()} Sq Ft</span>}
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditDetailsPropertyId(property.id);
-                            setEditDetailsPropertyAddress(
-                              `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
-                            );
-                          }}
-                          className="flex-1 gap-1.5"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDocsPropertyId(property.id);
-                            setDocsPropertyAddress(
-                              `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}`
-                            );
-                          }}
-                          className="flex-1 gap-1.5"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          {property.doc_count ? `Docs (${property.doc_count})` : 'Docs'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteProperty(property.id)}
-                          className="px-2 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         ) : (
