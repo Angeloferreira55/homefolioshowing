@@ -364,29 +364,14 @@ export default function PublicPropertyDetailDialog({
                 <MortgageCalculator propertyPrice={property.price} />
               )}
 
-              {/* Agent Card */}
+              {/* Agent Card - Avatar removed temporarily */}
               {agentInfo?.name && (
                 <ContentCard className="bg-muted/30">
-                  <div className="flex items-center gap-4">
-                    {agentInfo.avatarUrl ? (
-                      <img
-                        src={agentInfo.avatarUrl}
-                        alt={agentInfo.name}
-                        className="w-20 h-20 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-2xl font-semibold text-primary">
-                          {agentInfo.name.charAt(0)}
-                        </span>
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-semibold text-foreground">{agentInfo.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {agentInfo.title || 'Your trusted real estate advisor'}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{agentInfo.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {agentInfo.title || 'Your trusted real estate advisor'}
+                    </p>
                   </div>
                   {agentInfo.message && (
                     <p className="text-sm text-muted-foreground mt-3">
