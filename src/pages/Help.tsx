@@ -173,19 +173,25 @@ const Help = () => {
               <ExternalLink className="w-4 h-4 text-muted-foreground" />
             </a>
 
-            <a
-              href="#"
-              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Video className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium">Video Library</p>
-                  <p className="text-sm text-muted-foreground">How-to videos and demos</p>
-                </div>
+            <div className="relative overflow-hidden rounded-lg">
+              {/* Coming Soon Banner */}
+              <div className="absolute top-2 -right-8 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-xs font-bold py-1 px-10 rotate-45 shadow-lg z-10">
+                COMING SOON
               </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground" />
-            </a>
+              <a
+                href="#"
+                className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Video className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Video Library</p>
+                    <p className="text-sm text-muted-foreground">How-to videos and demos</p>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>
