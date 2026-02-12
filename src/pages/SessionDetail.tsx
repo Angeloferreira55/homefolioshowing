@@ -1290,15 +1290,6 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               QR Code
             </Button>
             <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 h-9 text-xs sm:text-sm bg-primary/10 hover:bg-primary/20 border-primary/20"
-              onClick={handleAutoScheduleTimes}
-            >
-              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Auto-schedule Times
-            </Button>
-            <Button
               variant="destructive"
               size="sm"
               className="gap-1.5 h-9 text-xs sm:text-sm"
@@ -1596,8 +1587,18 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 </div>
               </PopoverContent>
             </Popover>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm bg-primary/10 hover:bg-primary/20 border-primary/20"
+              onClick={handleAutoScheduleTimes}
+            >
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Auto-schedule Times</span>
+              <span className="sm:hidden">Times</span>
+            </Button>
+            <Button
+              variant="outline"
               size="sm"
               className="gap-1.5 h-9 text-xs sm:text-sm"
               onClick={() => setIsBulkImportOpen(true)}
