@@ -73,7 +73,11 @@ const Help = () => {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden">
+            {/* Coming Soon Banner */}
+            <div className="absolute top-4 -right-12 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-xs font-bold py-1 px-12 rotate-45 shadow-lg z-10">
+              COMING SOON
+            </div>
             <CardHeader>
               <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3">
                 <Video className="w-6 h-6 text-purple-600" />
@@ -85,17 +89,19 @@ const Help = () => {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-3">
-                <MessageCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <CardTitle className="text-lg">Contact Support</CardTitle>
-              <CardDescription>
-                Get help from our support team
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <a href="mailto:contact@home-folio.net?subject=HomeFolio Support Request" className="block">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader>
+                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-3">
+                  <MessageCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <CardTitle className="text-lg">Contact Support</CardTitle>
+                <CardDescription>
+                  Get help from our support team
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </a>
         </div>
 
         {/* FAQs */}
@@ -138,9 +144,11 @@ const Help = () => {
                 <p className="text-sm text-muted-foreground">contact@home-folio.net</p>
               </div>
             </div>
-            <Button className="gap-2">
-              <Mail className="w-4 h-4" />
-              Contact Support
+            <Button className="gap-2" asChild>
+              <a href="mailto:contact@home-folio.net?subject=HomeFolio Support Request">
+                <Mail className="w-4 h-4" />
+                Contact Support
+              </a>
             </Button>
           </CardContent>
         </Card>
