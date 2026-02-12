@@ -66,6 +66,21 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface FeedbackData {
   topThingsLiked?: string;
@@ -126,6 +141,10 @@ const SessionDetail = () => {
   const [isOptimizing, setIsOptimizing] = useState(false);
 const [startingAddress, setStartingAddress] = useState({ street: '', city: '', state: '', zip: '' });
 const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state: '', zip: '' });
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: string; label: string; street: string; city: string; state: string; zip: string }>>([]);
+  const [showSaveAddressDialog, setShowSaveAddressDialog] = useState(false);
+  const [newAddressLabel, setNewAddressLabel] = useState('');
+  const [showManageAddresses, setShowManageAddresses] = useState(false);
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
   const [legDurations, setLegDurations] = useState<Array<{ from: string; to: string; seconds: number }>>([]);
@@ -154,6 +173,67 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       fetchAgentLogo();
     }
   }, [id]);
+
+  // Load saved addresses from localStorage
+  useEffect(() => {
+    const loadSavedAddresses = () => {
+      try {
+        const saved = localStorage.getItem('homefolio_saved_addresses');
+        if (saved) {
+          setSavedAddresses(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error('Error loading saved addresses:', error);
+      }
+    };
+    loadSavedAddresses();
+  }, []);
+
+  const saveAddressToList = (label: string, address: { street: string; city: string; state: string; zip: string }) => {
+    const newAddress = {
+      id: crypto.randomUUID(),
+      label,
+      ...address,
+    };
+    const updated = [...savedAddresses, newAddress];
+    setSavedAddresses(updated);
+    localStorage.setItem('homefolio_saved_addresses', JSON.stringify(updated));
+    toast.success(`Address saved as "${label}"`);
+  };
+
+  const deleteAddress = (id: string) => {
+    const updated = savedAddresses.filter(addr => addr.id !== id);
+    setSavedAddresses(updated);
+    localStorage.setItem('homefolio_saved_addresses', JSON.stringify(updated));
+    toast.success('Address deleted');
+  };
+
+  const loadAddress = (addressId: string) => {
+    const address = savedAddresses.find(addr => addr.id === addressId);
+    if (address) {
+      setStartingAddress({
+        street: address.street,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+      });
+      toast.success(`Loaded "${address.label}"`);
+    }
+  };
+
+  const handleSaveCurrentAddress = () => {
+    if (!newAddressLabel.trim()) {
+      toast.error('Please enter a label for this address');
+      return;
+    }
+    if (!startingAddress.street) {
+      toast.error('Please enter a street address first');
+      return;
+    }
+    saveAddressToList(newAddressLabel, startingAddress);
+    setNewAddressLabel('');
+    setShowSaveAddressDialog(false);
+  };
 
   const fetchAgentLogo = async () => {
     try {
@@ -902,7 +982,140 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-xs sm:text-sm font-medium">Starting Location (optional)</Label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <Label className="text-xs sm:text-sm font-medium">Starting Location</Label>
+                        <div className="flex gap-1">
+                          <Dialog open={showSaveAddressDialog} onOpenChange={setShowSaveAddressDialog}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs px-2"
+                                type="button"
+                                disabled={!startingAddress.street}
+                              >
+                                Save
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Save Address</DialogTitle>
+                                <DialogDescription>
+                                  Give this address a label to save it for future use
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="address-label">Label</Label>
+                                  <Input
+                                    id="address-label"
+                                    placeholder="e.g., Home, Office, Brokerage"
+                                    value={newAddressLabel}
+                                    onChange={(e) => setNewAddressLabel(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSaveCurrentAddress();
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                                  <p className="text-sm font-medium">Address to save:</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {[startingAddress.street, startingAddress.city, startingAddress.state, startingAddress.zip]
+                                      .filter(Boolean)
+                                      .join(', ') || 'No address entered'}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setShowSaveAddressDialog(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button onClick={handleSaveCurrentAddress}>
+                                    Save Address
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          {savedAddresses.length > 0 && (
+                            <Dialog open={showManageAddresses} onOpenChange={setShowManageAddresses}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs px-2"
+                                  type="button"
+                                >
+                                  Manage
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Manage Saved Addresses</DialogTitle>
+                                  <DialogDescription>
+                                    View and delete your saved addresses
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-2 py-4 max-h-96 overflow-y-auto">
+                                  {savedAddresses.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center py-8">
+                                      No saved addresses yet
+                                    </p>
+                                  ) : (
+                                    savedAddresses.map((addr) => (
+                                      <div
+                                        key={addr.id}
+                                        className="flex items-start justify-between gap-2 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                                      >
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-sm">{addr.label}</p>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {[addr.street, addr.city, addr.state, addr.zip].filter(Boolean).join(', ')}
+                                          </p>
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 px-2 text-destructive hover:text-destructive"
+                                          onClick={() => deleteAddress(addr.id)}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </div>
+                      </div>
+                      {savedAddresses.length > 0 && (
+                        <div className="mb-2">
+                          <Select onValueChange={loadAddress}>
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Load saved address..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {savedAddresses.map((addr) => (
+                                <SelectItem key={addr.id} value={addr.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{addr.label}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {[addr.street, addr.city].filter(Boolean).join(', ')}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 gap-2 mt-1.5">
                         <Input
                           placeholder="Street address"
