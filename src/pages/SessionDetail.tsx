@@ -157,6 +157,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [routeCoordinates, setRouteCoordinates] = useState<Array<{ id: string; lat: number; lng: number }>>([]);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [timeValue, setTimeValue] = useState('');
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
@@ -769,6 +771,25 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 || 12;
     return `${h12}:${minutes} ${ampm}`;
+  };
+
+  const handleSaveTime = async (propertyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('session_properties')
+        .update({ showing_time: timeValue || null })
+        .eq('id', propertyId);
+
+      if (error) throw error;
+
+      toast.success('Time saved!');
+      setEditingTimeId(null);
+      setTimeValue('');
+      fetchSession();
+    } catch (error: any) {
+      console.error('Error saving time:', error);
+      toast.error(error.message || 'Failed to save time');
+    }
   };
 
   const handleOptimizeRoute = async () => {
@@ -1386,14 +1407,48 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                         </p>
                       </div>
 
-                      {/* Showing Time - Prominent Display */}
-                      {property.showing_time && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg">
+                      {/* Showing Time - Editable */}
+                      {editingTimeId === property.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={timeValue}
+                            onChange={(e) => setTimeValue(e.target.value)}
+                            className="h-9 flex-1 text-sm"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            className="h-9 px-3"
+                            onClick={() => handleSaveTime(property.id)}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-9 px-2"
+                            onClick={() => {
+                              setEditingTimeId(null);
+                              setTimeValue('');
+                            }}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingTimeId(property.id);
+                            setTimeValue(property.showing_time || '');
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-lg transition-colors cursor-pointer"
+                        >
                           <Clock className="w-4 h-4 text-primary" />
                           <span className="text-sm font-semibold text-foreground">
-                            {formatDisplayTime(property.showing_time)}
+                            {formatDisplayTime(property.showing_time) || 'Add time'}
                           </span>
-                        </div>
+                        </button>
                       )}
 
                       {/* Stats */}
