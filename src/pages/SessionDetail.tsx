@@ -1525,8 +1525,27 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                       ? Math.round(drivingTimeToNext.seconds / 60)
                       : null;
 
+                    // Check for driving time from starting point (first property only)
+                    const isFirstProperty = index === 0;
+                    const drivingFromStart = isFirstProperty ? legDurations.find(
+                      leg => leg.from === '__origin__' && leg.to === property.id
+                    ) : null;
+                    const startDrivingMinutes = drivingFromStart
+                      ? Math.round(drivingFromStart.seconds / 60)
+                      : null;
+
                     return (
                       <div key={property.id}>
+                        {/* Driving time from starting point (first property only) */}
+                        {startDrivingMinutes !== null && (
+                          <div className="flex items-center justify-center py-2 mb-2">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
+                              <Route className="w-4 h-4" />
+                              <span>{startDrivingMinutes} min from start</span>
+                            </div>
+                          </div>
+                        )}
+
                         <SortablePropertyCard
                           property={property}
                           index={index}
@@ -1587,10 +1606,10 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                         ? Math.round(drivingTimeFromPrev.seconds / 60)
                         : null;
 
-                      // Check for driving time from start
+                      // Check for driving time from starting point
                       const isFirstProperty = index === 0;
                       const drivingFromStart = isFirstProperty ? legDurations.find(
-                        leg => leg.from === 'start' && leg.to === property.id
+                        leg => leg.from === '__origin__' && leg.to === property.id
                       ) : null;
                       const startDrivingMinutes = drivingFromStart
                         ? Math.round(drivingFromStart.seconds / 60)
