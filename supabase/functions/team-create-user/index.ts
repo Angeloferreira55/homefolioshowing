@@ -89,7 +89,7 @@ serve(async (req) => {
     // Get team leader's subscription tier
     const { data: leaderRedemption } = await supabaseAdmin
       .from('beta_redemptions')
-      .select('tier, trial_ends_at')
+      .select('tier, trial_ends_at, beta_code_id')
       .eq('user_id', requestingUser.id)
       .single();
 
