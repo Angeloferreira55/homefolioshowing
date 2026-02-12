@@ -150,236 +150,197 @@ export default function PublicPropertyDetailDialog({
             </button>
           </div>
 
-          {/* Scrollable content */}
+          {/* Scrollable content - Compact single-page layout */}
           <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y safe-area-bottom [-webkit-overflow-scrolling:touch]">
-            {/* Hero Photo - Clickable to open gallery */}
-            <button
-              type="button"
-              className="relative w-full h-48 sm:h-64 bg-muted cursor-pointer group text-left"
-              onClick={() => images.length > 0 && setGalleryOpen(true)}
-              aria-label={images.length > 0 ? 'Open photo gallery' : 'No photos available'}
-            >
-              {property.photo_url ? (
-                <>
-                  <img
-                    src={property.photo_url}
-                    alt={property.address}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  {/* Zoom overlay on hover */}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="bg-white/90 rounded-full p-3">
-                      <ZoomIn className="w-6 h-6 text-foreground" />
-                    </div>
-                  </div>
-                  {/* Photo count badge */}
-                  {images.length > 1 && (
-                    <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
-                      1/{images.length}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+              {/* LEFT COLUMN - Photo and Key Details */}
+              <div className="space-y-3">
+                {/* Hero Photo - Clickable to open gallery */}
+                <button
+                  type="button"
+                  className="relative w-full h-64 bg-muted cursor-pointer group text-left rounded-lg overflow-hidden"
+                  onClick={() => images.length > 0 && setGalleryOpen(true)}
+                  aria-label={images.length > 0 ? 'Open photo gallery' : 'No photos available'}
+                >
+                  {property.photo_url ? (
+                    <>
+                      <img
+                        src={property.photo_url}
+                        alt={property.address}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      {/* Zoom overlay on hover */}
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="bg-white/90 rounded-full p-2">
+                          <ZoomIn className="w-5 h-5 text-foreground" />
+                        </div>
+                      </div>
+                      {/* Photo count badge */}
+                      {images.length > 1 && (
+                        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-medium px-2 py-1 rounded">
+                          1/{images.length}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      No photo
                     </div>
                   )}
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  No photo
+                </button>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-4 gap-2">
+                  <StatCard icon={<Bed className="w-4 h-4" />} value={property.beds} label="Beds" />
+                  <StatCard icon={<Bath className="w-4 h-4" />} value={property.baths} label="Baths" />
+                  <StatCard
+                    icon={<Square className="w-4 h-4" />}
+                    value={property.sqft ? property.sqft.toLocaleString() : null}
+                    label="Sq Ft"
+                  />
+                  <StatCard
+                    icon={<Tag className="w-4 h-4" />}
+                    value={property.lot_size || '—'}
+                    label="Lot"
+                  />
                 </div>
-              )}
-            </button>
 
-            {/* Content */}
-            <div className="px-4 sm:px-6 py-6 space-y-5">
-              {/* Price Header */}
-              <div>
-                {property.price && (
-                  <h1 className="font-display text-3xl sm:text-4xl font-bold text-primary tracking-tight italic">
-                    {formatPrice(property.price)}
-                  </h1>
-                )}
-                {quickStats && (
-                  <p className="text-sm text-foreground mt-1 font-medium tracking-wide">
-                    {quickStats}
-                  </p>
-                )}
-                <div className="flex items-center gap-1.5 mt-2 text-muted-foreground">
-                  <MapPin className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-sm">{fullAddress}</span>
-                </div>
-                {property.price && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Est. <span className="text-foreground font-medium">{formatMonthlyPayment(property.price)}/mo</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Stats Cards */}
-              <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                <StatCard icon={<Bed className="w-5 h-5" />} value={property.beds} label="Beds" />
-                <StatCard icon={<Bath className="w-5 h-5" />} value={property.baths} label="Baths" />
-                <StatCard 
-                  icon={<Square className="w-5 h-5" />} 
-                  value={property.sqft ? property.sqft.toLocaleString() : null} 
-                  label="Sq Ft" 
-                />
-                <StatCard 
-                  icon={<Tag className="w-5 h-5" />} 
-                  value={property.lot_size || '—'} 
-                  label="Lot" 
-                />
-              </div>
-
-              {/* Property Details Section */}
-              {(property.year_built || property.lot_size || property.sqft || property.garage) && (
-                <ContentCard>
-                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-4">
-                    Property Details
-                  </h2>
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-6">
-                    {property.year_built && (
-                      <DetailRow 
-                        icon={<CalendarDays className="w-4 h-4" />} 
-                        label="Year Built" 
-                        value={String(property.year_built)} 
-                      />
-                    )}
-                    {property.price && property.sqft && (
-                      <DetailRow 
-                        icon={<DollarSign className="w-4 h-4" />} 
-                        label="Price/Sq.Ft." 
-                        value={formatPricePerSqFt(property.price, property.sqft) || ''} 
-                      />
-                    )}
-                    {property.garage && (
-                      <DetailRow 
-                        icon={<Car className="w-4 h-4" />} 
-                        label="Parking" 
-                        value={property.garage} 
-                      />
-                    )}
-                  </div>
-                </ContentCard>
-              )}
-
-              {/* Agent's Note */}
-              {property.agent_notes && (
-                <ContentCard>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    {agentInfo?.name ? `${agentInfo.name}'s note` : "Agent's note"}
-                  </p>
-                  <p className="text-sm sm:text-base text-foreground leading-relaxed">
-                    {property.agent_notes}
-                  </p>
-                </ContentCard>
-              )}
-
-              {/* Property Documents */}
-              {property.documents && property.documents.length > 0 && (
-                <ContentCard>
-                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-4">
-                    Property Documents
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {property.documents.map((doc) => (
-                      <button
-                        key={doc.id}
-                        onClick={() => {
-                          setDocsDrawerOpen(true);
-                        }}
-                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-center"
-                      >
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-primary" />
+                {/* Property Details */}
+                {(property.year_built || property.garage) && (
+                  <div className="border border-border rounded-lg p-3 bg-background">
+                    <h3 className="text-sm font-semibold mb-2">Details</h3>
+                    <div className="space-y-1.5 text-xs">
+                      {property.year_built && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Year Built:</span>
+                          <span className="font-medium">{property.year_built}</span>
                         </div>
-                        <p className="text-xs font-medium text-foreground line-clamp-2">
-                          {doc.name.length > 20 ? `${doc.name.slice(0, 17)}...` : doc.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.doc_type || 'Document'}
-                        </p>
-                      </button>
-                    ))}
+                      )}
+                      {property.price && property.sqft && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Price/Sq.Ft:</span>
+                          <span className="font-medium">{formatPricePerSqFt(property.price, property.sqft)}</span>
+                        </div>
+                      )}
+                      {property.garage && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Parking:</span>
+                          <span className="font-medium">{property.garage}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+                )}
+
+                {/* Mortgage Calculator */}
+                {property.price && (
+                  <MortgageCalculator propertyPrice={property.price} />
+                )}
+              </div>
+
+              {/* RIGHT COLUMN - Price, Description, and Content */}
+              <div className="space-y-3">
+                {/* Price Header - Compact */}
+                <div className="border border-border rounded-lg p-3 bg-background">
+                  {property.price && (
+                    <h1 className="font-display text-2xl font-bold text-primary tracking-tight italic">
+                      {formatPrice(property.price)}
+                    </h1>
+                  )}
+                  <div className="flex items-start gap-1.5 mt-1 text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span className="text-xs leading-tight">{fullAddress}</span>
+                  </div>
+                  {property.price && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Est. <span className="text-foreground font-medium">{formatMonthlyPayment(property.price)}/mo</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Agent's Note - Compact */}
+                {property.agent_notes && (
+                  <div className="border border-border rounded-lg p-3 bg-background">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                      {agentInfo?.name ? `${agentInfo.name}'s note` : "Agent's note"}
+                    </p>
+                    <p className="text-xs text-foreground leading-relaxed">
+                      {property.agent_notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Summary - Compact */}
+                {property.summary && (
+                  <div className="border border-border rounded-lg p-3 bg-background">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      <h3 className="text-sm font-semibold text-foreground italic">Summary</h3>
+                    </div>
+                    <div className="text-xs text-muted-foreground leading-relaxed space-y-0.5">
+                      {property.summary.split('\n').map((line, idx) => (
+                        <p key={idx}>{line.startsWith('•') || line.startsWith('-') ? line : `• ${line}`}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Features - Compact */}
+                {property.features && property.features.length > 0 && (
+                  <div className="border border-border rounded-lg p-3 bg-background">
+                    <h3 className="text-sm font-semibold mb-2">Features</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {property.features.map((feature, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground"
+                        >
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* About This Home - Compact */}
+                {property.description && (
+                  <div className="border border-border rounded-lg p-3 bg-background">
+                    <h3 className="text-sm font-semibold mb-1.5">About This Home</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                      {property.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Property Documents - Compact button only */}
+                {property.documents && property.documents.length > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 rounded-full border-border mt-3 w-full"
+                    className="gap-2 w-full text-xs h-8"
                     onClick={() => setDocsDrawerOpen(true)}
                   >
-                    <FileText className="h-4 w-4" />
-                    View All Documents ({property.documents.length})
+                    <FileText className="h-3.5 w-3.5" />
+                    View Documents ({property.documents.length})
                   </Button>
-                </ContentCard>
-              )}
+                )}
 
-              {/* Summary */}
-              {property.summary && (
-                <ContentCard>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-primary" />
-                    <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground italic">
-                      Summary
-                    </h2>
-                  </div>
-                  <div className="text-sm sm:text-base text-muted-foreground leading-relaxed space-y-1">
-                    {property.summary.split('\n').map((line, idx) => (
-                      <p key={idx}>{line.startsWith('•') || line.startsWith('-') ? line : `• ${line}`}</p>
-                    ))}
-                  </div>
-                </ContentCard>
-              )}
-
-              {/* Features */}
-              {property.features && property.features.length > 0 && (
-                <ContentCard>
-                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-3">
-                    Features
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {property.features.map((feature, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-secondary text-secondary-foreground"
-                      >
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                </ContentCard>
-              )}
-
-              {/* About This Home */}
-              {property.description && (
-                <ContentCard>
-                  <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-3">
-                    About This Home
-                  </h2>
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {property.description}
-                  </p>
-                </ContentCard>
-              )}
-
-              {/* Mortgage Calculator */}
-              {property.price && (
-                <MortgageCalculator propertyPrice={property.price} />
-              )}
-
-              {/* Agent Card - Avatar removed temporarily */}
-              {agentInfo?.name && (
-                <ContentCard className="bg-muted/30">
-                  <div>
-                    <p className="font-semibold text-foreground">{agentInfo.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                {/* Agent Card - Compact */}
+                {agentInfo?.name && (
+                  <div className="border border-border rounded-lg p-3 bg-muted/20">
+                    <p className="text-sm font-semibold text-foreground">{agentInfo.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {agentInfo.title || 'Your trusted real estate advisor'}
                     </p>
+                    {agentInfo.message && (
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {agentInfo.message}
+                      </p>
+                    )}
                   </div>
-                  {agentInfo.message && (
-                    <p className="text-sm text-muted-foreground mt-3">
-                      {agentInfo.message}
-                    </p>
-                  )}
-                </ContentCard>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -414,14 +375,14 @@ interface StatCardProps {
 
 function StatCard({ icon, value, label }: StatCardProps) {
   return (
-    <div className="border border-border rounded-lg p-3 sm:p-4 flex flex-col items-center justify-center text-center bg-background">
-      <div className="text-muted-foreground mb-1">
+    <div className="border border-border rounded-lg p-2 flex flex-col items-center justify-center text-center bg-background">
+      <div className="text-muted-foreground mb-0.5">
         {icon}
       </div>
-      <p className="font-display text-lg sm:text-xl font-bold text-foreground">
+      <p className="font-display text-base font-bold text-foreground">
         {value ?? '—'}
       </p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }
