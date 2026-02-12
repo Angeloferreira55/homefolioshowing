@@ -1004,6 +1004,78 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     }
   };
 
+  const handleAutoScheduleTimes = async () => {
+    if (properties.length === 0) {
+      toast.info('Add properties first to auto-schedule times');
+      return;
+    }
+
+    // Check if route has been optimized
+    if (legDurations.length === 0) {
+      toast.info('Please optimize the route first to get driving times');
+      return;
+    }
+
+    try {
+      // Get start time from first property or ask user
+      let startTime = properties[0].showing_time;
+
+      if (!startTime) {
+        const userInput = prompt('Enter start time for first showing (e.g., 14:00 for 2:00 PM):');
+        if (!userInput) return; // User cancelled
+        startTime = userInput;
+      }
+
+      // Parse start time
+      const [startHours, startMinutes] = startTime.split(':').map(Number);
+      let currentTimeMinutes = startHours * 60 + startMinutes;
+
+      const updates = [];
+
+      // Schedule each property
+      for (let i = 0; i < properties.length; i++) {
+        const property = properties[i];
+
+        // Format current time as HH:mm
+        const hours = Math.floor(currentTimeMinutes / 60);
+        const minutes = currentTimeMinutes % 60;
+        const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+        // Update this property's time
+        updates.push(
+          supabase
+            .from('session_properties')
+            .update({ showing_time: timeString })
+            .eq('id', property.id)
+        );
+
+        // Calculate next showing start time
+        if (i < properties.length - 1) {
+          // Add 30 minutes for the showing
+          currentTimeMinutes += 30;
+
+          // Add driving time to next property
+          const drivingData = legDurations.find(
+            leg => leg.from === property.id && leg.to === properties[i + 1].id
+          );
+
+          if (drivingData) {
+            const drivingMinutes = Math.ceil(drivingData.seconds / 60);
+            currentTimeMinutes += drivingMinutes;
+          }
+        }
+      }
+
+      await Promise.all(updates);
+      await fetchProperties();
+
+      toast.success('Times auto-scheduled! (30 min per showing + driving time)');
+    } catch (error: any) {
+      console.error('Error auto-scheduling times:', error);
+      toast.error(error.message || 'Failed to auto-schedule times');
+    }
+  };
+
   const handleOptimizeRoute = async () => {
     if (properties.length < 2) {
       toast.info(ERROR_MESSAGES.ROUTE_NO_PROPERTIES);
@@ -1179,6 +1251,15 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
             >
               <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               QR Code
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm bg-primary/10 hover:bg-primary/20 border-primary/20"
+              onClick={handleAutoScheduleTimes}
+            >
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Auto-schedule Times
             </Button>
             <Button
               variant="destructive"
