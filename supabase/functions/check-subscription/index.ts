@@ -36,7 +36,7 @@ const ensureTeamExists = async (
     }
 
     // Create team for this user
-    const maxMembers = tier === 'team5' ? 5 : 50;
+    const maxMembers = tier === 'team5' ? 5 : 10;
     logStep('Creating new team', { tier, maxMembers });
 
     const { data: newTeam, error: teamError } = await supabaseClient

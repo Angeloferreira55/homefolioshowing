@@ -14,7 +14,7 @@ const Help = () => {
 
   const handleGetStarted = () => {
     startTour();
-    navigate('/admin/dashboard');
+    navigate('/admin/showings');
   };
   const faqs = [
     {

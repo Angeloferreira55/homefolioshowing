@@ -52,6 +52,27 @@ const Profile = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
+  // Track whether user has made changes
+  const hasChanges = profile ? (
+    formData.full_name !== (profile.full_name || '') ||
+    formData.phone !== (profile.phone || '') ||
+    formData.slogan !== (profile.slogan || '') ||
+    formData.bio !== (profile.bio || '') ||
+    formData.license_number !== (profile.license_number || '') ||
+    formData.brokerage_name !== (profile.brokerage_name || '') ||
+    formData.brokerage_address !== (profile.brokerage_address || '') ||
+    formData.brokerage_phone !== (profile.brokerage_phone || '') ||
+    formData.brokerage_email !== (profile.brokerage_email || '') ||
+    formData.linkedin_url !== (profile.linkedin_url || '') ||
+    formData.instagram_url !== (profile.instagram_url || '') ||
+    formData.facebook_url !== (profile.facebook_url || '') ||
+    formData.twitter_url !== (profile.twitter_url || '') ||
+    formData.youtube_url !== (profile.youtube_url || '') ||
+    formData.website_url !== (profile.website_url || '') ||
+    formData.avatar_url !== undefined ||
+    formData.brokerage_logo_url !== undefined
+  ) : false;
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();

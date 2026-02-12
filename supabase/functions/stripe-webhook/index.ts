@@ -109,7 +109,7 @@ serve(async (req) => {
                   .single();
 
                 if (!existingTeam) {
-                  const maxMembers = tier === "team5" ? 5 : 50;
+                  const maxMembers = tier === "team5" ? 5 : 10;
                   const { data: newTeam, error: teamError } = await supabaseClient
                     .from("teams")
                     .insert({
