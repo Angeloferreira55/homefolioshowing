@@ -36,11 +36,23 @@ const ManageUsers = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  // Admin emails - only these users can access this page
+  const ADMIN_EMAILS = ['angelo@houseforsaleabq.com'];
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/auth');
+        return;
+      }
+
+      // Check if user is an admin
+      const isAdmin = ADMIN_EMAILS.includes(session.user.email || '');
+
+      if (!isAdmin) {
+        toast.error('Unauthorized: Admin access only');
+        navigate('/dashboard');
         return;
       }
 

@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Admin emails - only these users can create other users
+const ADMIN_EMAILS = ['angelo@houseforsaleabq.com'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -44,7 +47,14 @@ serve(async (req) => {
       });
     }
 
-    // Authenticated users can create other users (simplified for now)
+    // Check if requesting user is an admin
+    if (!ADMIN_EMAILS.includes(requestingUser.email || '')) {
+      console.log(`Unauthorized access attempt by: ${requestingUser.email}`);
+      return new Response(JSON.stringify({ error: 'Unauthorized: Admin access only' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { email, password, fullName, company, phone, tier, trialDays } = await req.json();
 

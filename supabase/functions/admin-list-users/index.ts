@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Admin emails - only these users can list all users
+const ADMIN_EMAILS = ['angelo@houseforsaleabq.com'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -40,6 +43,15 @@ serve(async (req) => {
     if (authError || !requestingUser) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check if requesting user is an admin
+    if (!ADMIN_EMAILS.includes(requestingUser.email || '')) {
+      console.log(`Unauthorized list users attempt by: ${requestingUser.email}`);
+      return new Response(JSON.stringify({ error: 'Unauthorized: Admin access only' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
