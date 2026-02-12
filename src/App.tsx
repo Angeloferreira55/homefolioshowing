@@ -20,6 +20,7 @@ import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import ManageUsers from "./pages/ManageUsers";
 import TeamManagement from "./pages/TeamManagement";
+import Help from "./pages/Help";
 import Welcome from "./pages/Welcome";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/manage-users" element={<ManageUsers />} />
             <Route path="/admin/team-management" element={<TeamManagement />} />
+            <Route path="/admin/help" element={<Help />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -278,14 +278,35 @@ export default function PublicPropertyDetailDialog({
                   <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground mb-4">
                     Property Documents
                   </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {property.documents.map((doc) => (
+                      <button
+                        key={doc.id}
+                        onClick={() => {
+                          setDocsDrawerOpen(true);
+                        }}
+                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors text-center"
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <p className="text-xs font-medium text-foreground line-clamp-2">
+                          {doc.name.length > 20 ? `${doc.name.slice(0, 17)}...` : doc.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.doc_type || 'Document'}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2 rounded-full border-border"
+                    className="gap-2 rounded-full border-border mt-3 w-full"
                     onClick={() => setDocsDrawerOpen(true)}
                   >
                     <FileText className="h-4 w-4" />
-                    DOCS ({property.documents.length})
+                    View All Documents ({property.documents.length})
                   </Button>
                 </ContentCard>
               )}
@@ -348,14 +369,14 @@ export default function PublicPropertyDetailDialog({
                 <ContentCard className="bg-muted/30">
                   <div className="flex items-center gap-4">
                     {agentInfo.avatarUrl ? (
-                      <img 
-                        src={agentInfo.avatarUrl} 
+                      <img
+                        src={agentInfo.avatarUrl}
                         alt={agentInfo.name}
-                        className="w-14 h-14 rounded-full object-cover"
+                        className="w-20 h-20 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-xl font-semibold text-primary">
+                      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-2xl font-semibold text-primary">
                           {agentInfo.name.charAt(0)}
                         </span>
                       </div>

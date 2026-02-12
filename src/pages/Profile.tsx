@@ -9,13 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Camera, 
-  Building2, 
-  User, 
-  MapPin, 
-  Phone, 
-  Mail, 
+import {
+  Camera,
+  Building2,
+  User,
+  MapPin,
+  Phone,
+  Mail,
   Award,
   Save,
   Loader2,
@@ -23,7 +23,8 @@ import {
   Instagram,
   Facebook,
   Youtube,
-  Globe
+  Globe,
+  RotateCcw
 } from 'lucide-react';
 
 // X/Twitter icon (not in lucide-react)
@@ -169,6 +170,15 @@ const Profile = () => {
     }
 
     return 'border-2 border-primary bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.3)]';
+  };
+
+  const handleRestartTour = () => {
+    onboarding.resetOnboarding();
+    toast.success('Tour reset! Redirecting to showing hub...');
+    setTimeout(() => {
+      navigate('/admin/showings');
+      window.location.reload();
+    }, 1000);
   };
 
   if (loading) {
@@ -516,6 +526,26 @@ const Profile = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Help & Support */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-display">Help & Support</CardTitle>
+              <CardDescription>
+                Need assistance? Restart the tour to see a guided walkthrough of HomeFolio.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                onClick={handleRestartTour}
+                className="gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Restart Tour
+              </Button>
             </CardContent>
           </Card>
 

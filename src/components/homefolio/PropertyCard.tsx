@@ -31,13 +31,6 @@ const PropertyCard = ({ property, onView, onArchive, isClientView = false }: Pro
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        
-        {/* Price badge */}
-        <div className="absolute top-3 left-3">
-          <span className="px-3 py-1.5 rounded-lg bg-card/95 backdrop-blur-sm font-semibold text-foreground shadow-md">
-            {formatPrice(property.price)}
-          </span>
-        </div>
 
         {/* Menu (agent view only) */}
         {!isClientView && (
@@ -82,9 +75,14 @@ const PropertyCard = ({ property, onView, onArchive, isClientView = false }: Pro
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-display font-semibold text-foreground mb-1 line-clamp-1">
-          {property.address}
-        </h3>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-display font-semibold text-foreground line-clamp-1 flex-1">
+            {property.address}
+          </h3>
+          <span className="font-display text-lg font-bold text-primary shrink-0">
+            {formatPrice(property.price)}
+          </span>
+        </div>
         <p className="text-sm text-muted-foreground mb-3">
           {property.city}, {property.state} {property.zipCode}
         </p>

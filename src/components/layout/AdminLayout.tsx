@@ -25,12 +25,14 @@ import {
   BarChart3,
   Users,
   RotateCcw,
+  HelpCircle,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { AIAssistant } from '@/components/ai/AIAssistant';
 import { toast } from 'sonner';
 
 // Admin emails - only these users can see "Manage Users"
@@ -50,6 +52,7 @@ const navItems: NavItem[] = [
   { title: 'Manage Users', url: '/admin/manage-users', icon: Users, adminOnly: true },
   { title: 'Team Management', url: '/admin/team-management', icon: Users, teamLeaderOnly: true },
   { title: 'My Profile', url: '/admin/profile', icon: User },
+  { title: 'Help', url: '/admin/help', icon: HelpCircle },
 ];
 
 function AppSidebar() {
@@ -227,6 +230,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </main>
         </div>
       </div>
+      <AIAssistant />
     </SidebarProvider>
   );
 }
