@@ -163,6 +163,84 @@ export type Database = {
           },
         ]
       }
+      managed_agents: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          brokerage_address: string | null
+          brokerage_email: string | null
+          brokerage_logo_url: string | null
+          brokerage_name: string | null
+          brokerage_phone: string | null
+          company: string | null
+          created_at: string
+          email: string | null
+          facebook_url: string | null
+          full_name: string
+          id: string
+          instagram_url: string | null
+          license_number: string | null
+          linkedin_url: string | null
+          owner_id: string
+          phone: string | null
+          slogan: string | null
+          twitter_url: string | null
+          updated_at: string
+          website_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          brokerage_phone?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          facebook_url?: string | null
+          full_name: string
+          id?: string
+          instagram_url?: string | null
+          license_number?: string | null
+          linkedin_url?: string | null
+          owner_id: string
+          phone?: string | null
+          slogan?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          brokerage_address?: string | null
+          brokerage_email?: string | null
+          brokerage_logo_url?: string | null
+          brokerage_name?: string | null
+          brokerage_phone?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          facebook_url?: string | null
+          full_name?: string
+          id?: string
+          instagram_url?: string | null
+          license_number?: string | null
+          linkedin_url?: string | null
+          owner_id?: string
+          phone?: string | null
+          slogan?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
       mls_parsing_jobs: {
         Row: {
           created_at: string
@@ -464,6 +542,7 @@ export type Database = {
       showing_sessions: {
         Row: {
           admin_id: string
+          agent_profile_id: string | null
           archived_at: string | null
           client_email: string | null
           client_name: string
@@ -480,6 +559,7 @@ export type Database = {
         }
         Insert: {
           admin_id: string
+          agent_profile_id?: string | null
           archived_at?: string | null
           client_email?: string | null
           client_name: string
@@ -496,6 +576,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string
+          agent_profile_id?: string | null
           archived_at?: string | null
           client_email?: string | null
           client_name?: string
@@ -510,7 +591,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "showing_sessions_agent_profile_id_fkey"
+            columns: ["agent_profile_id"]
+            isOneToOne: false
+            referencedRelation: "managed_agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -641,6 +730,52 @@ export type Database = {
           share_token: string
           title: string
           updated_at: string
+        }[]
+      }
+      get_session_agent_profile: {
+        Args: { p_session_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          brokerage_address: string
+          brokerage_email: string
+          brokerage_logo_url: string
+          brokerage_name: string
+          brokerage_phone: string
+          company: string
+          email: string
+          facebook_url: string
+          full_name: string
+          instagram_url: string
+          linkedin_url: string
+          phone: string
+          slogan: string
+          twitter_url: string
+          website_url: string
+          youtube_url: string
+        }[]
+      }
+      get_session_agent_profile_by_token: {
+        Args: { p_share_token: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          brokerage_address: string
+          brokerage_email: string
+          brokerage_logo_url: string
+          brokerage_name: string
+          brokerage_phone: string
+          company: string
+          email: string
+          facebook_url: string
+          full_name: string
+          instagram_url: string
+          linkedin_url: string
+          phone: string
+          slogan: string
+          twitter_url: string
+          website_url: string
+          youtube_url: string
         }[]
       }
       get_session_id_from_property: {
