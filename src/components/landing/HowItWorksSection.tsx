@@ -1,29 +1,29 @@
-import { UserPlus, Plus, Send, Eye } from 'lucide-react';
+import { User, Plus, MapPin, Send } from 'lucide-react';
 
 const steps = [
   {
-    icon: UserPlus,
+    icon: User,
     step: '01',
-    title: 'Create a Client Homefolio',
-    description: 'Add your client\'s name and whether they\'re a buyer, seller, or investor. A unique private link is generated automatically.',
+    title: 'Set Up Your Profile',
+    description: 'Add your photo, bio, brokerage info, license number, and social media links. Your branding appears on every session you share with clients.',
   },
   {
     icon: Plus,
     step: '02',
-    title: 'Add Properties',
-    description: 'Upload photos, add listing details, attach documents like MLS PDFs and disclosures. Record showing notes and observations.',
+    title: 'Create a Session & Add Properties',
+    description: 'Create a showing session for your client, then add properties by uploading an MLS PDF with a photo, pasting a Realtor.com link, or entering details manually. Attach documents and notes to each property.',
+  },
+  {
+    icon: MapPin,
+    step: '03',
+    title: 'Optimize Your Route & Schedule',
+    description: 'Generate the most efficient driving route between properties based on your starting location, then use the estimated travel times to schedule showing times for each home.',
   },
   {
     icon: Send,
-    step: '03',
-    title: 'Share the Link',
-    description: 'Send your client one link that never changes. They can access their personalized home search anytime.',
-  },
-  {
-    icon: Eye,
     step: '04',
-    title: 'Keep It Updated',
-    description: 'Add or remove properties as the search evolves. Your client refreshes to see the latest—no resending required.',
+    title: 'Share with Your Client',
+    description: 'Send your client one password-protected link. They can view properties, access documents, get directions, leave ratings, and provide feedback — all from their phone.',
   },
 ];
 
