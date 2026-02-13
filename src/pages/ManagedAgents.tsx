@@ -36,8 +36,8 @@ const ManagedAgents = () => {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from('managed_agents')
+      const { error } = await (supabase
+        .from('managed_agents' as any) as any)
         .delete()
         .eq('id', deleteId);
 

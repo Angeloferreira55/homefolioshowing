@@ -101,9 +101,9 @@ const ManagedAgentEdit = () => {
   useEffect(() => {
     if (isNew) return;
     const fetchAgent = async () => {
-      const { data, error } = await supabase
-        .from('managed_agents')
-        .select('*')
+      const { data, error } = await (supabase
+        .from('managed_agents' as any)
+        .select('*') as any)
         .eq('id', agentId!)
         .single();
 
@@ -238,14 +238,14 @@ const ManagedAgentEdit = () => {
       };
 
       if (isNew) {
-        const { error } = await supabase
-          .from('managed_agents')
+        const { error } = await (supabase
+          .from('managed_agents' as any) as any)
           .insert({ ...payload, owner_id: user.id });
         if (error) throw error;
         toast.success('Agent profile created');
       } else {
-        const { error } = await supabase
-          .from('managed_agents')
+        const { error } = await (supabase
+          .from('managed_agents' as any) as any)
           .update(payload)
           .eq('id', agentId!);
         if (error) throw error;

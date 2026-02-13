@@ -43,10 +43,10 @@ export function useOnboarding() {
         return;
       }
 
-      const { data: sessions, error } = await supabase
+      const { data: sessions, error } = await (supabase
         .from('showing_sessions')
-        .select('id')
-        .eq('user_id', user.id)
+        .select('id') as any)
+        .eq('admin_id', user.id)
         .limit(1);
 
       if (error) {

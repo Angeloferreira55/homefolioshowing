@@ -85,9 +85,9 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('managed_agents')
-        .select('*')
+      const { data, error } = await (supabase
+        .from('managed_agents' as any)
+        .select('*') as any)
         .order('created_at', { ascending: true });
 
       if (error) {

@@ -86,7 +86,7 @@ const ShowingHub = () => {
 
   const fetchSessions = async () => {
     try {
-      let query = supabase
+      let query = (supabase
         .from('showing_sessions')
         .select(`
           id,
@@ -101,7 +101,7 @@ const ShowingHub = () => {
           deleted_at,
           archived_at,
           agent_profile_id
-        `)
+        `) as any)
         .order('created_at', { ascending: false });
 
       // When in assistant mode, scope sessions to the selected agent
