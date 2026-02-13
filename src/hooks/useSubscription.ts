@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type SubscriptionTier = 'starter' | 'pro' | 'team5' | 'team';
+export type SubscriptionTier = 'starter' | 'pro' | 'team5' | 'team' | 'assistant';
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -25,6 +25,10 @@ export const PRICE_IDS = {
   team: {
     monthly: 'price_1SypipGny8WPy9rqbWEZZuKU',
     yearly: 'price_1Sypj4Gny8WPy9rqW7raQeaH',
+  },
+  assistant: {
+    monthly: 'price_ASSISTANT_MONTHLY', // TODO: Replace with real Stripe price ID
+    yearly: 'price_ASSISTANT_YEARLY',   // TODO: Replace with real Stripe price ID
   },
 } as const;
 

@@ -14,14 +14,14 @@ const features = [{
 }, {
   icon: FileText,
   title: 'Documents & Photos',
-  description: 'Attach MLS PDFs, disclosures, and high-quality photos to each property for complete information.'
+  description: 'Attach MLS PDFs, disclosures, and any document you want to share with your customer for each property in a few simple steps.'
 }, {
   icon: Route,
   title: 'Route Optimization',
   description: 'Plan efficient showing routes for multiple properties. Save time and maximize your client visits.'
 }, {
   icon: TreePine,
-  title: 'Save a Tree, Save Money',
+  title: 'Save a Tree and Money',
   description: 'Go paperless with digital documents and links. No more printing stacks of MLS sheets for every showing.'
 }];
 const FeaturesSection = () => {

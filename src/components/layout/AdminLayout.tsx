@@ -33,6 +33,8 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { AIAssistant } from '@/components/ai/AIAssistant';
+import { ActiveAgentProvider } from '@/contexts/ActiveAgentContext';
+import AgentSwitcher from '@/components/layout/AgentSwitcher';
 import { toast } from 'sonner';
 
 // Admin emails - only these users can see "Manage Users"
@@ -44,6 +46,7 @@ type NavItem = {
   icon: typeof Calendar;
   adminOnly?: boolean;
   teamLeaderOnly?: boolean;
+  assistantOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -51,6 +54,7 @@ const navItems: NavItem[] = [
   { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
   { title: 'Manage Users', url: '/admin/manage-users', icon: Users, adminOnly: true },
   { title: 'Team Management', url: '/admin/team-management', icon: Users, teamLeaderOnly: true },
+  { title: 'My Agents', url: '/admin/agents', icon: Users, assistantOnly: true },
   { title: 'My Profile', url: '/admin/profile', icon: User },
   { title: 'Help', url: '/admin/help', icon: HelpCircle },
 ];
@@ -89,9 +93,11 @@ function AppSidebar() {
   // Filter nav items based on user role
   const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail);
   const isTeamLeader = subscribed && (tier === 'team' || tier === 'team5');
+  const isAssistant = subscribed && tier === 'assistant';
   const filteredNavItems = navItems.filter(item => {
     if (item.adminOnly) return isAdmin;
     if (item.teamLeaderOnly) return isTeamLeader;
+    if (item.assistantOnly) return isAssistant;
     return true;
   });
 
@@ -213,24 +219,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header with trigger */}
-          <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 safe-area-top">
-            <SidebarTrigger className="touch-target flex items-center justify-center">
-              <Menu className="w-5 h-5" />
-            </SidebarTrigger>
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-x-hidden">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-              {children}
-            </div>
-          </main>
+      <ActiveAgentProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Header with trigger */}
+            <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 safe-area-top">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="touch-target flex items-center justify-center">
+                  <Menu className="w-5 h-5" />
+                </SidebarTrigger>
+                <AgentSwitcher />
+              </div>
+              <ThemeToggle />
+            </header>
+            <main className="flex-1 overflow-x-hidden">
+              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-      <AIAssistant />
+        <AIAssistant />
+      </ActiveAgentProvider>
     </SidebarProvider>
   );
 }

@@ -152,20 +152,17 @@ const PublicSession = () => {
 
       setSession(sessionData);
 
-      // Fetch agent profile from public view (excludes sensitive data like license_number, MLS credentials)
+      // Fetch agent profile - uses RPC that resolves managed agent profile if set, otherwise falls back to session owner
       const { data: agentData, error: agentError } = await supabase
-        .from('public_agent_profile')
-        .select('full_name, avatar_url, slogan, bio, phone, email, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url')
-        .eq('user_id', sessionData.admin_id)
-        .maybeSingle();
+        .rpc('get_session_agent_profile_by_token', { p_share_token: token! });
 
       if (agentError) {
         logError(agentError, { context: 'PublicSession.fetchAgent', adminId: sessionData.admin_id });
         // Non-critical - continue without agent data
       }
 
-      if (agentData) {
-        setAgent(agentData as unknown as AgentProfile);
+      if (agentData && agentData.length > 0) {
+        setAgent(agentData[0] as unknown as AgentProfile);
       }
 
       // Fetch properties

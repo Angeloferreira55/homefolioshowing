@@ -30,6 +30,8 @@ import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import Install from "./pages/Install";
+import ManagedAgents from "./pages/ManagedAgents";
+import ManagedAgentEdit from "./pages/ManagedAgentEdit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +71,8 @@ const App = () => (
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/manage-users" element={<ManageUsers />} />
             <Route path="/admin/team-management" element={<TeamManagement />} />
+            <Route path="/admin/agents" element={<ManagedAgents />} />
+            <Route path="/admin/agents/:agentId" element={<ManagedAgentEdit />} />
             <Route path="/admin/help" element={<Help />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

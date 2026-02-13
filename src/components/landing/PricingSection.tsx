@@ -43,6 +43,22 @@ const plans = [
     popular: true,
   },
   {
+    name: 'Assistant',
+    tier: 'assistant' as const,
+    monthlyPrice: 39,
+    yearlyPrice: 375,
+    description: 'For TCs & assistants managing multiple agents',
+    features: [
+      'Everything in Pro',
+      'Up to 5 agent profiles',
+      'Switch between agents',
+      'Agent-branded sessions',
+      'Priority support',
+    ],
+    cta: 'Upgrade to Assistant',
+    popular: false,
+  },
+  {
     name: 'Small Team',
     tier: 'team5' as const,
     monthlyPrice: 45,
@@ -203,7 +219,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 sm:gap-8 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}

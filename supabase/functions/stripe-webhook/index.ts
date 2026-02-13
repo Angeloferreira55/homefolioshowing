@@ -19,6 +19,8 @@ const PRICE_TO_TIER: Record<string, string> = {
   "price_1SznrEGny8WPy9rqaQ69H1Ki": "team5",  // Team5 Yearly
   "price_1SypipGny8WPy9rqbWEZZuKU": "team",   // Team Monthly
   "price_1Sypj4Gny8WPy9rqW7raQeaH": "team",   // Team Yearly
+  "price_ASSISTANT_MONTHLY": "assistant",       // Assistant Monthly (TODO: Replace with real Stripe price ID)
+  "price_ASSISTANT_YEARLY": "assistant",        // Assistant Yearly (TODO: Replace with real Stripe price ID)
 };
 
 serve(async (req) => {

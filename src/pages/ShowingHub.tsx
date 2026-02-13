@@ -25,6 +25,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useProfile } from '@/hooks/useProfile';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useActiveAgent } from '@/hooks/useActiveAgent';
 import WelcomeModal from '@/components/onboarding/WelcomeModal';
 import OnboardingTooltip from '@/components/onboarding/OnboardingTooltip';
 import { createDemoSession } from '@/lib/demoSession';
@@ -41,6 +42,7 @@ interface ShowingSession {
   notes?: string | null;
   deleted_at?: string | null;
   archived_at?: string | null;
+  agent_profile_id?: string | null;
   property_count?: number;
   rating_count?: number;
 }
@@ -62,6 +64,7 @@ const ShowingHub = () => {
   const onboarding = useOnboarding();
   const { profile } = useProfile();
   const { tier, subscribed } = useSubscription();
+  const { activeAgentId, activeAgent, isAssistantMode } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
@@ -69,7 +72,7 @@ const ShowingHub = () => {
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [activeAgentId]);
 
   // Auto-mark all tour steps as complete (simple click-through tour)
   useEffect(() => {
@@ -83,7 +86,7 @@ const ShowingHub = () => {
 
   const fetchSessions = async () => {
     try {
-      const { data: sessionsData, error } = await supabase
+      let query = supabase
         .from('showing_sessions')
         .select(`
           id,
@@ -96,9 +99,21 @@ const ShowingHub = () => {
           notes,
           created_at,
           deleted_at,
-          archived_at
+          archived_at,
+          agent_profile_id
         `)
         .order('created_at', { ascending: false });
+
+      // When in assistant mode, scope sessions to the selected agent
+      if (isAssistantMode) {
+        if (activeAgentId) {
+          query = query.eq('agent_profile_id', activeAgentId);
+        } else {
+          query = query.is('agent_profile_id', null);
+        }
+      }
+
+      const { data: sessionsData, error } = await query;
 
       if (error) throw error;
 
@@ -177,6 +192,7 @@ const ShowingHub = () => {
         client_name: data.clientName,
         notes: data.notes || null,
         share_password: data.sharePassword || null,
+        agent_profile_id: activeAgentId || null,
       });
 
       if (error) throw error;
@@ -582,11 +598,32 @@ const ShowingHub = () => {
   return (
     <AdminLayout>
       <>
-        <PageHeader 
-          title="Showing Hub" 
+        <PageHeader
+          title="Showing Hub"
           description="Manage your showing sessions"
           icon={Calendar}
         />
+
+        {/* Active agent banner */}
+        {isAssistantMode && activeAgent && (
+          <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted flex-shrink-0">
+              {activeAgent.avatar_url ? (
+                <img src={activeAgent.avatar_url} alt={activeAgent.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs font-medium text-muted-foreground">
+                  {activeAgent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium">Showing sessions for <span className="text-primary">{activeAgent.full_name}</span></p>
+              {activeAgent.brokerage_name && (
+                <p className="text-xs text-muted-foreground">{activeAgent.brokerage_name}</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* New Session Button */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6">

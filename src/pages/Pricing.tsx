@@ -47,6 +47,22 @@ const plans = [
     popular: true,
   },
   {
+    name: 'Assistant',
+    tier: 'assistant' as const,
+    description: 'For TCs & assistants managing agents',
+    monthlyPrice: 39,
+    yearlyPrice: 375,
+    features: [
+      'Everything in Pro',
+      'Up to 5 agent profiles',
+      'Switch between agents',
+      'Agent-branded sessions',
+      'Priority support',
+    ],
+    cta: 'Start Assistant Trial',
+    popular: false,
+  },
+  {
     name: 'Small Team',
     tier: 'team5' as const,
     description: 'For small real estate teams',
@@ -162,7 +178,7 @@ const Pricing = () => {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full mb-6">
             <Leaf className="w-4 h-4 text-accent" />
             <span className="text-sm font-medium text-accent">
-              Save a Tree, Save Money
+              Save a Tree and Money
             </span>
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-6">
@@ -203,7 +219,7 @@ const Pricing = () => {
       {/* Pricing Cards */}
       <section className="py-12 -mt-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 max-w-7xl mx-auto">
             {plans.map((plan) => (
               <div
                 key={plan.name}
