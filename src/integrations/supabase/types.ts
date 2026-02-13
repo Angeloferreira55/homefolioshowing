@@ -202,92 +202,6 @@ export type Database = {
         }
         Relationships: []
       }
-      managed_agents: {
-        Row: {
-          id: string
-          owner_id: string
-          full_name: string
-          email: string | null
-          phone: string | null
-          avatar_url: string | null
-          slogan: string | null
-          bio: string | null
-          company: string | null
-          license_number: string | null
-          brokerage_name: string | null
-          brokerage_address: string | null
-          brokerage_phone: string | null
-          brokerage_email: string | null
-          brokerage_logo_url: string | null
-          linkedin_url: string | null
-          instagram_url: string | null
-          facebook_url: string | null
-          twitter_url: string | null
-          youtube_url: string | null
-          website_url: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          owner_id: string
-          full_name: string
-          email?: string | null
-          phone?: string | null
-          avatar_url?: string | null
-          slogan?: string | null
-          bio?: string | null
-          company?: string | null
-          license_number?: string | null
-          brokerage_name?: string | null
-          brokerage_address?: string | null
-          brokerage_phone?: string | null
-          brokerage_email?: string | null
-          brokerage_logo_url?: string | null
-          linkedin_url?: string | null
-          instagram_url?: string | null
-          facebook_url?: string | null
-          twitter_url?: string | null
-          youtube_url?: string | null
-          website_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          owner_id?: string
-          full_name?: string
-          email?: string | null
-          phone?: string | null
-          avatar_url?: string | null
-          slogan?: string | null
-          bio?: string | null
-          company?: string | null
-          license_number?: string | null
-          brokerage_name?: string | null
-          brokerage_address?: string | null
-          brokerage_phone?: string | null
-          brokerage_email?: string | null
-          brokerage_logo_url?: string | null
-          linkedin_url?: string | null
-          instagram_url?: string | null
-          facebook_url?: string | null
-          twitter_url?: string | null
-          youtube_url?: string | null
-          website_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "managed_agents_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -550,7 +464,6 @@ export type Database = {
       showing_sessions: {
         Row: {
           admin_id: string
-          agent_profile_id: string | null
           archived_at: string | null
           client_email: string | null
           client_name: string
@@ -567,7 +480,6 @@ export type Database = {
         }
         Insert: {
           admin_id: string
-          agent_profile_id?: string | null
           archived_at?: string | null
           client_email?: string | null
           client_name: string
@@ -584,7 +496,6 @@ export type Database = {
         }
         Update: {
           admin_id?: string
-          agent_profile_id?: string | null
           archived_at?: string | null
           client_email?: string | null
           client_name?: string
@@ -717,52 +628,6 @@ export type Database = {
       get_admin_id_from_share_token: {
         Args: { p_share_token: string }
         Returns: string
-      }
-      get_session_agent_profile: {
-        Args: { p_session_id: string }
-        Returns: {
-          full_name: string
-          avatar_url: string | null
-          slogan: string | null
-          bio: string | null
-          phone: string | null
-          email: string | null
-          company: string | null
-          brokerage_name: string | null
-          brokerage_address: string | null
-          brokerage_phone: string | null
-          brokerage_email: string | null
-          brokerage_logo_url: string | null
-          linkedin_url: string | null
-          instagram_url: string | null
-          facebook_url: string | null
-          twitter_url: string | null
-          youtube_url: string | null
-          website_url: string | null
-        }[]
-      }
-      get_session_agent_profile_by_token: {
-        Args: { p_share_token: string }
-        Returns: {
-          full_name: string
-          avatar_url: string | null
-          slogan: string | null
-          bio: string | null
-          phone: string | null
-          email: string | null
-          company: string | null
-          brokerage_name: string | null
-          brokerage_address: string | null
-          brokerage_phone: string | null
-          brokerage_email: string | null
-          brokerage_logo_url: string | null
-          linkedin_url: string | null
-          instagram_url: string | null
-          facebook_url: string | null
-          twitter_url: string | null
-          youtube_url: string | null
-          website_url: string | null
-        }[]
       }
       get_public_session: {
         Args: { p_share_token: string }

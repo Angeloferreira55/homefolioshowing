@@ -16,7 +16,7 @@ export async function createDemoSession(): Promise<{ sessionId: string; error: s
     const { data: session, error: sessionError } = await supabase
       .from('showing_sessions')
       .insert({
-        user_id: user.id,
+        admin_id: user.id,
         title: '🎯 Demo Showing - North Valley Homes',
         client_name: 'Demo Client',
         notes: 'This is a sample showing session to help you explore HomeFolio. Feel free to experiment with all the features!',
@@ -123,10 +123,10 @@ export async function cleanupDemoSessions(): Promise<{ success: boolean; error: 
     }
 
     // Find all demo sessions
-    const { data: sessions, error: fetchError } = await supabase
+    const { data: sessions, error: fetchError } = await (supabase
       .from('showing_sessions')
-      .select('id, title')
-      .eq('user_id', user.id);
+      .select('id, title') as any)
+      .eq('admin_id', user.id);
 
     if (fetchError) {
       return { success: false, error: 'Failed to fetch sessions' };

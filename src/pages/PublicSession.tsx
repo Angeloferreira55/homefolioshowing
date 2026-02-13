@@ -154,7 +154,7 @@ const PublicSession = () => {
 
       // Fetch agent profile - uses RPC that resolves managed agent profile if set, otherwise falls back to session owner
       const { data: agentData, error: agentError } = await supabase
-        .rpc('get_session_agent_profile_by_token', { p_share_token: token! });
+        .rpc('get_session_agent_profile_by_token' as any, { p_share_token: token! });
 
       if (agentError) {
         logError(agentError, { context: 'PublicSession.fetchAgent', adminId: sessionData.admin_id });
