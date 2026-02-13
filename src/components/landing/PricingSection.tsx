@@ -286,6 +286,14 @@ const PricingSection = () => {
         <p className="text-center text-muted-foreground text-sm sm:text-base mt-8 sm:mt-12 px-4">
           🛡️ 14-day money-back guarantee on all paid plans. No questions asked.
         </p>
+
+        {/* Enterprise / Custom */}
+        <p className="text-center text-muted-foreground text-sm sm:text-base mt-4 px-4">
+          Need a custom solution for a larger team or brokerage?{' '}
+          <a href="mailto:sales@home-folio.net?subject=Custom Plan Inquiry" className="text-accent font-medium hover:underline">
+            Contact us at sales@home-folio.net
+          </a>
+        </p>
       </div>
     </section>
   );

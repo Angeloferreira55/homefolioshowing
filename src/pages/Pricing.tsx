@@ -271,6 +271,16 @@ const Pricing = () => {
         </div>
       </section>
 
+      {/* Enterprise / Custom */}
+      <div className="text-center py-8">
+        <p className="text-muted-foreground text-sm sm:text-base">
+          Need a custom solution for a larger team or brokerage?{' '}
+          <a href="mailto:sales@home-folio.net?subject=Custom Plan Inquiry" className="text-accent font-medium hover:underline">
+            Contact us at sales@home-folio.net
+          </a>
+        </p>
+      </div>
+
       {/* FAQ Preview */}
       <section className="py-20 bg-secondary">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
