@@ -362,18 +362,27 @@ const ShowingHub = () => {
     clientName: string;
     sessionDate?: Date;
     notes?: string;
+    accessCode?: string | null;
+    agentProfileId?: string | null;
   }) => {
     if (!editingSession) return;
 
     try {
+      const updatePayload: Record<string, any> = {
+        title: data.title,
+        client_name: data.clientName,
+        session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
+        notes: data.notes || null,
+      };
+
+      // Only include agent_profile_id if assistant mode (has agents)
+      if (data.agentProfileId !== undefined) {
+        updatePayload.agent_profile_id = data.agentProfileId || null;
+      }
+
       const { error } = await supabase
         .from('showing_sessions')
-        .update({
-          title: data.title,
-          client_name: data.clientName,
-          session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
-          notes: data.notes || null,
-        })
+        .update(updatePayload)
         .eq('id', editingSession.id);
 
       if (error) throw error;
@@ -844,6 +853,7 @@ const ShowingHub = () => {
         open={!!editingSession}
         onOpenChange={(open) => !open && setEditingSession(null)}
         onSave={handleSaveSession}
+        agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
       />
 
       {/* Soft Delete Confirmation */}

@@ -12,10 +12,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, Lock, RefreshCw, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, Loader2, Lock, RefreshCw, Users, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+
+interface AgentOption {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+}
 
 interface SessionData {
   id: string;
@@ -26,6 +33,7 @@ interface SessionData {
   session_date?: string | null;
   notes?: string | null;
   share_password?: string | null;
+  agent_profile_id?: string | null;
 }
 
 interface EditSessionDialogProps {
@@ -38,7 +46,9 @@ interface EditSessionDialogProps {
     sessionDate?: Date;
     notes?: string;
     accessCode?: string | null;
+    agentProfileId?: string | null;
   }) => Promise<void>;
+  agentProfiles?: AgentOption[];
 }
 
 const generateAccessCode = (): string => {
@@ -50,7 +60,7 @@ const generateAccessCode = (): string => {
   return code;
 };
 
-const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionDialogProps) => {
+const EditSessionDialog = ({ session, open, onOpenChange, onSave, agentProfiles }: EditSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [clientName, setClientName] = useState('');
   const [sessionDate, setSessionDate] = useState<Date | undefined>();
@@ -58,6 +68,8 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
   const [saving, setSaving] = useState(false);
   const [accessCodeEnabled, setAccessCodeEnabled] = useState(false);
   const [accessCode, setAccessCode] = useState('');
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const hasAgents = agentProfiles && agentProfiles.length > 0;
 
   useEffect(() => {
     if (session) {
@@ -73,6 +85,7 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
       setNotes(session.notes || '');
       setAccessCodeEnabled(!!session.share_password);
       setAccessCode(session.share_password || '');
+      setSelectedAgentId(session.agent_profile_id || null);
     }
   }, [session]);
 
@@ -99,6 +112,7 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
         sessionDate,
         notes: notes.trim() || undefined,
         accessCode: accessCodeEnabled ? accessCode : null,
+        agentProfileId: hasAgents ? selectedAgentId : undefined,
       });
       onOpenChange(false);
     } finally {
@@ -116,6 +130,32 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave }: EditSessionD
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Agent selector - only shown for Assistant tier with agent profiles */}
+          {hasAgents && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Users className="w-4 h-4" />
+                Session For
+              </Label>
+              <Select
+                value={selectedAgentId || '_none'}
+                onValueChange={(val) => setSelectedAgentId(val === '_none' ? null : val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">My Own Sessions</SelectItem>
+                  {agentProfiles!.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="edit-title">Session Title *</Label>
             <Input
