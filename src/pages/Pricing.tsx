@@ -61,6 +61,7 @@ const plans = [
     ],
     cta: 'Start Assistant Trial',
     popular: false,
+    comingSoon: true,
   },
   {
     name: 'Small Team',
@@ -237,9 +238,15 @@ const Pricing = () => {
                   </div>
                 )}
 
-                {isCurrentPlan(plan) && (
+                {isCurrentPlan(plan) && !('comingSoon' in plan && plan.comingSoon) && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-sm font-bold rounded-full">
                     Your Plan
+                  </div>
+                )}
+
+                {'comingSoon' in plan && plan.comingSoon && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-amber-500 text-white text-sm font-bold rounded-full">
+                    Coming Soon
                   </div>
                 )}
 
@@ -277,9 +284,9 @@ const Pricing = () => {
                   className="w-full"
                   variant={plan.popular ? 'default' : isCurrentPlan(plan) ? 'default' : 'outline'}
                   onClick={() => handlePlanAction(plan)}
-                  disabled={loadingPlan !== null || loading}
+                  disabled={loadingPlan !== null || loading || ('comingSoon' in plan && plan.comingSoon)}
                 >
-                  {getButtonText(plan)}
+                  {'comingSoon' in plan && plan.comingSoon ? 'Coming Soon' : getButtonText(plan)}
                 </Button>
               </div>
             ))}

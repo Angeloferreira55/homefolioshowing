@@ -57,6 +57,7 @@ const plans = [
     ],
     cta: 'Upgrade to Assistant',
     popular: false,
+    comingSoon: true,
   },
   {
     name: 'Small Team',
@@ -241,10 +242,19 @@ const PricingSection = () => {
               )}
               
               {/* Current Plan Badge */}
-              {isCurrentPlan(plan) && (
+              {isCurrentPlan(plan) && !('comingSoon' in plan && plan.comingSoon) && (
                 <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2">
                   <span className="bg-primary text-primary-foreground text-xs sm:text-sm font-medium px-3 sm:px-4 py-1 rounded-full whitespace-nowrap">
                     Your Plan
+                  </span>
+                </div>
+              )}
+
+              {/* Coming Soon Badge */}
+              {'comingSoon' in plan && plan.comingSoon && (
+                <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-amber-500 text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1 rounded-full whitespace-nowrap">
+                    Coming Soon
                   </span>
                 </div>
               )}
@@ -290,9 +300,9 @@ const PricingSection = () => {
                 className="w-full"
                 size="lg"
                 onClick={() => handlePlanAction(plan)}
-                disabled={loadingPlan !== null || loading}
+                disabled={loadingPlan !== null || loading || ('comingSoon' in plan && plan.comingSoon)}
               >
-                {getButtonText(plan)}
+                {'comingSoon' in plan && plan.comingSoon ? 'Coming Soon' : getButtonText(plan)}
               </Button>
             </div>
           ))}
