@@ -11,12 +11,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, RefreshCw, Lock, LockOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, RefreshCw, Lock, LockOpen, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { sessionSchema } from '@/lib/validations';
 import { z } from 'zod';
 import { Switch } from '@/components/ui/switch';
+
+interface AgentOption {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+}
 
 interface CreateSessionDialogProps {
   open: boolean;
@@ -27,8 +34,10 @@ interface CreateSessionDialogProps {
     clientName: string;
     notes?: string;
     sharePassword?: string;
+    agentProfileId?: string | null;
   }) => void;
   isOnboarding?: boolean;
+  agentProfiles?: AgentOption[];
 }
 
 const generateAccessCode = (): string => {
@@ -41,7 +50,7 @@ const generateAccessCode = (): string => {
   return code;
 };
 
-const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false }: CreateSessionDialogProps) => {
+const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false, agentProfiles }: CreateSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
@@ -51,6 +60,8 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
   const [sharePassword, setSharePassword] = useState('');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const hasAgents = agentProfiles && agentProfiles.length > 0;
 
   // Mark field as touched when user interacts with it
   const handleFieldFocus = (fieldName: string) => {
@@ -99,6 +110,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
       clientName: clientName.trim(),
       notes: notes.trim() || undefined,
       sharePassword: passwordEnabled && sharePassword ? sharePassword : undefined,
+      agentProfileId: hasAgents ? selectedAgentId : undefined,
     });
     resetForm();
     onOpenChange(false);
@@ -114,6 +126,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
     setSharePassword('');
     setDatePickerOpen(false);
     setTouchedFields(new Set());
+    setSelectedAgentId(null);
   };
 
   const handleGenerateCode = () => {
@@ -140,6 +153,35 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
         </ResponsiveDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+          {/* Agent selector - only shown for Assistant tier with agent profiles */}
+          {hasAgents && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Users className="w-4 h-4" />
+                Create Session For
+              </Label>
+              <Select
+                value={selectedAgentId || '_none'}
+                onValueChange={(val) => setSelectedAgentId(val === '_none' ? null : val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">My Own Sessions</SelectItem>
+                  {agentProfiles!.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                The selected agent's branding will appear on the shared link.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title" className={isOnboarding ? 'text-primary font-semibold' : ''}>
               Session Title {isOnboarding && <span className="text-primary">*</span>}

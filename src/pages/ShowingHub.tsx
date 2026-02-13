@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,25 @@ const ShowingHub = () => {
   const { tier, subscribed } = useSubscription();
   const { activeAgentId, activeAgent, isAssistantMode } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Fetch managed agent profiles directly for the create-session dropdown (assistant tier only)
+  const [agentProfiles, setAgentProfiles] = useState<{ id: string; full_name: string; avatar_url: string | null }[]>([]);
+  const fetchAgentProfiles = useCallback(async () => {
+    if (tier !== 'assistant' || !subscribed) return;
+    try {
+      const { data } = await (supabase
+        .from('managed_agents' as any)
+        .select('id, full_name, avatar_url') as any)
+        .order('created_at', { ascending: true });
+      setAgentProfiles(data || []);
+    } catch {
+      // non-critical
+    }
+  }, [tier, subscribed]);
+
+  useEffect(() => {
+    fetchAgentProfiles();
+  }, [fetchAgentProfiles]);
 
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
   const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
@@ -169,6 +188,7 @@ const ShowingHub = () => {
     clientName: string;
     notes?: string;
     sharePassword?: string;
+    agentProfileId?: string | null;
   }) => {
     // Enforce Starter tier limit
     if (starterAtLimit) {
@@ -185,6 +205,10 @@ const ShowingHub = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Use the agent selected in the dialog if provided (assistant mode),
+      // otherwise fall back to the header switcher selection
+      const agentId = data.agentProfileId !== undefined ? data.agentProfileId : activeAgentId;
+
       const { error } = await supabase.from('showing_sessions').insert({
         admin_id: user.id,
         title: data.title,
@@ -192,7 +216,7 @@ const ShowingHub = () => {
         client_name: data.clientName,
         notes: data.notes || null,
         share_password: data.sharePassword || null,
-        agent_profile_id: activeAgentId || null,
+        agent_profile_id: agentId || null,
       });
 
       if (error) throw error;
@@ -219,6 +243,7 @@ const ShowingHub = () => {
         title: `${session.title} (Copy)`,
         session_date: session.session_date,
         client_name: session.client_name,
+        agent_profile_id: session.agent_profile_id || null,
       });
 
       if (error) throw error;
@@ -811,6 +836,7 @@ const ShowingHub = () => {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
+        agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
       />
 
       <EditSessionDialog
