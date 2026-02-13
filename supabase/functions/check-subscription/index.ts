@@ -115,6 +115,24 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // 0. Test override: grant assistant tier to specific accounts for testing
+    const TIER_OVERRIDES: Record<string, string> = {
+      "contact@home-folio.net": "assistant",
+    };
+    if (TIER_OVERRIDES[user.email]) {
+      const overrideTier = TIER_OVERRIDES[user.email];
+      logStep("Tier override applied", { email: user.email, tier: overrideTier });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        tier: overrideTier,
+        subscription_end: null,
+        is_trial: false,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // 1. Check for active beta trial first
     const { data: trialData, error: trialError } = await supabaseClient
       .from("beta_redemptions")
