@@ -70,7 +70,7 @@ const Help = () => {
       <div className="space-y-6">
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={handleGetStarted}>
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full" onClick={handleGetStarted}>
             <CardHeader>
               <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
                 <BookOpen className="w-6 h-6 text-blue-600" />
@@ -82,7 +82,7 @@ const Help = () => {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden h-full">
             {/* Coming Soon Banner */}
             <div className="absolute top-4 -right-12 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-xs font-bold py-1 px-12 rotate-45 shadow-lg z-10">
               COMING SOON
@@ -98,8 +98,8 @@ const Help = () => {
             </CardHeader>
           </Card>
 
-          <a href="mailto:contact@home-folio.net?subject=HomeFolio Support Request" className="block">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <a href="mailto:support@home-folio.net?subject=HomeFolio Support Request" className="block h-full">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader>
                 <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-3">
                   <MessageCircle className="w-6 h-6 text-green-600" />
@@ -150,11 +150,11 @@ const Help = () => {
               <Mail className="w-5 h-5 text-primary mt-0.5" />
               <div>
                 <p className="font-medium">Email Support</p>
-                <p className="text-sm text-muted-foreground">contact@home-folio.net</p>
+                <p className="text-sm text-muted-foreground">support@home-folio.net</p>
               </div>
             </div>
             <Button className="gap-2" asChild>
-              <a href="mailto:contact@home-folio.net?subject=HomeFolio Support Request">
+              <a href="mailto:support@home-folio.net?subject=HomeFolio Support Request">
                 <Mail className="w-4 h-4" />
                 Contact Support
               </a>
@@ -168,20 +168,6 @@ const Help = () => {
             <CardTitle className="text-2xl font-display">Additional Resources</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <a
-              href="#"
-              className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium">User Guide</p>
-                  <p className="text-sm text-muted-foreground">Complete documentation</p>
-                </div>
-              </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground" />
-            </a>
-
             <div className="relative overflow-hidden rounded-lg">
               {/* Coming Soon Banner */}
               <div className="absolute top-2 -right-8 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-xs font-bold py-1 px-10 rotate-45 shadow-lg z-10">

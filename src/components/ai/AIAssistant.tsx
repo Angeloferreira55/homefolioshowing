@@ -95,7 +95,7 @@ export function AIAssistant() {
       // Add fallback response
       const fallbackMessage: Message = {
         role: 'assistant',
-        content: 'I apologize, but I\'m having trouble connecting right now. Please try asking your question in the Help page or contact our support team at contact@home-folio.net.',
+        content: 'I apologize, but I\'m having trouble connecting right now. Please try asking your question in the Help page or contact our support team at support@home-folio.net.',
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, fallbackMessage]);

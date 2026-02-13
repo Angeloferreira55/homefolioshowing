@@ -105,7 +105,7 @@ function AppSidebar() {
       <SidebarContent className="flex flex-col h-full">
         {/* Logo */}
         <div className="p-4 border-b border-border">
-          <Link to="/">
+          <Link to="/admin/showings">
             <img 
               src={logoImage} 
               alt="HomeFolio" 

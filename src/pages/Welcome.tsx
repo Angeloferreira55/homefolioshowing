@@ -272,8 +272,8 @@ const Welcome = () => {
 
           <p className="text-xs text-center text-muted-foreground pt-4">
             Need help? Contact your administrator or email{' '}
-            <a href="mailto:contact@home-folio.net" className="text-primary hover:underline">
-              contact@home-folio.net
+            <a href="mailto:support@home-folio.net" className="text-primary hover:underline">
+              support@home-folio.net
             </a>
           </p>
         </CardContent>

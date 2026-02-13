@@ -175,10 +175,10 @@ const Contact = () => {
                     </h3>
                     <p className="text-muted-foreground">
                       <a
-                        href="mailto:contact@home-folio.net"
+                        href="mailto:support@home-folio.net"
                         className="hover:text-accent transition-colors"
                       >
-                        contact@home-folio.net
+                        support@home-folio.net
                       </a>
                     </p>
                   </div>
