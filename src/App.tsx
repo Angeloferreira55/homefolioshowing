@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 import InstallPromptBanner from "@/components/InstallPromptBanner";
@@ -60,6 +60,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/welcome/:token" element={<Welcome />} />
+            <Route path="/dashboard" element={<Navigate to="/admin/showings" replace />} />
             <Route path="/admin/showings" element={<ShowingHub />} />
             <Route path="/admin/session/:id" element={<SessionDetail />} />
             <Route path="/s/:token" element={<PublicSession />} />

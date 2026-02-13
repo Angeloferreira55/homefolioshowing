@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import Navbar from '@/components/landing/Navbar';
 import Footer from '@/components/landing/Footer';
 import SEO from '@/components/SEO';
-import { Check, Leaf, Home } from 'lucide-react';
+import { Check, Leaf, Loader2 } from 'lucide-react';
+import { useSubscription, PRICE_IDS } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const plans = [
   {
     name: 'Starter',
+    tier: 'starter' as const,
     description: 'Perfect for trying HomeFolio',
     monthlyPrice: 0,
     yearlyPrice: 0,
@@ -25,6 +29,7 @@ const plans = [
   },
   {
     name: 'Pro',
+    tier: 'pro' as const,
     description: 'For active real estate agents',
     monthlyPrice: 9.99,
     yearlyPrice: 96,
@@ -43,6 +48,7 @@ const plans = [
   },
   {
     name: 'Teams 5',
+    tier: 'team5' as const,
     description: 'For small real estate teams',
     monthlyPrice: 45,
     yearlyPrice: 432,
@@ -59,6 +65,7 @@ const plans = [
   },
   {
     name: 'Teams 10',
+    tier: 'team' as const,
     description: 'For brokerages & larger teams',
     monthlyPrice: 75,
     yearlyPrice: 720,
@@ -79,6 +86,66 @@ const plans = [
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const { tier: currentTier, subscribed, createCheckout, openCustomerPortal, loading } = useSubscription();
+  const navigate = useNavigate();
+
+  const handlePlanAction = async (plan: typeof plans[0]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      navigate('/auth?mode=signup');
+      return;
+    }
+
+    // If clicking on current plan, open customer portal
+    if (plan.tier === currentTier && subscribed) {
+      try {
+        setLoadingPlan(plan.name);
+        await openCustomerPortal();
+      } catch (error) {
+        toast.error('Failed to open billing portal');
+      } finally {
+        setLoadingPlan(null);
+      }
+      return;
+    }
+
+    // For starter plan, just go to sessions
+    if (plan.tier === 'starter') {
+      navigate('/admin/showings');
+      return;
+    }
+
+    // For paid plans, initiate checkout
+    try {
+      setLoadingPlan(plan.name);
+      const priceId = isYearly
+        ? PRICE_IDS[plan.tier].yearly
+        : PRICE_IDS[plan.tier].monthly;
+      await createCheckout(priceId);
+    } catch (error) {
+      toast.error('Failed to start checkout');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const getButtonText = (plan: typeof plans[0]) => {
+    if (loadingPlan === plan.name) {
+      return <Loader2 className="w-4 h-4 animate-spin" />;
+    }
+    if (plan.tier === currentTier) {
+      if (subscribed) return 'Manage Plan';
+      return 'Current Plan';
+    }
+    if (plan.tier === 'starter') {
+      return subscribed ? 'Downgrade' : 'Get Started Free';
+    }
+    return plan.cta;
+  };
+
+  const isCurrentPlan = (plan: typeof plans[0]) => plan.tier === currentTier;
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,12 +210,20 @@ const Pricing = () => {
                 className={`relative bg-card rounded-2xl p-8 ${
                   plan.popular
                     ? 'ring-2 ring-accent shadow-xl scale-105'
+                    : isCurrentPlan(plan)
+                    ? 'ring-2 ring-primary shadow-xl'
                     : 'card-elevated'
                 }`}
               >
-                {plan.popular && (
+                {plan.popular && !isCurrentPlan(plan) && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-accent text-accent-foreground text-sm font-bold rounded-full">
                     Most Popular
+                  </div>
+                )}
+
+                {isCurrentPlan(plan) && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-sm font-bold rounded-full">
+                    Your Plan
                   </div>
                 )}
 
@@ -182,14 +257,14 @@ const Pricing = () => {
                   ))}
                 </ul>
 
-                <Link to="/auth">
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? 'default' : 'outline'}
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? 'default' : isCurrentPlan(plan) ? 'default' : 'outline'}
+                  onClick={() => handlePlanAction(plan)}
+                  disabled={loadingPlan !== null || loading}
+                >
+                  {getButtonText(plan)}
+                </Button>
               </div>
             ))}
           </div>

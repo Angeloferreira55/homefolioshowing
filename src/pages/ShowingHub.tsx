@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useProfile } from '@/hooks/useProfile';
+import { useSubscription } from '@/hooks/useSubscription';
 import WelcomeModal from '@/components/onboarding/WelcomeModal';
 import OnboardingTooltip from '@/components/onboarding/OnboardingTooltip';
 import { createDemoSession } from '@/lib/demoSession';
@@ -60,6 +61,7 @@ const ShowingHub = () => {
   // Onboarding state
   const onboarding = useOnboarding();
   const { profile } = useProfile();
+  const { tier, subscribed } = useSubscription();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
@@ -142,6 +144,10 @@ const ShowingHub = () => {
     return `${year}-${month}-${day}`;
   };
 
+  // Starter tier limit: 1 active session
+  const isStarterLimited = tier === 'starter' && !subscribed;
+  const starterAtLimit = isStarterLimited && activeSessions.length >= 1;
+
   const handleCreateSession = async (data: {
     title: string;
     sessionDate?: Date;
@@ -149,6 +155,17 @@ const ShowingHub = () => {
     notes?: string;
     sharePassword?: string;
   }) => {
+    // Enforce Starter tier limit
+    if (starterAtLimit) {
+      toast.error('Starter plan is limited to 1 active session. Upgrade to Pro for unlimited sessions.', {
+        action: {
+          label: 'Upgrade',
+          onClick: () => navigate('/#pricing'),
+        },
+      });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -173,6 +190,10 @@ const ShowingHub = () => {
 
   const handleDuplicate = async (session: ShowingSession, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (starterAtLimit) {
+      toast.error('Starter plan is limited to 1 active session. Upgrade to Pro for unlimited sessions.');
+      return;
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -568,14 +589,32 @@ const ShowingHub = () => {
         />
 
         {/* New Session Button */}
-        <Button
-          ref={newSessionButtonRef}
-          onClick={() => setIsCreateOpen(true)}
-          className="w-full sm:w-auto mb-6 h-14 bg-primary text-primary-foreground font-semibold uppercase tracking-wide gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          New Home Folio
-        </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6">
+          <Button
+            ref={newSessionButtonRef}
+            onClick={() => {
+              if (starterAtLimit) {
+                toast.error('Starter plan is limited to 1 active session. Upgrade to Pro for unlimited sessions.', {
+                  action: {
+                    label: 'Upgrade',
+                    onClick: () => navigate('/#pricing'),
+                  },
+                });
+                return;
+              }
+              setIsCreateOpen(true);
+            }}
+            className="w-full sm:w-auto h-14 bg-primary text-primary-foreground font-semibold uppercase tracking-wide gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            New Home Folio
+          </Button>
+          {isStarterLimited && (
+            <span className="text-xs text-muted-foreground">
+              {activeSessions.length}/1 sessions used (Starter plan)
+            </span>
+          )}
+        </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SessionTab)} className="w-full">
