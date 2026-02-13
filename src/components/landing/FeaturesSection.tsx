@@ -1,12 +1,12 @@
 import { Users, Home, Calendar, FileText, Route, TreePine } from 'lucide-react';
 const features = [{
   icon: Users,
-  title: 'Client Hub',
-  description: 'Create a dedicated Homefolio for each client. Organize by buyer, seller, or investor with custom nicknames.'
+  title: 'Client Experience',
+  description: 'Give every client their own branded experience. A personal, polished link that makes you look like the only agent they\'d ever need.'
 }, {
   icon: Home,
-  title: 'Property Playlist',
-  description: 'Add, reorder, and archive properties easily. Think of it as a curated playlist of homes for each client.'
+  title: 'Showing Playlist',
+  description: 'Add, delete, reorder, and archive showings on the fly. Your client sees a clean, organized list in real time.'
 }, {
   icon: Calendar,
   title: 'Showing Notes',
