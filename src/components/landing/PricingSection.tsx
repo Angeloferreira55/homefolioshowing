@@ -43,7 +43,7 @@ const plans = [
     popular: true,
   },
   {
-    name: 'Teams 5',
+    name: 'Small Team',
     tier: 'team5' as const,
     monthlyPrice: 45,
     yearlyPrice: 432,
@@ -56,11 +56,11 @@ const plans = [
       'Custom branding',
       'Priority support',
     ],
-    cta: 'Upgrade to Teams 5',
+    cta: 'Upgrade to Small Team',
     popular: false,
   },
   {
-    name: 'Teams 10',
+    name: 'Team',
     tier: 'team' as const,
     monthlyPrice: 75,
     yearlyPrice: 720,
@@ -73,7 +73,7 @@ const plans = [
       'API access',
       'Dedicated account manager',
     ],
-    cta: 'Upgrade to Teams 10',
+    cta: 'Upgrade to Team',
     popular: false,
   },
 ];

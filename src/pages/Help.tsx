@@ -43,7 +43,7 @@ const Help = () => {
     },
     {
       question: 'What subscription plans are available?',
-      answer: 'HomeFolio offers Starter (free), Pro ($9.99/mo), Teams 5 ($45/mo for up to 5 agents), and Teams 10 ($75/mo for up to 10 agents). Save 20% with yearly billing. Each tier unlocks additional features like unlimited sessions, team collaboration, and more.',
+      answer: 'HomeFolio offers Starter (free), Pro ($9.99/mo), Small Team ($45/mo for up to 5 agents), and Team ($75/mo for up to 10 agents). Save 20% with yearly billing. Each tier unlocks additional features like unlimited sessions, team collaboration, and more.',
     },
     {
       question: 'How do I update my profile information?',

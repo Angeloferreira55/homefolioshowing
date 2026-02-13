@@ -47,7 +47,7 @@ const plans = [
     popular: true,
   },
   {
-    name: 'Teams 5',
+    name: 'Small Team',
     tier: 'team5' as const,
     description: 'For small real estate teams',
     monthlyPrice: 45,
@@ -64,7 +64,7 @@ const plans = [
     popular: false,
   },
   {
-    name: 'Teams 10',
+    name: 'Team',
     tier: 'team' as const,
     description: 'For brokerages & larger teams',
     monthlyPrice: 75,
