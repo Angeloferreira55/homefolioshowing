@@ -57,7 +57,7 @@ const DOC_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const MAX_FILE_SIZE_MB = 20;
+const MAX_FILE_SIZE_MB = 100;
 const VALID_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
 const PropertyDocumentsDialog = ({
@@ -284,7 +284,7 @@ const PropertyDocumentsDialog = ({
               {isDragging ? 'Drop your file here' : 'Click to upload or drag and drop'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF or images up to 20MB
+              PDF or images up to 100MB
             </p>
           </div>
         ) : (

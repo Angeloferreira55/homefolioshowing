@@ -52,8 +52,9 @@ const Profile = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
-  // Track whether user has made changes
-  const hasChanges = profile ? (
+  // Track whether user has made changes (only after formData has been populated from profile)
+  const formInitialized = formData.full_name !== undefined;
+  const hasChanges = profile && formInitialized ? (
     formData.full_name !== (profile.full_name || '') ||
     formData.phone !== (profile.phone || '') ||
     formData.slogan !== (profile.slogan || '') ||

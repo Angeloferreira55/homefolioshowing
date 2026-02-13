@@ -43,21 +43,37 @@ const plans = [
     popular: true,
   },
   {
-    name: 'Team',
+    name: 'Teams 5',
+    tier: 'team5' as const,
+    monthlyPrice: 45,
+    yearlyPrice: 432,
+    description: 'For small real estate teams',
+    features: [
+      'Everything in Pro',
+      'Up to 5 agents',
+      'Team management',
+      'Shared document library',
+      'Custom branding',
+      'Priority support',
+    ],
+    cta: 'Upgrade to Teams 5',
+    popular: false,
+  },
+  {
+    name: 'Teams 10',
     tier: 'team' as const,
     monthlyPrice: 75,
     yearlyPrice: 720,
-    description: 'For brokerages and real estate teams',
+    description: 'For brokerages & larger teams',
     features: [
       'Everything in Pro',
-      'Up to 10 brokers',
+      'Up to 10 agents',
       'Team analytics dashboard',
-      'Client handoff between agents',
       'Custom branding',
       'API access',
       'Dedicated account manager',
     ],
-    cta: 'Upgrade to Team',
+    cta: 'Upgrade to Teams 10',
     popular: false,
   },
 ];
@@ -187,7 +203,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}

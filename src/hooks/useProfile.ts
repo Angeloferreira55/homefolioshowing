@@ -65,11 +65,11 @@ export function useProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (signal?: AbortSignal) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
+      if (!user || signal?.aborted) {
+        if (!signal?.aborted) setLoading(false);
         return;
       }
 
@@ -79,15 +79,17 @@ export function useProfile() {
         .eq('user_id', user.id)
         .single();
 
+      if (signal?.aborted) return;
       if (error) throw error;
-      
+
       // Cast to include new fields that may not be in generated types yet
       setProfile(data as unknown as Profile);
     } catch (error: any) {
+      if (signal?.aborted) return;
       console.error('Error fetching profile:', error);
       toast.error('Failed to load profile');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
@@ -143,7 +145,9 @@ export function useProfile() {
   };
 
   useEffect(() => {
-    fetchProfile();
+    const abortController = new AbortController();
+    fetchProfile(abortController.signal);
+    return () => abortController.abort();
   }, []);
 
   return {
@@ -152,6 +156,6 @@ export function useProfile() {
     saving,
     updateProfile,
     uploadImage,
-    refetch: fetchProfile,
+    refetch: () => fetchProfile(),
   };
 }
