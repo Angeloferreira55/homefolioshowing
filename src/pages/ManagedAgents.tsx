@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/layout/AdminLayout';
 import PageHeader from '@/components/ui/page-header';
@@ -22,15 +22,51 @@ import {
 
 const MAX_AGENTS = 5;
 
+interface Agent {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  email: string | null;
+  phone: string | null;
+  brokerage_name: string | null;
+}
+
 function getInitials(name: string): string {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
 const ManagedAgents = () => {
   const navigate = useNavigate();
-  const { managedAgents, loading, refetchAgents } = useActiveAgent();
+  const { refetchAgents } = useActiveAgent();
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await (supabase
+        .from('managed_agents' as any)
+        .select('*') as any)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching agents:', error);
+        toast.error('Failed to load agent profiles');
+      } else {
+        setAgents(data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching agents:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAgents();
+  }, [fetchAgents]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -43,6 +79,7 @@ const ManagedAgents = () => {
 
       if (error) throw error;
       toast.success('Agent profile deleted');
+      await fetchAgents();
       await refetchAgents();
     } catch (err) {
       console.error('Error deleting agent:', err);
@@ -53,7 +90,7 @@ const ManagedAgents = () => {
     }
   };
 
-  const atCapacity = managedAgents.length >= MAX_AGENTS;
+  const atCapacity = agents.length >= MAX_AGENTS;
 
   return (
     <AdminLayout>
@@ -66,7 +103,7 @@ const ManagedAgents = () => {
       {/* Capacity indicator */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-muted-foreground">
-          {managedAgents.length} / {MAX_AGENTS} agent profiles
+          {agents.length} / {MAX_AGENTS} agent profiles
         </p>
         <Button
           onClick={() => navigate('/admin/agents/new')}
@@ -88,7 +125,7 @@ const ManagedAgents = () => {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      ) : managedAgents.length === 0 ? (
+      ) : agents.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="w-12 h-12 text-muted-foreground mb-4" />
@@ -104,7 +141,7 @@ const ManagedAgents = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {managedAgents.map((agent) => (
+          {agents.map((agent) => (
             <Card key={agent.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
