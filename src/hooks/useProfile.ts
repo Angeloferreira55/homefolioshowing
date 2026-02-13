@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -63,37 +63,82 @@ export interface ProfileUpdate {
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const fetchProfile = async (signal?: AbortSignal) => {
+  const fetchProfile = useCallback(async (signal?: AbortSignal) => {
     try {
+      setError(null);
+      setLoading(true);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || signal?.aborted) {
         if (!signal?.aborted) setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      // Use maybeSingle() so it doesn't throw when profile doesn't exist yet
+      const { data, error: queryError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (signal?.aborted) return;
-      if (error) throw error;
 
-      // Cast to include new fields that may not be in generated types yet
-      setProfile(data as unknown as Profile);
-    } catch (error: any) {
+      if (queryError) throw queryError;
+
+      if (data) {
+        setProfile(data as unknown as Profile);
+      } else {
+        // Profile doesn't exist yet - create a minimal one with user email
+        setProfile({
+          id: '',
+          user_id: user.id,
+          email: user.email || '',
+          full_name: user.user_metadata?.full_name || null,
+          phone: null,
+          company: null,
+          avatar_url: null,
+          slogan: null,
+          bio: null,
+          license_number: null,
+          brokerage_name: null,
+          brokerage_address: null,
+          brokerage_phone: null,
+          brokerage_email: null,
+          brokerage_logo_url: null,
+          linkedin_url: null,
+          instagram_url: null,
+          facebook_url: null,
+          twitter_url: null,
+          youtube_url: null,
+          website_url: null,
+          mls_api_key: null,
+          mls_api_secret: null,
+          mls_board_id: null,
+          mls_provider: null,
+          role: null,
+          team_id: null,
+        });
+      }
+    } catch (err: any) {
       if (signal?.aborted) return;
-      console.error('Error fetching profile:', error);
-      toast.error('Failed to load profile');
+      console.error('Error fetching profile:', err);
+      setError(err.message || 'Failed to load profile');
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  };
+  }, []);
 
   const updateProfile = async (updates: ProfileUpdate) => {
+    // Don't send empty updates
+    const keys = Object.keys(updates).filter(k => updates[k as keyof ProfileUpdate] !== undefined);
+    if (keys.length === 0) {
+      toast.info('No changes to save');
+      return true;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -148,11 +193,12 @@ export function useProfile() {
     const abortController = new AbortController();
     fetchProfile(abortController.signal);
     return () => abortController.abort();
-  }, []);
+  }, [fetchProfile]);
 
   return {
     profile,
     loading,
+    error,
     saving,
     updateProfile,
     uploadImage,

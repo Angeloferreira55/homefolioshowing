@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useProfile, ProfileUpdate } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +23,9 @@ import {
   Facebook,
   Youtube,
   Globe,
-  RotateCcw
+  RotateCcw,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 // X/Twitter icon (not in lucide-react)
@@ -40,7 +41,7 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { profile, loading, saving, updateProfile, uploadImage } = useProfile();
+  const { profile, loading, error, saving, updateProfile, uploadImage, refetch } = useProfile();
   const onboarding = useOnboarding();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -52,8 +53,10 @@ const Profile = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
-  // Track whether user has made changes (only after formData has been populated from profile)
+  // Track whether formData has been initialized from profile
   const formInitialized = formData.full_name !== undefined;
+
+  // Track whether user has made changes (only after formData has been populated from profile)
   const hasChanges = profile && formInitialized ? (
     formData.full_name !== (profile.full_name || '') ||
     formData.phone !== (profile.phone || '') ||
@@ -74,16 +77,7 @@ const Profile = () => {
     formData.brokerage_logo_url !== undefined
   ) : false;
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-      }
-    };
-    checkAuth();
-  }, [navigate]);
-
+  // Populate form when profile loads
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -117,7 +111,7 @@ const Profile = () => {
     if (!file) return;
 
     setUploadingAvatar(true);
-    
+
     // Preview
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -138,7 +132,7 @@ const Profile = () => {
     if (!file) return;
 
     setUploadingLogo(true);
-    
+
     // Preview
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -155,6 +149,11 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
+    if (!formInitialized) {
+      toast.error('Profile is still loading, please wait');
+      return;
+    }
+
     const success = await updateProfile(formData);
 
     // If in onboarding mode and save was successful, navigate back to showing hub
@@ -186,7 +185,6 @@ const Profile = () => {
     const requiredFields = ['phone', 'license_number', 'brokerage_name'];
     if (!requiredFields.includes(fieldName)) return '';
 
-    // Remove highlight only if field has been touched (not based on content)
     if (touchedFields.has(fieldName)) {
       return '';
     }
@@ -203,10 +201,34 @@ const Profile = () => {
     }, 1000);
   };
 
+  // Loading state
   if (loading) {
     return (
       <AdminLayout>
         <ProfileSkeleton />
+      </AdminLayout>
+    );
+  }
+
+  // Error state with retry button
+  if (error && !profile) {
+    return (
+      <AdminLayout>
+        <div className="max-w-4xl mx-auto">
+          <Card className="mt-8">
+            <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+              <AlertCircle className="w-12 h-12 text-destructive" />
+              <h2 className="text-xl font-semibold">Failed to load profile</h2>
+              <p className="text-muted-foreground text-center max-w-md">
+                {error}
+              </p>
+              <Button onClick={() => refetch()} className="gap-2">
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </AdminLayout>
     );
   }
@@ -220,7 +242,7 @@ const Profile = () => {
             <h1 className="font-display text-3xl font-bold text-foreground">My Profile</h1>
             <p className="text-muted-foreground mt-1">Manage your agent profile and brokerage information</p>
           </div>
-          <Button onClick={handleSave} disabled={saving} className="gap-2">
+          <Button onClick={handleSave} disabled={saving || !formInitialized} className="gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save Changes
           </Button>
@@ -367,7 +389,7 @@ const Profile = () => {
             <CardContent className="space-y-6">
               {/* Brokerage Logo Upload */}
               <div className="flex items-center gap-6">
-                <div 
+                <div
                   className="relative w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden"
                   onClick={() => logoInputRef.current?.click()}
                 >
