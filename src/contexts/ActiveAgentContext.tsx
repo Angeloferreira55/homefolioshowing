@@ -50,7 +50,7 @@ export const ActiveAgentContext = createContext<ActiveAgentContextValue>({
 });
 
 export function ActiveAgentProvider({ children }: { children: ReactNode }) {
-  const { tier, subscribed } = useSubscription();
+  const { tier, subscribed, loading: subLoading } = useSubscription();
   const isAssistantTier = tier === 'assistant' && subscribed;
 
   const [managedAgents, setManagedAgents] = useState<ManagedAgent[]>([]);
@@ -77,6 +77,9 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refetchAgents = useCallback(async () => {
+    // Don't clear agents while subscription is still loading
+    if (subLoading) return;
+
     if (!isAssistantTier) {
       setManagedAgents([]);
       setLoading(false);
@@ -95,10 +98,6 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
         setManagedAgents([]);
       } else {
         setManagedAgents(data || []);
-        // If the stored activeAgentId no longer exists, clear it
-        if (activeAgentId && data && !data.find(a => a.id === activeAgentId)) {
-          setActiveAgentId(null);
-        }
       }
     } catch (err) {
       console.error('Error fetching managed agents:', err);
@@ -106,7 +105,14 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAssistantTier, activeAgentId, setActiveAgentId]);
+  }, [isAssistantTier, subLoading]);
+
+  // Clear invalid activeAgentId when agents change
+  useEffect(() => {
+    if (activeAgentId && managedAgents.length > 0 && !managedAgents.find(a => a.id === activeAgentId)) {
+      setActiveAgentId(null);
+    }
+  }, [managedAgents, activeAgentId, setActiveAgentId]);
 
   useEffect(() => {
     refetchAgents();
