@@ -97,6 +97,13 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
   // MLS search state
   const [mlsSearchQuery, setMlsSearchQuery] = useState('');
   const [isSearchingMls, setIsSearchingMls] = useState(false);
+
+  // Bulk MLS import state
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkMlsNumbers, setBulkMlsNumbers] = useState('');
+  const [isBulkSearching, setIsBulkSearching] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  const [bulkResults, setBulkResults] = useState<{ number: string; property?: PropertyData; error?: string }[]>([]);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -343,6 +350,111 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     }
   };
 
+  const handleBulkMlsSearch = async () => {
+    const raw = bulkMlsNumbers.trim();
+    if (!raw) {
+      toast.error('Please enter MLS numbers');
+      return;
+    }
+
+    // Parse MLS numbers: split by comma, newline, or space
+    const numbers = raw
+      .split(/[\n,\s]+/)
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+
+    if (numbers.length === 0) {
+      toast.error('No valid MLS numbers found');
+      return;
+    }
+
+    if (numbers.length > 25) {
+      toast.error('Maximum 25 MLS numbers at a time');
+      return;
+    }
+
+    setIsBulkSearching(true);
+    setBulkProgress({ current: 0, total: numbers.length });
+    setBulkResults([]);
+
+    const results: { number: string; property?: PropertyData; error?: string }[] = [];
+
+    for (let i = 0; i < numbers.length; i++) {
+      const mlsNum = numbers[i];
+      setBulkProgress({ current: i + 1, total: numbers.length });
+
+      try {
+        const { data, error } = await supabase.functions.invoke('spark-import', {
+          body: { action: 'search_mls', mls_number: mlsNum },
+        });
+
+        if (error) throw new Error(error.message);
+
+        if (!data?.success) {
+          results.push({ number: mlsNum, error: data?.error || 'Not found' });
+          continue;
+        }
+
+        const listing = data.data;
+        const property: PropertyData = {
+          mlsNumber: listing.mls_number,
+          address: listing.address,
+          city: listing.city,
+          state: listing.state,
+          zipCode: listing.zip_code,
+          price: listing.price,
+          beds: listing.beds,
+          baths: listing.baths,
+          sqft: listing.sqft,
+          lotSize: listing.lot_size,
+          yearBuilt: listing.year_built,
+          propertyType: listing.property_type,
+          description: listing.description,
+          heating: listing.heating,
+          cooling: listing.cooling,
+          garage: listing.garage,
+          hoaFee: listing.hoa_fee,
+          photoUrl: listing.photo_url,
+          features: listing.features,
+        };
+
+        results.push({ number: mlsNum, property });
+      } catch (err: any) {
+        results.push({ number: mlsNum, error: err.message || 'Failed to search' });
+      }
+    }
+
+    setBulkResults(results);
+    setIsBulkSearching(false);
+
+    const successCount = results.filter(r => r.property).length;
+    const failCount = results.filter(r => r.error).length;
+
+    if (successCount > 0) {
+      toast.success(`Found ${successCount} of ${numbers.length} listings${failCount > 0 ? ` (${failCount} failed)` : ''}`);
+    } else {
+      toast.error('No listings found for the provided MLS numbers');
+    }
+  };
+
+  const handleAddAllBulkResults = () => {
+    const properties = bulkResults
+      .filter(r => r.property)
+      .map(r => r.property!);
+
+    if (properties.length === 0) return;
+
+    if (onAddMultiple) {
+      onAddMultiple(properties);
+    } else {
+      // Fallback: add one at a time
+      properties.forEach(p => onAdd(p));
+    }
+
+    resetForm();
+    onOpenChange(false);
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -538,6 +650,10 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setFeatures([]);
     setListingUrl('');
     setMlsSearchQuery('');
+    setShowBulkImport(false);
+    setBulkMlsNumbers('');
+    setBulkResults([]);
+    setBulkProgress({ current: 0, total: 0 });
     setSelectedFile(null);
     setParsedProperties([]);
     setValidationErrors({});
@@ -847,38 +963,135 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </TabsContent>
 
           <TabsContent value="mls" className="space-y-4 mt-4 w-full">
-            <div className="space-y-2 w-full">
-              <Label htmlFor="mlsSearch">MLS Number</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="mlsSearch"
-                  placeholder="e.g. 1084291"
-                  value={mlsSearchQuery}
-                  onChange={(e) => setMlsSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMlsSearch(); } }}
-                  className="flex-1"
+            {!showBulkImport ? (
+              <>
+                <div className="space-y-2 w-full">
+                  <Label htmlFor="mlsSearch">MLS Number</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="mlsSearch"
+                      placeholder="e.g. 1084291"
+                      value={mlsSearchQuery}
+                      onChange={(e) => setMlsSearchQuery(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMlsSearch(); } }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleMlsSearch}
+                      disabled={isSearchingMls}
+                      className="gap-2"
+                    >
+                      {isSearchingMls ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                      {isSearchingMls ? 'Searching...' : 'Search'}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Enter an MLS listing number to auto-import property details.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkImport(true)}
+                      className="text-xs text-accent hover:underline"
+                    >
+                      Import multiple
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3 w-full">
+                <div className="flex items-center justify-between">
+                  <Label>Bulk MLS Import</Label>
+                  <button
+                    type="button"
+                    onClick={() => { setShowBulkImport(false); setBulkResults([]); setBulkMlsNumbers(''); }}
+                    className="text-xs text-accent hover:underline"
+                  >
+                    Single search
+                  </button>
+                </div>
+                <textarea
+                  placeholder="Enter MLS numbers separated by spaces, commas, or new lines&#10;&#10;e.g. 1084291 1084292 1084293"
+                  value={bulkMlsNumbers}
+                  onChange={(e) => setBulkMlsNumbers(e.target.value)}
+                  className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                  disabled={isBulkSearching}
                 />
                 <Button
                   type="button"
-                  onClick={handleMlsSearch}
-                  disabled={isSearchingMls}
-                  className="gap-2"
+                  onClick={handleBulkMlsSearch}
+                  disabled={isBulkSearching || !bulkMlsNumbers.trim()}
+                  className="w-full gap-2"
                 >
-                  {isSearchingMls ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  {isBulkSearching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Searching {bulkProgress.current} of {bulkProgress.total}...
+                    </>
                   ) : (
-                    <Search className="w-4 h-4" />
+                    <>
+                      <Search className="w-4 h-4" />
+                      Search All
+                    </>
                   )}
-                  {isSearchingMls ? 'Searching...' : 'Search'}
                 </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter an MLS listing number to auto-import property details from the MLS.
-              </p>
-            </div>
 
-            {/* Show form fields after MLS search */}
-            {address && (
+                {/* Bulk results */}
+                {bulkResults.length > 0 && (
+                  <div className="space-y-3 w-full">
+                    <p className="text-sm font-medium">
+                      Results: {bulkResults.filter(r => r.property).length} found, {bulkResults.filter(r => r.error).length} failed
+                    </p>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {bulkResults.map((result, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-2 rounded text-sm ${result.property ? 'bg-muted/50' : 'bg-destructive/10'}`}
+                        >
+                          {result.property ? (
+                            <>
+                              <p className="font-medium">{result.property.address}</p>
+                              <div className="flex gap-3 text-xs text-muted-foreground">
+                                {result.property.city && result.property.state && (
+                                  <span>{result.property.city}, {result.property.state}</span>
+                                )}
+                                {result.property.price && (
+                                  <span className="text-accent">${result.property.price.toLocaleString()}</span>
+                                )}
+                                {result.property.beds && <span>{result.property.beds}bd</span>}
+                                {result.property.baths && <span>{result.property.baths}ba</span>}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-destructive">
+                              MLS# {result.number}: {result.error}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {bulkResults.some(r => r.property) && (
+                      <Button
+                        type="button"
+                        onClick={handleAddAllBulkResults}
+                        className="w-full"
+                      >
+                        Add {bulkResults.filter(r => r.property).length} Properties
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show form fields after single MLS search */}
+            {!showBulkImport && address && (
               <form onSubmit={handleSubmit} className="space-y-5 pt-4 border-t border-border w-full">
                 <div className="p-3 bg-muted rounded-lg text-sm">
                   <p className="font-medium text-primary">✓ Listing data imported</p>
