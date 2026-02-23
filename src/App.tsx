@@ -27,6 +27,7 @@ import Pricing from "./pages/Pricing";
 import About from "./pages/About";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import EULA from "./pages/EULA";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import Install from "./pages/Install";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/eula" element={<EULA />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/install" element={<Install />} />

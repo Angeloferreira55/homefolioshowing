@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Link2, Loader2, Upload, FileText, X, ImagePlus, AlertCircle } from 'lucide-react';
+import { Link2, Loader2, Upload, FileText, X, ImagePlus, AlertCircle, Search } from 'lucide-react';
 import { validateProperty, ERROR_MESSAGES } from '@/lib/errorHandling';
 
 interface PropertyData {
@@ -93,6 +93,10 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
 
   const [listingUrl, setListingUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+
+  // MLS search state
+  const [mlsSearchQuery, setMlsSearchQuery] = useState('');
+  const [isSearchingMls, setIsSearchingMls] = useState(false);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -279,6 +283,63 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       toast.error(error.message || 'Failed to import listing data');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleMlsSearch = async () => {
+    const query = mlsSearchQuery.trim();
+    if (!query) {
+      toast.error('Please enter an MLS number');
+      return;
+    }
+
+    setIsSearchingMls(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('spark-import', {
+        body: { action: 'search_mls', mls_number: query },
+      });
+
+      if (error) throw new Error(error.message);
+
+      if (!data?.success) {
+        const msg = data?.error || 'Failed to find listing';
+        if (msg.includes('credentials not configured')) {
+          toast.error('MLS credentials not configured. Please add your Spark API credentials in Profile settings.', { duration: 5000 });
+        } else {
+          toast.error(msg);
+        }
+        return;
+      }
+
+      const listing = data.data;
+      populateFormFromProperty({
+        mlsNumber: listing.mls_number,
+        address: listing.address,
+        city: listing.city,
+        state: listing.state,
+        zipCode: listing.zip_code,
+        price: listing.price,
+        beds: listing.beds,
+        baths: listing.baths,
+        sqft: listing.sqft,
+        lotSize: listing.lot_size,
+        yearBuilt: listing.year_built,
+        propertyType: listing.property_type,
+        description: listing.description,
+        heating: listing.heating,
+        cooling: listing.cooling,
+        garage: listing.garage,
+        hoaFee: listing.hoa_fee,
+        photoUrl: listing.photo_url,
+        features: listing.features,
+      });
+
+      toast.success('Listing data imported! Review and submit.');
+    } catch (err: any) {
+      console.error('MLS search error:', err);
+      toast.error(err.message || 'Failed to search MLS');
+    } finally {
+      setIsSearchingMls(false);
     }
   };
 
@@ -476,6 +537,7 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
     setCooling('');
     setFeatures([]);
     setListingUrl('');
+    setMlsSearchQuery('');
     setSelectedFile(null);
     setParsedProperties([]);
     setValidationErrors({});
@@ -503,13 +565,16 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="file" className="mt-4 w-full">
+        <Tabs defaultValue="mls" className="mt-4 w-full">
           <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="mls" className="gap-1">
+              <Search className="w-3 h-3" />
+              MLS #
+            </TabsTrigger>
             <TabsTrigger value="file" className="gap-1">
               <FileText className="w-3 h-3" />
               MLS Sheet
             </TabsTrigger>
-            <TabsTrigger value="url">URL</TabsTrigger>
             <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
 
@@ -781,203 +846,203 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
             )}
           </TabsContent>
 
-          <TabsContent value="url" className="space-y-4 mt-4 w-full">
+          <TabsContent value="mls" className="space-y-4 mt-4 w-full">
             <div className="space-y-2 w-full">
-              <Label htmlFor="listingUrl">Listing URL</Label>
+              <Label htmlFor="mlsSearch">MLS Number</Label>
               <div className="flex gap-2">
                 <Input
-                  id="listingUrl"
-                  placeholder="https://realtor.com/..."
-                  value={listingUrl}
-                  onChange={(e) => setListingUrl(e.target.value)}
+                  id="mlsSearch"
+                  placeholder="e.g. 1084291"
+                  value={mlsSearchQuery}
+                  onChange={(e) => setMlsSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMlsSearch(); } }}
                   className="flex-1"
                 />
                 <Button
                   type="button"
-                  onClick={handleImportFromUrl}
-                  disabled={isImporting}
+                  onClick={handleMlsSearch}
+                  disabled={isSearchingMls}
                   className="gap-2"
                 >
-                  {isImporting ? (
+                  {isSearchingMls ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Link2 className="w-4 h-4" />
+                    <Search className="w-4 h-4" />
                   )}
-                  {isImporting ? 'Importing...' : 'Import'}
+                  {isSearchingMls ? 'Searching...' : 'Search'}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Paste a Realtor.com listing URL. Redfin and Zillow are not supported.
+                Enter an MLS listing number to auto-import property details from the MLS.
               </p>
             </div>
 
+            {/* Show form fields after MLS search */}
             {address && (
-              <div className="p-3 bg-muted rounded-lg text-sm w-full">
-                <p className="font-medium">Imported: {address}</p>
-                {city && state && <p className="text-muted-foreground">{city}, {state} {zipCode}</p>}
-                {price && <p className="text-accent font-medium">${Number(price).toLocaleString()}</p>}
-              </div>
-            )}
+              <form onSubmit={handleSubmit} className="space-y-5 pt-4 border-t border-border w-full">
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium text-primary">✓ Listing data imported</p>
+                  <p className="text-muted-foreground mt-1">Review details below and click Add Property when ready.</p>
+                </div>
 
-            {/* URL tab form */}
-            <form onSubmit={handleSubmit} className="space-y-5 w-full">
-              <div className="space-y-2">
-                <Label htmlFor="address-url">Street Address *</Label>
-                <Input
-                  id="address-url"
-                  placeholder="123 Main Street"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address-mls">Street Address *</Label>
+                  <Input
+                    id="address-mls"
+                    placeholder="123 Main Street"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required
+                  />
+                </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city-url">City</Label>
-                  <Input
-                    id="city-url"
-                    placeholder="Albuquerque"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state-url">State</Label>
-                  <Input
-                    id="state-url"
-                    placeholder="NM"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    maxLength={2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode-url">ZIP Code</Label>
-                  <Input
-                    id="zipCode-url"
-                    placeholder="87101"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price-url">Price</Label>
-                  <Input
-                    id="price-url"
-                    placeholder="$500,000"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="beds-url">Beds</Label>
-                  <Input
-                    id="beds-url"
-                    placeholder="3"
-                    value={beds}
-                    onChange={(e) => setBeds(e.target.value)}
-                    type="number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="baths-url">Baths</Label>
-                  <Input
-                    id="baths-url"
-                    placeholder="2"
-                    value={baths}
-                    onChange={(e) => setBaths(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sqft-url">Sqft</Label>
-                  <Input
-                    id="sqft-url"
-                    placeholder="1,800"
-                    value={sqft}
-                    onChange={(e) => setSqft(e.target.value)}
-                    type="number"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Property Photo</Label>
-                
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  id="photo-input-url"
-                />
-                
-                {photoUrl ? (
-                  <div className="relative w-full">
-                    <img 
-                      src={photoUrl} 
-                      alt="Property preview" 
-                      className="w-full h-40 object-cover rounded-lg border"
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city-mls">City</Label>
+                    <Input
+                      id="city-mls"
+                      placeholder="Albuquerque"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
                     />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="absolute top-2 right-2 gap-1"
-                      onClick={() => document.getElementById('photo-input-url')?.click()}
-                      disabled={isUploadingPhoto}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state-mls">State</Label>
+                    <Input
+                      id="state-mls"
+                      placeholder="NM"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      maxLength={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode-mls">ZIP Code</Label>
+                    <Input
+                      id="zipCode-mls"
+                      placeholder="87101"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price-mls">Price</Label>
+                    <Input
+                      id="price-mls"
+                      placeholder="$500,000"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="beds-mls">Beds</Label>
+                    <Input
+                      id="beds-mls"
+                      placeholder="3"
+                      value={beds}
+                      onChange={(e) => setBeds(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baths-mls">Baths</Label>
+                    <Input
+                      id="baths-mls"
+                      placeholder="2"
+                      value={baths}
+                      onChange={(e) => setBaths(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sqft-mls">Sqft</Label>
+                    <Input
+                      id="sqft-mls"
+                      placeholder="1,800"
+                      value={sqft}
+                      onChange={(e) => setSqft(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Property Photo</Label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="photo-input-mls"
+                  />
+
+                  {photoUrl ? (
+                    <div className="relative w-full">
+                      <img
+                        src={photoUrl}
+                        alt="Property preview"
+                        className="w-full h-40 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-2 right-2 gap-1"
+                        onClick={() => document.getElementById('photo-input-mls')?.click()}
+                        disabled={isUploadingPhoto}
+                      >
+                        {isUploadingPhoto ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-3 h-3" />
+                        )}
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => !isUploadingPhoto && document.getElementById('photo-input-mls')?.click()}
+                      className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
                     >
                       {isUploadingPhoto ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <>
+                          <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                          <p className="text-sm text-muted-foreground">Uploading...</p>
+                        </>
                       ) : (
-                        <ImagePlus className="w-3 h-3" />
+                        <>
+                          <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-medium text-sm">Click to upload photo</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG up to 5MB
+                          </p>
+                        </>
                       )}
-                      Change
-                    </Button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => !isUploadingPhoto && document.getElementById('photo-input-url')?.click()}
-                    className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
-                  >
-                    {isUploadingPhoto ? (
-                      <>
-                        <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
-                        <p className="text-sm text-muted-foreground">Uploading...</p>
-                      </>
-                    ) : (
-                      <>
-                        <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="font-medium text-sm">Click to upload photo</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          JPG, PNG up to 5MB
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex gap-2 items-center">
-                  <span className="text-xs text-muted-foreground">or paste URL:</span>
-                  <Input
-                    placeholder="https://..."
-                    value={photoUrl}
-                    onChange={(e) => setPhotoUrl(e.target.value)}
-                    className="flex-1 h-8 text-sm"
-                  />
-                </div>
-              </div>
+                    </div>
+                  )}
 
-              <Button
-                type="submit"
-                className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
-              >
-                Add Property
-              </Button>
-            </form>
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs text-muted-foreground">or paste URL:</span>
+                    <Input
+                      placeholder="https://..."
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      className="flex-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
+                >
+                  Add Property
+                </Button>
+              </form>
+            )}
           </TabsContent>
 
           <TabsContent value="manual" className="mt-4 w-full">

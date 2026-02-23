@@ -70,6 +70,11 @@ const Footer = () => {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link to="/eula" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors text-sm">
+                  EULA
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

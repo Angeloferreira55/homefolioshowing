@@ -25,7 +25,11 @@ import {
   Globe,
   RotateCcw,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Database,
+  Eye,
+  EyeOff,
+  Plug
 } from 'lucide-react';
 
 // X/Twitter icon (not in lucide-react)
@@ -38,6 +42,7 @@ import AdminLayout from '@/components/layout/AdminLayout';
 import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
 import { toast } from 'sonner';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -52,6 +57,8 @@ const Profile = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [showApiSecret, setShowApiSecret] = useState(false);
 
   // Track whether formData has been initialized from profile
   const formInitialized = formData.full_name !== undefined;
@@ -74,7 +81,10 @@ const Profile = () => {
     formData.youtube_url !== (profile.youtube_url || '') ||
     formData.website_url !== (profile.website_url || '') ||
     formData.avatar_url !== undefined ||
-    formData.brokerage_logo_url !== undefined
+    formData.brokerage_logo_url !== undefined ||
+    formData.mls_api_key !== (profile.mls_api_key || '') ||
+    formData.mls_api_secret !== (profile.mls_api_secret || '') ||
+    formData.mls_board_id !== (profile.mls_board_id || '')
   ) : false;
 
   // Populate form when profile loads
@@ -96,6 +106,9 @@ const Profile = () => {
         twitter_url: profile.twitter_url || '',
         youtube_url: profile.youtube_url || '',
         website_url: profile.website_url || '',
+        mls_api_key: profile.mls_api_key || '',
+        mls_api_secret: profile.mls_api_secret || '',
+        mls_board_id: profile.mls_board_id || '',
       });
       setAvatarPreview(profile.avatar_url);
       setLogoPreview(profile.brokerage_logo_url);
@@ -569,6 +582,106 @@ const Profile = () => {
                     />
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* MLS Integration */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                MLS Integration
+              </CardTitle>
+              <CardDescription>Connect your Spark API credentials to import listings by MLS number</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mls_api_key">API Key</Label>
+                  <Input
+                    id="mls_api_key"
+                    value={formData.mls_api_key || ''}
+                    onChange={(e) => handleInputChange('mls_api_key', e.target.value)}
+                    placeholder="Your Spark API key"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mls_api_secret">API Secret</Label>
+                  <div className="relative">
+                    <Input
+                      id="mls_api_secret"
+                      type={showApiSecret ? 'text' : 'password'}
+                      value={formData.mls_api_secret || ''}
+                      onChange={(e) => handleInputChange('mls_api_secret', e.target.value)}
+                      placeholder="Your Spark API secret"
+                      className="pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiSecret(!showApiSecret)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label={showApiSecret ? 'Hide secret' : 'Show secret'}
+                    >
+                      {showApiSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mls_board_id">Board ID (optional)</Label>
+                  <Input
+                    id="mls_board_id"
+                    value={formData.mls_board_id || ''}
+                    onChange={(e) => handleInputChange('mls_board_id', e.target.value)}
+                    placeholder="e.g. SWMLS"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  disabled={testingConnection || !formData.mls_api_key || !formData.mls_api_secret}
+                  onClick={async () => {
+                    setTestingConnection(true);
+                    try {
+                      // Save credentials first if changed
+                      if (formData.mls_api_key !== (profile?.mls_api_key || '') ||
+                          formData.mls_api_secret !== (profile?.mls_api_secret || '')) {
+                        await updateProfile({
+                          mls_api_key: formData.mls_api_key,
+                          mls_api_secret: formData.mls_api_secret,
+                          mls_board_id: formData.mls_board_id,
+                        });
+                      }
+                      const { data, error } = await supabase.functions.invoke('spark-import', {
+                        body: { action: 'test_connection' },
+                      });
+                      if (error) throw error;
+                      if (data?.success) {
+                        toast.success('MLS connection successful!');
+                      } else {
+                        throw new Error(data?.error || 'Connection failed');
+                      }
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to connect to MLS');
+                    } finally {
+                      setTestingConnection(false);
+                    }
+                  }}
+                >
+                  {testingConnection ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plug className="w-4 h-4" />
+                  )}
+                  Test Connection
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Your credentials are stored securely and used to fetch listing data from the MLS.
+                </p>
               </div>
             </CardContent>
           </Card>

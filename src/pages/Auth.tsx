@@ -5,6 +5,7 @@ import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { LogIn, Home, Eye, EyeOff, Mail, Apple } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -32,6 +33,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [eulaAccepted, setEulaAccepted] = useState(false);
 
   useEffect(() => {
     // Check if already logged in
@@ -253,6 +255,7 @@ const Auth = () => {
                       onClick={() => {
                         setMode('forgot');
                         setErrors({});
+                        setEulaAccepted(false);
                       }}
                       className="text-sm text-accent hover:underline"
                     >
@@ -289,10 +292,34 @@ const Auth = () => {
               </div>
             )}
 
+            {mode === 'signup' && (
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="eula"
+                  checked={eulaAccepted}
+                  onCheckedChange={(checked) => setEulaAccepted(checked === true)}
+                />
+                <label
+                  htmlFor="eula"
+                  className="text-sm text-muted-foreground leading-tight cursor-pointer"
+                >
+                  I agree to the{' '}
+                  <a
+                    href="/eula"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline"
+                  >
+                    End User License Agreement
+                  </a>
+                </label>
+              </div>
+            )}
+
             <Button
               type="submit"
               className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
-              disabled={loading}
+              disabled={loading || (mode === 'signup' && !eulaAccepted)}
             >
               {getButtonText()}
             </Button>
@@ -378,6 +405,7 @@ const Auth = () => {
                   onClick={() => {
                     setMode('login');
                     setErrors({});
+                    setEulaAccepted(false);
                   }}
                   className="text-accent hover:underline font-medium"
                 >
@@ -392,6 +420,7 @@ const Auth = () => {
                   onClick={() => {
                     setMode(mode === 'login' ? 'signup' : 'login');
                     setErrors({});
+                    setEulaAccepted(false);
                   }}
                   className="text-accent hover:underline font-medium"
                 >
