@@ -682,10 +682,14 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         </DialogHeader>
 
         <Tabs defaultValue="mls" className="mt-4 w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="mls" className="gap-1">
               <Search className="w-3 h-3" />
               MLS #
+            </TabsTrigger>
+            <TabsTrigger value="url" className="gap-1">
+              <Link2 className="w-3 h-3" />
+              URL
             </TabsTrigger>
             <TabsTrigger value="file" className="gap-1">
               <FileText className="w-3 h-3" />
@@ -693,6 +697,205 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
             </TabsTrigger>
             <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="url" className="space-y-4 mt-4 w-full">
+            <div className="space-y-2 w-full">
+              <Label htmlFor="listingUrl">Listing Page URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="listingUrl"
+                  placeholder="Paste MLS listing URL..."
+                  value={listingUrl}
+                  onChange={(e) => setListingUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleImportFromUrl(); } }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleImportFromUrl}
+                  disabled={isImporting}
+                  className="gap-2"
+                >
+                  {isImporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Link2 className="w-4 h-4" />
+                  )}
+                  {isImporting ? 'Importing...' : 'Import'}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Paste a Realtor.com or other MLS listing page URL to auto-import property details.
+              </p>
+            </div>
+
+            {/* Show form fields after URL import */}
+            {address && (
+              <form onSubmit={handleSubmit} className="space-y-5 pt-4 border-t border-border w-full">
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium text-primary">✓ Listing data imported</p>
+                  <p className="text-muted-foreground mt-1">Review details below and click Add Property when ready.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address-url">Street Address *</Label>
+                  <Input
+                    id="address-url"
+                    placeholder="123 Main Street"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city-url">City</Label>
+                    <Input
+                      id="city-url"
+                      placeholder="Albuquerque"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state-url">State</Label>
+                    <Input
+                      id="state-url"
+                      placeholder="NM"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      maxLength={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode-url">ZIP Code</Label>
+                    <Input
+                      id="zipCode-url"
+                      placeholder="87101"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price-url">Price</Label>
+                    <Input
+                      id="price-url"
+                      placeholder="$500,000"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="beds-url">Beds</Label>
+                    <Input
+                      id="beds-url"
+                      placeholder="3"
+                      value={beds}
+                      onChange={(e) => setBeds(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="baths-url">Baths</Label>
+                    <Input
+                      id="baths-url"
+                      placeholder="2"
+                      value={baths}
+                      onChange={(e) => setBaths(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sqft-url">Sqft</Label>
+                    <Input
+                      id="sqft-url"
+                      placeholder="1,800"
+                      value={sqft}
+                      onChange={(e) => setSqft(e.target.value)}
+                      type="number"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Property Photo</Label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="photo-input-url"
+                  />
+
+                  {photoUrl ? (
+                    <div className="relative w-full">
+                      <img
+                        src={photoUrl}
+                        alt="Property preview"
+                        className="w-full h-40 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute top-2 right-2 gap-1"
+                        onClick={() => document.getElementById('photo-input-url')?.click()}
+                        disabled={isUploadingPhoto}
+                      >
+                        {isUploadingPhoto ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-3 h-3" />
+                        )}
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => !isUploadingPhoto && document.getElementById('photo-input-url')?.click()}
+                      className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors w-full"
+                    >
+                      {isUploadingPhoto ? (
+                        <>
+                          <Loader2 className="w-8 h-8 mx-auto mb-2 text-primary animate-spin" />
+                          <p className="text-sm text-muted-foreground">Uploading...</p>
+                        </>
+                      ) : (
+                        <>
+                          <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-medium text-sm">Click to upload photo</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG up to 5MB
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs text-muted-foreground">or paste URL:</span>
+                    <Input
+                      placeholder="https://..."
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      className="flex-1 h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-primary text-primary-foreground font-semibold uppercase tracking-wide"
+                >
+                  Add Property
+                </Button>
+              </form>
+            )}
+          </TabsContent>
 
           <TabsContent value="file" className="space-y-4 mt-4 w-full">
             <div className="space-y-3 w-full">
