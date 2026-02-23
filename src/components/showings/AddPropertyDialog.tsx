@@ -634,18 +634,11 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg w-full">
-                  <FileText className="w-8 h-8 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
+                <div className="border-2 border-primary/30 rounded-lg p-6 text-center w-full relative">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="flex-shrink-0"
+                    className="absolute top-2 right-2 h-7 w-7"
                     onClick={() => {
                       setSelectedFile(null);
                       setParsedProperties([]);
@@ -653,6 +646,11 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                   >
                     <X className="w-4 h-4" />
                   </Button>
+                  <FileText className="w-8 h-8 mx-auto mb-2 text-primary" />
+                  <p className="font-medium truncate px-6">{selectedFile.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {(selectedFile.size / 1024).toFixed(1)} KB
+                  </p>
                 </div>
               )}
 
@@ -679,23 +677,25 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
 
               {parsedProperties.length > 0 && (
                 <div className="space-y-3 w-full">
-                  <p className="text-sm font-medium">
-                    Found {parsedProperties.length} properties:
+                  <p className="text-sm font-medium text-center">
+                    Found {parsedProperties.length} properties
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {parsedProperties.map((prop, idx) => (
-                      <div key={idx} className="p-2 bg-muted/50 rounded text-sm">
+                      <div key={idx} className="p-3 bg-muted/50 rounded-lg text-sm">
                         <p className="font-medium">{prop.address}</p>
-                        {prop.city && prop.state && (
-                          <p className="text-muted-foreground text-xs">
-                            {prop.city}, {prop.state}
-                          </p>
-                        )}
-                        {prop.price && (
-                          <p className="text-accent text-xs">
-                            ${prop.price.toLocaleString()}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-3 mt-1">
+                          {prop.city && prop.state && (
+                            <span className="text-muted-foreground text-xs">
+                              {prop.city}, {prop.state}
+                            </span>
+                          )}
+                          {prop.price && (
+                            <span className="text-accent text-xs font-medium">
+                              ${prop.price.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -961,31 +961,31 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                 {/* Bulk results */}
                 {bulkResults.length > 0 && (
                   <div className="space-y-3 w-full">
-                    <p className="text-sm font-medium">
-                      Results: {bulkResults.filter(r => r.property).length} found, {bulkResults.filter(r => r.error).length} failed
+                    <p className="text-sm font-medium text-center">
+                      {bulkResults.filter(r => r.property).length} found, {bulkResults.filter(r => r.error).length} failed
                     </p>
                     <div className="max-h-48 overflow-y-auto space-y-2">
                       {bulkResults.map((result, idx) => (
                         <div
                           key={idx}
-                          className={`p-2 rounded text-sm ${result.property ? 'bg-muted/50' : 'bg-destructive/10'}`}
+                          className={`p-3 rounded-lg text-sm ${result.property ? 'bg-muted/50' : 'bg-destructive/10'}`}
                         >
                           {result.property ? (
                             <>
                               <p className="font-medium">{result.property.address}</p>
-                              <div className="flex gap-3 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                 {result.property.city && result.property.state && (
                                   <span>{result.property.city}, {result.property.state}</span>
                                 )}
                                 {result.property.price && (
-                                  <span className="text-accent">${result.property.price.toLocaleString()}</span>
+                                  <span className="text-accent font-medium">${result.property.price.toLocaleString()}</span>
                                 )}
                                 {result.property.beds && <span>{result.property.beds}bd</span>}
                                 {result.property.baths && <span>{result.property.baths}ba</span>}
                               </div>
                             </>
                           ) : (
-                            <p className="text-destructive">
+                            <p className="text-destructive text-center">
                               MLS# {result.number}: {result.error}
                             </p>
                           )}
