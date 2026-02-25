@@ -39,6 +39,7 @@ const XIcon = ({ className }: { className?: string }) => (
 );
 import AdminLayout from '@/components/layout/AdminLayout';
 import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
+import ImageCropDialog from '@/components/ui/ImageCropDialog';
 import { toast } from 'sonner';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,6 +58,8 @@ const Profile = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const [testingConnection, setTestingConnection] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'logo'>('avatar');
 
   // Track whether formData has been initialized from profile
   const formInitialized = formData.full_name !== undefined;
@@ -121,42 +124,53 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingAvatar(true);
-
-    // Preview
+    // Read file and open crop dialog
     const reader = new FileReader();
     reader.onload = (event) => {
-      setAvatarPreview(event.target?.result as string);
+      setCropImageSrc(event.target?.result as string);
+      setCropTarget('avatar');
     };
     reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
+  };
 
-    // Upload
-    const url = await uploadImage(file, 'avatar');
-    if (url) {
-      setFormData(prev => ({ ...prev, avatar_url: url }));
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropImageSrc(null);
+    const file = new File([croppedBlob], `${cropTarget}-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+    if (cropTarget === 'avatar') {
+      setUploadingAvatar(true);
+      setAvatarPreview(URL.createObjectURL(croppedBlob));
+      const url = await uploadImage(file, 'avatar');
+      if (url) {
+        setFormData(prev => ({ ...prev, avatar_url: url }));
+      }
+      setUploadingAvatar(false);
+    } else {
+      setUploadingLogo(true);
+      setLogoPreview(URL.createObjectURL(croppedBlob));
+      const url = await uploadImage(file, 'logo');
+      if (url) {
+        setFormData(prev => ({ ...prev, brokerage_logo_url: url }));
+      }
+      setUploadingLogo(false);
     }
-    setUploadingAvatar(false);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingLogo(true);
-
-    // Preview
+    // Read file and open crop dialog
     const reader = new FileReader();
     reader.onload = (event) => {
-      setLogoPreview(event.target?.result as string);
+      setCropImageSrc(event.target?.result as string);
+      setCropTarget('logo');
     };
     reader.readAsDataURL(file);
-
-    // Upload
-    const url = await uploadImage(file, 'logo');
-    if (url) {
-      setFormData(prev => ({ ...prev, brokerage_logo_url: url }));
-    }
-    setUploadingLogo(false);
+    // Reset input so same file can be re-selected
+    if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
   const handleSave = async () => {
@@ -716,6 +730,19 @@ const Profile = () => {
 
         </div>
       </div>
+
+      {/* Image Crop Dialog */}
+      {cropImageSrc && (
+        <ImageCropDialog
+          open={!!cropImageSrc}
+          imageSrc={cropImageSrc}
+          onClose={() => setCropImageSrc(null)}
+          onCropComplete={handleCropComplete}
+          aspect={cropTarget === 'avatar' ? 1 : 1}
+          cropShape={cropTarget === 'avatar' ? 'round' : 'rect'}
+          title={cropTarget === 'avatar' ? 'Crop Profile Photo' : 'Crop Logo'}
+        />
+      )}
     </AdminLayout>
   );
 };

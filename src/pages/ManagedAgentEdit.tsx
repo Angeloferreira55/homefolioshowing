@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveAgent } from '@/hooks/useActiveAgent';
+import ImageCropDialog from '@/components/ui/ImageCropDialog';
 import { toast } from 'sonner';
 import {
   Camera,
@@ -96,6 +97,8 @@ const ManagedAgentEdit = () => {
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'logo'>('avatar');
 
   // Fetch existing agent data
   useEffect(() => {
@@ -179,32 +182,49 @@ const ManagedAgentEdit = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingAvatar(true);
     const reader = new FileReader();
-    reader.onload = (event) => setAvatarPreview(event.target?.result as string);
+    reader.onload = (event) => {
+      setCropImageSrc(event.target?.result as string);
+      setCropTarget('avatar');
+    };
     reader.readAsDataURL(file);
-
-    const url = await uploadImage(file, 'avatar');
-    if (url) {
-      setFormData(prev => ({ ...prev, avatar_url: url }));
-    }
-    setUploadingAvatar(false);
+    if (avatarInputRef.current) avatarInputRef.current.value = '';
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadingLogo(true);
     const reader = new FileReader();
-    reader.onload = (event) => setLogoPreview(event.target?.result as string);
+    reader.onload = (event) => {
+      setCropImageSrc(event.target?.result as string);
+      setCropTarget('logo');
+    };
     reader.readAsDataURL(file);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+  };
 
-    const url = await uploadImage(file, 'logo');
-    if (url) {
-      setFormData(prev => ({ ...prev, brokerage_logo_url: url }));
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropImageSrc(null);
+    const file = new File([croppedBlob], `${cropTarget}-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+    if (cropTarget === 'avatar') {
+      setUploadingAvatar(true);
+      setAvatarPreview(URL.createObjectURL(croppedBlob));
+      const url = await uploadImage(file, 'avatar');
+      if (url) {
+        setFormData(prev => ({ ...prev, avatar_url: url }));
+      }
+      setUploadingAvatar(false);
+    } else {
+      setUploadingLogo(true);
+      setLogoPreview(URL.createObjectURL(croppedBlob));
+      const url = await uploadImage(file, 'logo');
+      if (url) {
+        setFormData(prev => ({ ...prev, brokerage_logo_url: url }));
+      }
+      setUploadingLogo(false);
     }
-    setUploadingLogo(false);
   };
 
   const handleSave = async () => {
@@ -606,6 +626,18 @@ const ManagedAgentEdit = () => {
           </div>
         </div>
       </div>
+
+      {cropImageSrc && (
+        <ImageCropDialog
+          open={!!cropImageSrc}
+          imageSrc={cropImageSrc}
+          onClose={() => setCropImageSrc(null)}
+          onCropComplete={handleCropComplete}
+          aspect={1}
+          cropShape={cropTarget === 'avatar' ? 'round' : 'rect'}
+          title={cropTarget === 'avatar' ? 'Crop Agent Photo' : 'Crop Logo'}
+        />
+      )}
     </AdminLayout>
   );
 };
