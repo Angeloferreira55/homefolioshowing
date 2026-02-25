@@ -35,9 +35,11 @@ interface CreateSessionDialogProps {
     notes?: string;
     sharePassword?: string;
     agentProfileId?: string | null;
+    sessionType?: string;
   }) => void;
   isOnboarding?: boolean;
   agentProfiles?: AgentOption[];
+  sessionType?: string;
 }
 
 const generateAccessCode = (): string => {
@@ -50,7 +52,7 @@ const generateAccessCode = (): string => {
   return code;
 };
 
-const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false, agentProfiles }: CreateSessionDialogProps) => {
+const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false, agentProfiles, sessionType = 'home_folio' }: CreateSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
@@ -111,6 +113,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
       notes: notes.trim() || undefined,
       sharePassword: passwordEnabled && sharePassword ? sharePassword : undefined,
       agentProfileId: hasAgents ? selectedAgentId : undefined,
+      sessionType,
     });
     resetForm();
     onOpenChange(false);
@@ -148,7 +151,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
       <ResponsiveDialogContent className="sm:max-w-lg">
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle className="font-display text-2xl">
-            Create Showing Session
+            {sessionType === 'pop_by' ? 'Create Pop-By Folio' : 'Create Showing Session'}
           </ResponsiveDialogTitle>
         </ResponsiveDialogHeader>
 

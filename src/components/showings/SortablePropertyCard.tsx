@@ -66,6 +66,7 @@ interface SortablePropertyCardProps {
   onPhotoUpdated?: () => void;
   onTimeUpdated?: () => void;
   formatPrice: (price: number | null) => string | null;
+  isPopBy?: boolean;
 }
 
 export function SortablePropertyCard({
@@ -79,6 +80,7 @@ export function SortablePropertyCard({
   onPhotoUpdated,
   onTimeUpdated,
   formatPrice,
+  isPopBy = false,
 }: SortablePropertyCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -222,7 +224,8 @@ export function SortablePropertyCard({
             <GripVertical className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
           </button>
 
-          {/* Photo with upload button */}
+          {/* Photo with upload button - hidden for Pop-By */}
+          {!isPopBy && (
           <div className="flex-shrink-0 relative group/photo">
             <input
               ref={fileInputRef}
@@ -257,6 +260,7 @@ export function SortablePropertyCard({
               )}
             </button>
           </div>
+          )}
 
           {/* Badge on mobile with time */}
           <div className="sm:hidden flex items-center gap-1.5 flex-shrink-0">
@@ -363,13 +367,14 @@ export function SortablePropertyCard({
               {property.state && `, ${property.state}`}
               {property.zip_code && ` ${property.zip_code}`}
             </h3>
-            {property.rating && (
+            {!isPopBy && property.rating && (
               <div className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded flex-shrink-0">
                 <Star className="w-3 h-3 fill-current" />
                 {property.rating.rating}/10
               </div>
             )}
           </div>
+          {!isPopBy && (
           <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap">
             {property.price && (
               <span className="text-accent font-medium text-sm sm:text-base">
@@ -386,8 +391,9 @@ export function SortablePropertyCard({
               </span>
             )}
           </div>
+          )}
           {/* Client Feedback Summary - condensed on mobile */}
-          {property.rating?.feedback && Object.keys(property.rating.feedback).length > 0 && (
+          {!isPopBy && property.rating?.feedback && Object.keys(property.rating.feedback).length > 0 && (
             <div className="mt-2 p-2 bg-muted/50 rounded-lg text-xs sm:text-sm space-y-1">
               <div className="flex items-center gap-1 text-muted-foreground font-medium">
                 <MessageSquare className="w-3 h-3" />
@@ -443,6 +449,7 @@ export function SortablePropertyCard({
             <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span className="hidden xs:inline">Edit</span>
           </Button>
+          {!isPopBy && (
           <Button
             variant="outline"
             size="sm"
@@ -453,6 +460,7 @@ export function SortablePropertyCard({
             <span className="hidden xs:inline">Docs</span>
             {property.doc_count ? <span className="text-muted-foreground">({property.doc_count})</span> : null}
           </Button>
+          )}
           <Button 
             variant="ghost" 
             size="icon"

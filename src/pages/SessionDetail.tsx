@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -42,10 +42,12 @@ import {
   Clock,
   Pencil,
   FileText,
+  ImagePlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
+import AddAddressDialog from '@/components/showings/AddAddressDialog';
 import BulkMLSImportDialog from '@/components/showings/BulkMLSImportDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetailsDialog';
@@ -134,6 +136,7 @@ interface ShowingSession {
   share_token: string;
   notes: string | null;
   share_password: string | null;
+  session_type: string | null;
 }
 
 // Sortable Gallery Card Component
@@ -153,6 +156,8 @@ interface SortableGalleryCardProps {
   formatPrice: (price: number | null) => string | null;
   drivingMinutes: number | null;
   drivingFromStart: number | null;
+  onPhotoUploaded?: () => void;
+  isPopBy?: boolean;
 }
 
 const SortableGalleryCard = ({
@@ -171,7 +176,13 @@ const SortableGalleryCard = ({
   formatPrice,
   drivingMinutes,
   drivingFromStart,
+  onPhotoUploaded,
+  isPopBy = false,
 }: SortableGalleryCardProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
+
   const {
     attributes,
     listeners,
@@ -185,6 +196,48 @@ const SortableGalleryCard = ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
+  };
+
+  const displayPhotoUrl = localPhotoUrl || property.photo_url;
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${property.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${property.id}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('client-photos')
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage
+        .from('client-photos')
+        .getPublicUrl(filePath);
+      const { error: updateError } = await supabase
+        .from('session_properties')
+        .update({ photo_url: publicUrl })
+        .eq('id', property.id);
+      if (updateError) throw updateError;
+      setLocalPhotoUrl(publicUrl);
+      toast.success('Photo uploaded!');
+      onPhotoUploaded?.();
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast.error(error.message || 'Failed to upload photo');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -214,11 +267,19 @@ const SortableGalleryCard = ({
         {...listeners}
         className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
       >
-        {/* Large Image */}
+        {/* Large Image - with upload support, hidden for Pop-By */}
+        {!isPopBy && (
         <div className="relative aspect-[4/3] bg-muted group">
-          {property.photo_url ? (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="hidden"
+          />
+          {displayPhotoUrl ? (
             <img
-              src={property.photo_url}
+              src={displayPhotoUrl}
               alt={property.address}
               className="w-full h-full object-cover"
             />
@@ -238,12 +299,41 @@ const SortableGalleryCard = ({
               <span className="text-sm font-semibold">{property.rating.rating}</span>
             </div>
           )}
+          {/* Photo upload overlay */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            disabled={uploading}
+            className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+          >
+            {uploading ? (
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <ImagePlus className="w-8 h-8 text-white" />
+                <span className="text-white text-xs font-medium">Upload Photo</span>
+              </div>
+            )}
+          </button>
         </div>
+        )}
 
         {/* Content */}
         <div className="p-4 space-y-3">
+          {/* Property number for Pop-By (since image section is hidden) */}
+          {isPopBy && (
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+                #{index + 1}
+              </span>
+            </div>
+          )}
+
           {/* Price */}
-          {property.price && (
+          {!isPopBy && property.price && (
             <div className="text-2xl font-display font-bold text-foreground">
               {formatPrice(property.price)}
             </div>
@@ -301,7 +391,7 @@ const SortableGalleryCard = ({
           )}
 
           {/* Stats */}
-          {(property.beds || property.baths || property.sqft) && (
+          {!isPopBy && (property.beds || property.baths || property.sqft) && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               {property.beds && <span>{property.beds} Bd</span>}
               {property.baths && <span>• {property.baths} Ba</span>}
@@ -320,6 +410,7 @@ const SortableGalleryCard = ({
               <Pencil className="w-3.5 h-3.5" />
               Edit
             </Button>
+            {!isPopBy && (
             <Button
               variant="outline"
               size="sm"
@@ -329,6 +420,7 @@ const SortableGalleryCard = ({
               <FileText className="w-3.5 h-3.5" />
               {property.doc_count ? `Docs (${property.doc_count})` : 'Docs'}
             </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -351,6 +443,8 @@ const SessionDetail = () => {
   const [properties, setProperties] = useState<SessionProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
+  const [isAddAddressOpen, setIsAddAddressOpen] = useState(false);
+  const isPopBy = session?.session_type === 'pop_by';
   const [isQROpen, setIsQROpen] = useState(false);
   const [isEditSessionOpen, setIsEditSessionOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -1326,16 +1420,16 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
-              Properties ({properties.length})
+              {isPopBy ? 'Addresses' : 'Properties'} ({properties.length})
             </h2>
             <Button
               variant="accent"
               size="sm"
               className="gap-1.5 h-9 text-xs sm:text-sm"
-              onClick={() => setIsAddPropertyOpen(true)}
+              onClick={() => isPopBy ? setIsAddAddressOpen(true) : setIsAddPropertyOpen(true)}
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Add Property
+              {isPopBy ? 'Add Address' : 'Add Property'}
             </Button>
           </div>
           
@@ -1597,6 +1691,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <span className="hidden sm:inline">Auto-schedule Times</span>
               <span className="sm:hidden">Times</span>
             </Button>
+            {!isPopBy && (
             <Button
               variant="outline"
               size="sm"
@@ -1607,6 +1702,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <span className="hidden sm:inline">Bulk Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
+            )}
             </div>
 
             {/* View Toggle */}
@@ -1714,6 +1810,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           onPhotoUpdated={fetchProperties}
                           onTimeUpdated={fetchProperties}
                           formatPrice={formatPrice}
+                          isPopBy={isPopBy}
                         />
 
                         {/* Driving time indicator between properties */}
@@ -1792,6 +1889,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           formatPrice={formatPrice}
                           drivingMinutes={drivingMinutes}
                           drivingFromStart={startDrivingMinutes}
+                          onPhotoUploaded={fetchProperties}
+                          isPopBy={isPopBy}
                         />
                       );
                     })}
@@ -1806,17 +1905,17 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <Home className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-              No properties yet
+              {isPopBy ? 'No addresses yet' : 'No properties yet'}
             </h3>
             <p className="text-muted-foreground mb-6">
-              Add properties to this showing session
+              {isPopBy ? 'Add addresses to this pop-by session' : 'Add properties to this showing session'}
             </p>
             <Button
               variant="accent"
-              onClick={() => setIsAddPropertyOpen(true)}
+              onClick={() => isPopBy ? setIsAddAddressOpen(true) : setIsAddPropertyOpen(true)}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add First Property
+              {isPopBy ? 'Add First Address' : 'Add First Property'}
             </Button>
           </div>
         )}
@@ -1825,6 +1924,13 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       <AddPropertyDialog
         open={isAddPropertyOpen}
         onOpenChange={setIsAddPropertyOpen}
+        onAdd={handleAddProperty}
+        onAddMultiple={handleAddMultipleProperties}
+      />
+
+      <AddAddressDialog
+        open={isAddAddressOpen}
+        onOpenChange={setIsAddAddressOpen}
         onAdd={handleAddProperty}
         onAddMultiple={handleAddMultipleProperties}
       />

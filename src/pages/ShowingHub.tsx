@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2, Archive, RotateCcw, Clock } from 'lucide-react';
+import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2, Archive, RotateCcw, Clock, MapPin } from 'lucide-react';
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
@@ -43,6 +43,7 @@ interface ShowingSession {
   deleted_at?: string | null;
   archived_at?: string | null;
   agent_profile_id?: string | null;
+  session_type?: string | null;
   property_count?: number;
   rating_count?: number;
 }
@@ -54,6 +55,7 @@ const ShowingHub = () => {
   const [sessions, setSessions] = useState<ShowingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreatePopByOpen, setIsCreatePopByOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<ShowingSession | null>(null);
   const [deletingSession, setDeletingSession] = useState<ShowingSession | null>(null);
   const [permanentDeleteSession, setPermanentDeleteSession] = useState<ShowingSession | null>(null);
@@ -189,6 +191,7 @@ const ShowingHub = () => {
     notes?: string;
     sharePassword?: string;
     agentProfileId?: string | null;
+    sessionType?: string;
   }) => {
     // Enforce Starter tier limit
     if (starterAtLimit) {
@@ -217,6 +220,7 @@ const ShowingHub = () => {
         notes: data.notes || null,
         share_password: data.sharePassword || null,
         agent_profile_id: agentId || null,
+        session_type: data.sessionType || 'home_folio',
       });
 
       if (error) throw error;
@@ -524,8 +528,11 @@ const ShowingHub = () => {
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="font-display text-xl font-semibold text-foreground mb-1">
+          <h3 className="font-display text-xl font-semibold text-foreground mb-1 flex items-center gap-2">
             {session.title}
+            {session.session_type === 'pop_by' && (
+              <span className="text-xs font-normal bg-accent/10 text-accent px-2 py-0.5 rounded-full">Pop-By</span>
+            )}
           </h3>
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -754,6 +761,25 @@ const ShowingHub = () => {
             <Plus className="w-5 h-5" />
             New Home Folio
           </Button>
+          <Button
+            onClick={() => {
+              if (starterAtLimit) {
+                toast.error('Starter plan is limited to 1 active session. Upgrade to Pro for unlimited sessions.', {
+                  action: {
+                    label: 'Upgrade',
+                    onClick: () => navigate('/#pricing'),
+                  },
+                });
+                return;
+              }
+              setIsCreatePopByOpen(true);
+            }}
+            variant="outline"
+            className="w-full sm:w-auto h-14 font-semibold uppercase tracking-wide gap-2"
+          >
+            <MapPin className="w-5 h-5" />
+            New Pop-By Folio
+          </Button>
           {isStarterLimited && (
             <span className="text-xs text-muted-foreground">
               {activeSessions.length}/1 sessions used (Starter plan)
@@ -919,6 +945,14 @@ const ShowingHub = () => {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
+        agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
+      />
+
+      <CreateSessionDialog
+        open={isCreatePopByOpen}
+        onOpenChange={setIsCreatePopByOpen}
+        onCreate={handleCreateSession}
+        sessionType="pop_by"
         agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
       />
 
