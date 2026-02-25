@@ -77,7 +77,7 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const { data, error } = await (supabase
         .from('managed_agents' as any)
-        .select('*') as any)
+        .select('id, full_name, avatar_url, email, phone, slogan, bio, company, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url, created_at, updated_at') as any)
         .order('created_at', { ascending: true });
 
       if (error) {

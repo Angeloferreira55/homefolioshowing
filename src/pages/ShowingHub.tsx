@@ -64,10 +64,10 @@ const ShowingHub = () => {
   const onboarding = useOnboarding();
   const { profile } = useProfile();
   const { tier, subscribed } = useSubscription();
-  const { activeAgentId, activeAgent, setActiveAgentId, isAssistantMode, managedAgents, loading: contextLoading } = useActiveAgent();
+  const { activeAgentId, setActiveAgentId } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch managed agent profiles directly for the create-session dropdown (assistant tier only)
+  // Fetch managed agent profiles directly (assistant tier only)
   const [agentProfiles, setAgentProfiles] = useState<{ id: string; full_name: string; avatar_url: string | null }[]>([]);
   const fetchAgentProfiles = useCallback(async () => {
     if (tier !== 'assistant' || !subscribed) return;
@@ -85,6 +85,12 @@ const ShowingHub = () => {
   useEffect(() => {
     fetchAgentProfiles();
   }, [fetchAgentProfiles]);
+
+  // Compute assistant mode locally (context has a timing bug with select('*'))
+  const isAssistantMode = tier === 'assistant' && subscribed && agentProfiles.length > 0;
+  const activeAgent = activeAgentId
+    ? agentProfiles.find(a => a.id === activeAgentId) || null
+    : null;
 
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
   const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
@@ -708,8 +714,7 @@ const ShowingHub = () => {
 
         {/* DEBUG - TEMPORARY */}
         <div className="mb-4 p-3 bg-yellow-100 text-yellow-900 rounded-lg text-xs font-mono">
-          <p>DEBUG: isAssistantMode={String(isAssistantMode)} | activeAgentId={activeAgentId || 'null'} | tier={tier} | subscribed={String(subscribed)}</p>
-          <p>contextManagedAgents={managedAgents.length} | contextLoading={String(contextLoading)} | agentProfiles={agentProfiles.length} | sessions={sessions.length}</p>
+          <p>DEBUG: isAssistantMode={String(isAssistantMode)} | activeAgentId={activeAgentId || 'null'} | agentProfiles={agentProfiles.length} | sessions={sessions.length}</p>
         </div>
 
         {/* Active agent banner */}
