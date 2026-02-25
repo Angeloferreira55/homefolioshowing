@@ -89,7 +89,11 @@ const ShowingHub = () => {
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
   const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
 
-  const fetchSessions = useCallback(async () => {
+  // Pass filter values as parameters to avoid any stale closure issues
+  const fetchSessions = async (filterAssistantMode?: boolean, filterAgentId?: string | null) => {
+    const shouldFilter = filterAssistantMode !== undefined ? filterAssistantMode : isAssistantMode;
+    const agentFilter = filterAgentId !== undefined ? filterAgentId : activeAgentId;
+
     try {
       let query = (supabase
         .from('showing_sessions')
@@ -110,8 +114,8 @@ const ShowingHub = () => {
         .order('created_at', { ascending: false });
 
       // When in assistant mode with an agent selected, scope sessions to that agent
-      if (isAssistantMode && activeAgentId) {
-        query = query.eq('agent_profile_id', activeAgentId);
+      if (shouldFilter && agentFilter) {
+        query = query.eq('agent_profile_id', agentFilter);
       }
 
       const { data: sessionsData, error } = await query;
@@ -145,11 +149,12 @@ const ShowingHub = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAssistantMode, activeAgentId]);
+  };
 
+  // Re-fetch when agent selection or assistant mode changes, passing values directly
   useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+    fetchSessions(isAssistantMode, activeAgentId);
+  }, [isAssistantMode, activeAgentId]);
 
   // Auto-mark all tour steps as complete (simple click-through tour)
   useEffect(() => {
