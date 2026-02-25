@@ -64,7 +64,7 @@ const ShowingHub = () => {
   const onboarding = useOnboarding();
   const { profile } = useProfile();
   const { tier, subscribed } = useSubscription();
-  const { activeAgentId, activeAgent, setActiveAgentId, isAssistantMode } = useActiveAgent();
+  const { activeAgentId, activeAgent, setActiveAgentId, isAssistantMode, managedAgents, loading: contextLoading } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
   // Fetch managed agent profiles directly for the create-session dropdown (assistant tier only)
@@ -709,7 +709,7 @@ const ShowingHub = () => {
         {/* DEBUG - TEMPORARY */}
         <div className="mb-4 p-3 bg-yellow-100 text-yellow-900 rounded-lg text-xs font-mono">
           <p>DEBUG: isAssistantMode={String(isAssistantMode)} | activeAgentId={activeAgentId || 'null'} | tier={tier} | subscribed={String(subscribed)}</p>
-          <p>sessions={sessions.length} | agentProfiles={agentProfiles.length} | filtered={isAssistantMode && activeAgentId ? sessions.filter(s => s.agent_profile_id === activeAgentId).length : sessions.length}</p>
+          <p>contextManagedAgents={managedAgents.length} | contextLoading={String(contextLoading)} | agentProfiles={agentProfiles.length} | sessions={sessions.length}</p>
         </div>
 
         {/* Active agent banner */}
