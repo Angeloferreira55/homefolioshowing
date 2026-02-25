@@ -491,6 +491,25 @@ const ShowingHub = () => {
     return agentProfiles.find(a => a.id === agentId)?.full_name || null;
   };
 
+  // Quick-assign an agent to a session directly from the card
+  const handleQuickAssignAgent = async (sessionId: string, agentId: string | null, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('showing_sessions')
+        .update({ agent_profile_id: agentId })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      const agentName = agentId ? getAgentName(agentId) : null;
+      toast.success(agentName ? `Assigned to ${agentName}` : 'Unassigned from agent');
+      fetchSessions();
+    } catch (error: any) {
+      toast.error('Failed to assign agent');
+    }
+  };
+
   const renderSessionCard = (session: ShowingSession, variant: 'active' | 'archived' | 'trash') => (
     <div
       key={session.id}
@@ -520,15 +539,48 @@ const ShowingHub = () => {
               );
             })()}
           </div>
-          {/* Show which agent/broker this session belongs to */}
-          {isAssistantMode && (() => {
-            const agentName = getAgentName(session.agent_profile_id);
-            return agentName ? (
-              <p className="text-sm text-muted-foreground mt-1">
-                Broker: <span className="font-medium text-foreground">{agentName}</span>
-              </p>
-            ) : null;
-          })()}
+          {/* Quick-assign agent / show broker name */}
+          {isAssistantMode && agentProfiles.length > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">Broker:</span>
+              <div className="flex items-center gap-1">
+                {agentProfiles.map((agent) => (
+                  <button
+                    key={agent.id}
+                    onClick={(e) => handleQuickAssignAgent(session.id, agent.id, e)}
+                    title={agent.full_name}
+                    className={`w-7 h-7 rounded-full overflow-hidden border-2 transition-all ${
+                      session.agent_profile_id === agent.id
+                        ? 'border-primary ring-1 ring-primary scale-110'
+                        : 'border-transparent opacity-50 hover:opacity-100 hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    {agent.avatar_url ? (
+                      <img src={agent.avatar_url} alt={agent.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] font-medium">
+                        {agent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                    )}
+                  </button>
+                ))}
+                {session.agent_profile_id && (
+                  <button
+                    onClick={(e) => handleQuickAssignAgent(session.id, null, e)}
+                    title="Unassign agent"
+                    className="ml-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {session.agent_profile_id && (
+                <span className="text-xs font-medium text-foreground">
+                  {getAgentName(session.agent_profile_id)}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Home className="w-3.5 h-3.5" />
