@@ -1,6 +1,5 @@
 import { createContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useSubscription } from '@/hooks/useSubscription';
 
 export interface ManagedAgent {
   id: string;
@@ -50,9 +49,6 @@ export const ActiveAgentContext = createContext<ActiveAgentContextValue>({
 });
 
 export function ActiveAgentProvider({ children }: { children: ReactNode }) {
-  const { tier, subscribed, loading: subLoading } = useSubscription();
-  const isAssistantTier = tier === 'assistant' && subscribed;
-
   const [managedAgents, setManagedAgents] = useState<ManagedAgent[]>([]);
   const [activeAgentId, setActiveAgentIdState] = useState<string | null>(() => {
     try {
@@ -77,15 +73,6 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refetchAgents = useCallback(async () => {
-    // Don't clear agents while subscription is still loading
-    if (subLoading) return;
-
-    if (!isAssistantTier) {
-      setManagedAgents([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       const { data, error } = await (supabase
@@ -105,7 +92,7 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAssistantTier, subLoading]);
+  }, []);
 
   // Clear invalid activeAgentId when agents change
   useEffect(() => {
@@ -116,13 +103,22 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refetchAgents();
+
+    // Re-fetch when auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      refetchAgents();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [refetchAgents]);
 
   const activeAgent = activeAgentId
     ? managedAgents.find(a => a.id === activeAgentId) || null
     : null;
 
-  const isAssistantMode = isAssistantTier && managedAgents.length > 0;
+  const isAssistantMode = managedAgents.length > 0;
 
   return (
     <ActiveAgentContext.Provider
