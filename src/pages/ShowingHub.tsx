@@ -712,11 +712,6 @@ const ShowingHub = () => {
           icon={Calendar}
         />
 
-        {/* DEBUG - TEMPORARY */}
-        <div className="mb-4 p-3 bg-yellow-100 text-yellow-900 rounded-lg text-xs font-mono">
-          <p>DEBUG: isAssistantMode={String(isAssistantMode)} | activeAgentId={activeAgentId || 'null'} | agentProfiles={agentProfiles.length} | sessions={sessions.length}</p>
-        </div>
-
         {/* Active agent banner */}
         {isAssistantMode && activeAgent && (
           <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
