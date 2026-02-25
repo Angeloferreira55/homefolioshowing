@@ -89,13 +89,10 @@ const ShowingHub = () => {
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
   const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
 
-  // Pass filter values as parameters to avoid any stale closure issues
-  const fetchSessions = async (filterAssistantMode?: boolean, filterAgentId?: string | null) => {
-    const shouldFilter = filterAssistantMode !== undefined ? filterAssistantMode : isAssistantMode;
-    const agentFilter = filterAgentId !== undefined ? filterAgentId : activeAgentId;
-
+  // Always fetch ALL sessions (no server-side agent filter)
+  const fetchSessions = async () => {
     try {
-      let query = (supabase
+      const { data: sessionsData, error } = await (supabase
         .from('showing_sessions')
         .select(`
           id,
@@ -112,13 +109,6 @@ const ShowingHub = () => {
           agent_profile_id
         `) as any)
         .order('created_at', { ascending: false });
-
-      // When in assistant mode with an agent selected, scope sessions to that agent
-      if (shouldFilter && agentFilter) {
-        query = query.eq('agent_profile_id', agentFilter);
-      }
-
-      const { data: sessionsData, error } = await query;
 
       if (error) throw error;
 
@@ -151,10 +141,9 @@ const ShowingHub = () => {
     }
   };
 
-  // Re-fetch when agent selection or assistant mode changes, passing values directly
   useEffect(() => {
-    fetchSessions(isAssistantMode, activeAgentId);
-  }, [isAssistantMode, activeAgentId]);
+    fetchSessions();
+  }, []);
 
   // Auto-mark all tour steps as complete (simple click-through tour)
   useEffect(() => {
@@ -166,10 +155,14 @@ const ShowingHub = () => {
     }
   }, [onboarding]);
 
-  // Filter sessions by tab
-  const activeSessions = sessions.filter(s => !s.deleted_at && !s.archived_at);
-  const archivedSessions = sessions.filter(s => !s.deleted_at && s.archived_at);
-  const trashedSessions = sessions.filter(s => s.deleted_at);
+  // Client-side filtering: filter by agent first, then by tab
+  const agentFilteredSessions = isAssistantMode && activeAgentId
+    ? sessions.filter(s => s.agent_profile_id === activeAgentId)
+    : sessions;
+
+  const activeSessions = agentFilteredSessions.filter(s => !s.deleted_at && !s.archived_at);
+  const archivedSessions = agentFilteredSessions.filter(s => !s.deleted_at && s.archived_at);
+  const trashedSessions = agentFilteredSessions.filter(s => s.deleted_at);
 
   // Helper to format date as YYYY-MM-DD without timezone shift
   const formatDateString = (date: Date): string => {
