@@ -706,6 +706,12 @@ const ShowingHub = () => {
           icon={Calendar}
         />
 
+        {/* DEBUG - TEMPORARY */}
+        <div className="mb-4 p-3 bg-yellow-100 text-yellow-900 rounded-lg text-xs font-mono">
+          <p>DEBUG: isAssistantMode={String(isAssistantMode)} | activeAgentId={activeAgentId || 'null'} | tier={tier} | subscribed={String(subscribed)}</p>
+          <p>sessions={sessions.length} | agentProfiles={agentProfiles.length} | filtered={isAssistantMode && activeAgentId ? sessions.filter(s => s.agent_profile_id === activeAgentId).length : sessions.length}</p>
+        </div>
+
         {/* Active agent banner */}
         {isAssistantMode && activeAgent && (
           <div className="mb-4 flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
