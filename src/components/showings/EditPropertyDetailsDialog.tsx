@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload } from 'lucide-react';
+import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload, ClipboardList } from 'lucide-react';
 
 interface EditPropertyDetailsDialogProps {
   open: boolean;
@@ -18,6 +18,7 @@ interface EditPropertyDetailsDialogProps {
   propertyId: string;
   propertyAddress: string;
   onSaved?: () => void;
+  isPopBy?: boolean;
 }
 
 const EditPropertyDetailsDialog = ({
@@ -26,6 +27,7 @@ const EditPropertyDetailsDialog = ({
   propertyId,
   propertyAddress,
   onSaved,
+  isPopBy = false,
 }: EditPropertyDetailsDialogProps) => {
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
@@ -186,13 +188,14 @@ const EditPropertyDetailsDialog = ({
           </div>
         ) : (
           <div className="space-y-5 mt-4">
-            {/* Property Photo */}
+            {/* Property Photo — hidden for Pop-By */}
+            {!isPopBy && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <ImagePlus className="w-4 h-4 text-primary" />
                 Property Photo
               </Label>
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -252,8 +255,10 @@ const EditPropertyDetailsDialog = ({
                 Main photo shown on property cards. Max 5MB.
               </p>
             </div>
+            )}
 
-            {/* Summary */}
+            {/* Summary — hidden for Pop-By */}
+            {!isPopBy && (
             <div className="space-y-2">
               <Label htmlFor="summary" className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
@@ -270,8 +275,10 @@ const EditPropertyDetailsDialog = ({
                 A short summary shown at the top of the property detail.
               </p>
             </div>
+            )}
 
-            {/* About This Home */}
+            {/* About This Home — hidden for Pop-By */}
+            {!isPopBy && (
             <div className="space-y-2">
               <Label htmlFor="description" className="flex items-center gap-2">
                 <Home className="w-4 h-4 text-primary" />
@@ -288,22 +295,31 @@ const EditPropertyDetailsDialog = ({
                 Full property description your client will see.
               </p>
             </div>
+            )}
 
-            {/* Agent's Notes */}
+            {/* Delivery Notes (Pop-By) / Agent's Notes (Home Folio) */}
             <div className="space-y-2">
               <Label htmlFor="agentNotes" className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-primary" />
-                Agent's Notes
+                {isPopBy ? (
+                  <ClipboardList className="w-4 h-4 text-primary" />
+                ) : (
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                )}
+                {isPopBy ? 'Delivery Notes' : "Agent's Notes"}
               </Label>
               <Textarea
                 id="agentNotes"
-                placeholder="Your personal notes for the client about this property..."
+                placeholder={isPopBy
+                  ? "Gate code, delivery instructions, where to leave items..."
+                  : "Your personal notes for the client about this property..."}
                 value={agentNotes}
                 onChange={(e) => setAgentNotes(e.target.value)}
                 rows={3}
               />
               <p className="text-xs text-muted-foreground">
-                Personal notes highlighted for your client.
+                {isPopBy
+                  ? 'Instructions visible to the delivery person on the shared link.'
+                  : 'Personal notes highlighted for your client.'}
               </p>
             </div>
 

@@ -43,6 +43,8 @@ import {
   Pencil,
   FileText,
   ImagePlus,
+  CheckCircle2,
+  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -126,6 +128,10 @@ interface SessionProperty {
   doc_count?: number;
   rating?: PropertyRating;
   showing_time?: string | null;
+  agent_notes?: string | null;
+  delivery_completed_at?: string | null;
+  delivery_notes?: string | null;
+  delivery_photo_url?: string | null;
 }
 
 interface ShowingSession {
@@ -329,6 +335,17 @@ const SortableGalleryCard = ({
               <span className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-bold">
                 #{index + 1}
               </span>
+              {property.delivery_completed_at ? (
+                <span className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-md text-xs font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Delivered
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 rounded-md text-xs font-medium">
+                  <Clock className="w-3.5 h-3.5" />
+                  Pending
+                </span>
+              )}
             </div>
           )}
 
@@ -348,6 +365,37 @@ const SortableGalleryCard = ({
               {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
             </p>
           </div>
+
+          {/* Delivery Notes - visible on pop-by cards */}
+          {isPopBy && property.agent_notes && (
+            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg text-xs">
+              <div className="flex items-center gap-1 text-blue-700 dark:text-blue-300 font-medium mb-0.5">
+                <ClipboardList className="w-3 h-3" />
+                Delivery Notes
+              </div>
+              <span className="text-foreground">{property.agent_notes}</span>
+            </div>
+          )}
+
+          {/* Delivery completion info */}
+          {isPopBy && property.delivery_completed_at && (
+            <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-lg text-xs">
+              <p className="text-green-700 dark:text-green-300 font-medium">
+                Delivered at {new Date(property.delivery_completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </p>
+              {property.delivery_notes && (
+                <p className="text-foreground mt-0.5">{property.delivery_notes}</p>
+              )}
+              {property.delivery_photo_url && (
+                <img
+                  src={property.delivery_photo_url}
+                  alt="Delivery"
+                  className="w-16 h-16 rounded object-cover mt-1 cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); window.open(property.delivery_photo_url!, '_blank'); }}
+                />
+              )}
+            </div>
+          )}
 
           {/* Showing Time - Editable */}
           {editingTimeId === property.id ? (
@@ -1994,6 +2042,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         propertyId={editDetailsPropertyId || ''}
         propertyAddress={editDetailsPropertyAddress}
         onSaved={fetchProperties}
+        isPopBy={isPopBy}
       />
 
       <BulkMLSImportDialog

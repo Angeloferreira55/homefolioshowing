@@ -15,6 +15,8 @@ import {
   ImagePlus,
   Loader2,
   Clock,
+  CheckCircle2,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRef, useState } from 'react';
@@ -53,6 +55,10 @@ interface SessionProperty {
   doc_count?: number;
   rating?: PropertyRating;
   showing_time?: string | null;
+  agent_notes?: string | null;
+  delivery_completed_at?: string | null;
+  delivery_notes?: string | null;
+  delivery_photo_url?: string | null;
 }
 
 interface SortablePropertyCardProps {
@@ -373,6 +379,20 @@ export function SortablePropertyCard({
                 {property.rating.rating}/10
               </div>
             )}
+            {/* Delivery status badge for Pop-By */}
+            {isPopBy && (
+              property.delivery_completed_at ? (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded text-xs font-medium flex-shrink-0">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Delivered
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 rounded text-xs font-medium flex-shrink-0">
+                  <Clock className="w-3 h-3" />
+                  Pending
+                </span>
+              )
+            )}
           </div>
           {!isPopBy && (
           <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap">
@@ -391,6 +411,22 @@ export function SortablePropertyCard({
               </span>
             )}
           </div>
+          )}
+          {/* Delivery Notes + completion info for Pop-By */}
+          {isPopBy && property.agent_notes && (
+            <div className="mt-1 p-1.5 bg-blue-50 dark:bg-blue-950/30 rounded text-xs">
+              <span className="font-medium text-blue-700 dark:text-blue-300"><ClipboardList className="w-3 h-3 inline mr-1" />Notes: </span>
+              <span className="text-foreground">{property.agent_notes}</span>
+            </div>
+          )}
+          {isPopBy && property.delivery_completed_at && (
+            <div className="mt-1 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+              <span>Delivered {new Date(property.delivery_completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+              {property.delivery_photo_url && (
+                <img src={property.delivery_photo_url} alt="Delivery" className="w-6 h-6 rounded object-cover cursor-pointer"
+                  onClick={(e) => { e.stopPropagation(); window.open(property.delivery_photo_url!, '_blank'); }} />
+              )}
+            </div>
           )}
           {/* Client Feedback Summary - condensed on mobile */}
           {!isPopBy && property.rating?.feedback && Object.keys(property.rating.feedback).length > 0 && (

@@ -82,15 +82,17 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
     return 'border-2 border-primary bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.3)]';
   };
 
+  const isPopBy = sessionType === 'pop_by';
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    // Validate form data
+    // Validate form data — pop-by skips clientName requirement
     try {
       sessionSchema.parse({
         title: title.trim(),
-        clientName: clientName.trim(),
+        clientName: isPopBy ? 'Pop-By' : clientName.trim(),
         notes: notes.trim() || undefined,
       });
     } catch (error) {
@@ -109,8 +111,8 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
     onCreate({
       title: title.trim(),
       sessionDate,
-      clientName: clientName.trim(),
-      notes: notes.trim() || undefined,
+      clientName: isPopBy ? 'Pop-By' : clientName.trim(),
+      notes: isPopBy ? undefined : (notes.trim() || undefined),
       sharePassword: passwordEnabled && sharePassword ? sharePassword : undefined,
       agentProfileId: hasAgents ? selectedAgentId : undefined,
       sessionType,
@@ -234,6 +236,8 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
             </Popover>
           </div>
 
+          {/* Client Name — hidden for Pop-By */}
+          {!isPopBy && (
           <div className="space-y-2">
             <Label htmlFor="clientName" className={isOnboarding ? 'text-primary font-semibold' : ''}>
               Client Name {isOnboarding && <span className="text-primary">*</span>}
@@ -252,8 +256,10 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
               <p className="text-sm text-destructive">{errors.clientName}</p>
             )}
           </div>
+          )}
 
-
+          {/* Session Notes — hidden for Pop-By */}
+          {!isPopBy && (
           <div className="space-y-2">
             <Label htmlFor="notes">Session Notes (visible to client)</Label>
             <Textarea
@@ -268,6 +274,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
               <p className="text-sm text-destructive">{errors.notes}</p>
             )}
           </div>
+          )}
 
           {/* Password Protection Section */}
           <div className={`border rounded-lg p-4 space-y-3 bg-muted/30 ${

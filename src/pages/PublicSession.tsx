@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download } from 'lucide-react';
+import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Package, CheckCircle2, ClipboardList, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -14,6 +14,7 @@ import PublicPropertyDetailDialog, {
 } from '@/components/public/PublicPropertyDetailDialog';
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
+import DeliveryCompletionDialog from '@/components/public/DeliveryCompletionDialog';
 
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
@@ -34,10 +35,14 @@ interface FeedbackData {
 }
 
 type PropertyDocument = PublicPropertyDocument;
-type SessionProperty = PublicSessionProperty & { 
+type SessionProperty = PublicSessionProperty & {
   order_index: number;
   client_photos?: ClientPhoto[];
   showing_time?: string | null;
+  agent_notes?: string | null;
+  delivery_completed_at?: string | null;
+  delivery_notes?: string | null;
+  delivery_photo_url?: string | null;
 };
 
 interface ClientPhoto {
@@ -54,6 +59,7 @@ interface ShowingSession {
   session_date: string | null;
   notes: string | null;
   admin_id: string;
+  session_type?: string | null;
 }
 
 interface PropertyRating {
@@ -98,6 +104,10 @@ const PublicSession = () => {
   // Favorites
   const { toggleFavorite, isFavorite, getFavoriteCount } = useBuyerFavorites(token);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  // Pop-By delivery state
+  const isPopBy = session?.session_type === 'pop_by';
+  const [deliveryDialogProperty, setDeliveryDialogProperty] = useState<SessionProperty | null>(null);
 
   // Helper to get/set cached access with 2-hour expiration
   const ACCESS_CACHE_KEY = `homefolio_access_${token}`;
@@ -756,9 +766,11 @@ const PublicSession = () => {
               <h1 className="font-display text-xl sm:text-3xl font-bold mb-1">
                 {session.title}
               </h1>
-              <p className="text-primary-foreground/80 text-sm sm:text-base">
-                Welcome, {session.client_name}
-              </p>
+              {!isPopBy && (
+                <p className="text-primary-foreground/80 text-sm sm:text-base">
+                  Welcome, {session.client_name}
+                </p>
+              )}
               {session.session_date && (() => {
                 const [year, month, day] = session.session_date.split('-').map(Number);
                 const localDate = new Date(year, month - 1, day);
@@ -769,7 +781,7 @@ const PublicSession = () => {
                   </p>
                 );
               })()}
-              {session.notes && (
+              {session.notes && !isPopBy && (
                 <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
                   {session.notes}
                 </p>
@@ -795,8 +807,8 @@ const PublicSession = () => {
         </div>
       )}
 
-      {/* Daily Schedule Summary */}
-      {(() => {
+      {/* Daily Schedule Summary — hidden for Pop-By */}
+      {!isPopBy && (() => {
         const propertiesWithTimes = properties
           .filter(p => p.showing_time)
           .sort((a, b) => a.order_index - b.order_index);
@@ -852,12 +864,33 @@ const PublicSession = () => {
         );
       })()}
 
+      {/* Delivery Progress Bar — Pop-By only */}
+      {isPopBy && properties.length > 0 && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-card rounded-xl p-4 card-elevated">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Delivery Progress</span>
+              <span className="text-sm text-muted-foreground">
+                {properties.filter(p => p.delivery_completed_at).length} / {properties.length} delivered
+              </span>
+            </div>
+            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 rounded-full transition-all"
+                style={{ width: `${(properties.filter(p => p.delivery_completed_at).length / Math.max(properties.length, 1)) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Properties */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
         <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
           <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground whitespace-nowrap">
-            Properties ({properties.length})
+            {isPopBy ? 'Deliveries' : 'Properties'} ({properties.length})
           </h2>
+          {!isPopBy && (
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto flex-shrink-0">
             <Button
               variant="outline"
@@ -891,6 +924,7 @@ const PublicSession = () => {
               </Button>
             )}
           </div>
+          )}
         </div>
 
         {properties.length > 0 ? (
@@ -903,6 +937,124 @@ const PublicSession = () => {
                 id={`property-${property.id}`}
                 className="bg-card rounded-xl sm:rounded-2xl overflow-hidden card-elevated"
               >
+                {isPopBy ? (
+                  /* ── Pop-By Delivery Card ── */
+                  <div className="p-4 sm:p-5">
+                    {/* Header: badge + delivery status */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 sm:px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-bold">
+                          #{index + 1}
+                        </span>
+                        {property.delivery_completed_at ? (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 rounded-md text-xs font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Delivered
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 rounded-md text-xs font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                      {property.showing_time && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {formatShowingTime(property.showing_time)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Address with directions */}
+                    <div className="flex items-start gap-2 mb-3">
+                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-display font-semibold text-foreground text-sm sm:text-base">
+                          {property.address}
+                          {property.city && `, ${property.city}`}
+                          {property.state && `, ${property.state}`}
+                          {property.zip_code && ` ${property.zip_code}`}
+                        </p>
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+                            `${property.address}${property.city ? `, ${property.city}` : ''}${property.state ? `, ${property.state}` : ''}${property.zip_code ? ` ${property.zip_code}` : ''}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1 font-medium"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          Get Directions
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Agent's Delivery Notes */}
+                    {property.agent_notes && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg mb-3">
+                        <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 text-xs font-medium mb-1">
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          Delivery Notes
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap">{property.agent_notes}</p>
+                      </div>
+                    )}
+
+                    {/* Delivery completion info */}
+                    {property.delivery_completed_at && (
+                      <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg mb-3">
+                        <p className="text-xs text-green-700 dark:text-green-300 font-medium">
+                          Delivered at {new Date(property.delivery_completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                        {property.delivery_notes && (
+                          <p className="text-sm text-foreground mt-1">{property.delivery_notes}</p>
+                        )}
+                        {property.delivery_photo_url && (
+                          <img
+                            src={property.delivery_photo_url}
+                            alt="Delivery photo"
+                            className="w-24 h-24 rounded-lg object-cover mt-2 cursor-pointer"
+                            onClick={() => window.open(property.delivery_photo_url!, '_blank')}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Button */}
+                    {!property.delivery_completed_at ? (
+                      <Button
+                        className="w-full gap-2 h-12 text-sm"
+                        onClick={() => setDeliveryDialogProperty(property)}
+                      >
+                        <Package className="w-4 h-4" />
+                        Mark as Delivered
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 h-10 text-xs text-muted-foreground"
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase.rpc('undo_delivery_completion' as any, {
+                              p_session_property_id: property.id,
+                              p_share_token: token,
+                            });
+                            if (error) throw error;
+                            toast.success('Delivery undone');
+                            fetchSession(0);
+                          } catch {
+                            toast.error('Failed to undo delivery');
+                          }
+                        }}
+                      >
+                        Undo Delivery
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Home Folio Property Card ── */
+                  <>
                 {/* Large Image - Click to view details */}
                 <div
                   className="relative aspect-[16/10] bg-muted cursor-pointer group"
@@ -1084,6 +1236,8 @@ const PublicSession = () => {
                     </Button>
                   </div>
                 </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -1148,6 +1302,21 @@ const PublicSession = () => {
         properties={properties}
         ratings={ratings}
       />
+
+      {/* Delivery Completion Dialog — Pop-By */}
+      {deliveryDialogProperty && (
+        <DeliveryCompletionDialog
+          open={!!deliveryDialogProperty}
+          onOpenChange={(open) => { if (!open) setDeliveryDialogProperty(null); }}
+          propertyId={deliveryDialogProperty.id}
+          propertyAddress={deliveryDialogProperty.address}
+          shareToken={token || ''}
+          onCompleted={() => {
+            setDeliveryDialogProperty(null);
+            fetchSession(0);
+          }}
+        />
+      )}
     </div>
   );
 };
