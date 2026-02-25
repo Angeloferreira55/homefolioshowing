@@ -64,7 +64,7 @@ const ShowingHub = () => {
   const onboarding = useOnboarding();
   const { profile } = useProfile();
   const { tier, subscribed } = useSubscription();
-  const { activeAgentId, activeAgent, isAssistantMode } = useActiveAgent();
+  const { activeAgentId, activeAgent, setActiveAgentId, isAssistantMode } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
   // Fetch managed agent profiles directly for the create-session dropdown (assistant tier only)
@@ -89,21 +89,7 @@ const ShowingHub = () => {
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
   const showWelcome = !onboarding.loading && !onboarding.hasCompletedOnboarding && !onboarding.showTour && sessions.length === 0 && !loading;
 
-  useEffect(() => {
-    fetchSessions();
-  }, [activeAgentId]);
-
-  // Auto-mark all tour steps as complete (simple click-through tour)
-  useEffect(() => {
-    if (!onboarding.showTour) return;
-
-    // Auto-complete current step
-    if (!onboarding.isStepComplete(onboarding.currentStep)) {
-      onboarding.markStepComplete(onboarding.currentStep);
-    }
-  }, [onboarding]);
-
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       let query = (supabase
         .from('showing_sessions')
@@ -123,13 +109,9 @@ const ShowingHub = () => {
         `) as any)
         .order('created_at', { ascending: false });
 
-      // When in assistant mode, scope sessions to the selected agent
-      if (isAssistantMode) {
-        if (activeAgentId) {
-          query = query.eq('agent_profile_id', activeAgentId);
-        } else {
-          query = query.is('agent_profile_id', null);
-        }
+      // When in assistant mode with an agent selected, scope sessions to that agent
+      if (isAssistantMode && activeAgentId) {
+        query = query.eq('agent_profile_id', activeAgentId);
       }
 
       const { data: sessionsData, error } = await query;
@@ -138,7 +120,7 @@ const ShowingHub = () => {
 
       // Fetch property counts for each session
       const sessionsWithCounts = await Promise.all(
-        (sessionsData || []).map(async (session) => {
+        (sessionsData || []).map(async (session: any) => {
           const { count: propertyCount } = await supabase
             .from('session_properties')
             .select('*', { count: 'exact', head: true })
@@ -163,7 +145,21 @@ const ShowingHub = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAssistantMode, activeAgentId]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Auto-mark all tour steps as complete (simple click-through tour)
+  useEffect(() => {
+    if (!onboarding.showTour) return;
+
+    // Auto-complete current step
+    if (!onboarding.isStepComplete(onboarding.currentStep)) {
+      onboarding.markStepComplete(onboarding.currentStep);
+    }
+  }, [onboarding]);
 
   // Filter sessions by tab
   const activeSessions = sessions.filter(s => !s.deleted_at && !s.archived_at);
@@ -222,7 +218,14 @@ const ShowingHub = () => {
       if (error) throw error;
 
       toast.success('Session created!');
-      fetchSessions();
+
+      // If an agent was explicitly selected in the dialog, switch the top thumbnail
+      // to that agent — fetchSessions will re-run automatically via the useEffect
+      if (isAssistantMode && data.agentProfileId !== undefined && data.agentProfileId !== activeAgentId) {
+        setActiveAgentId(data.agentProfileId);
+      } else {
+        fetchSessions();
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to create session');
     }
@@ -482,6 +485,12 @@ const ShowingHub = () => {
   ];
 
 
+  // Look up agent name from agentProfiles by ID
+  const getAgentName = (agentId: string | null | undefined): string | null => {
+    if (!agentId) return null;
+    return agentProfiles.find(a => a.id === agentId)?.full_name || null;
+  };
+
   const renderSessionCard = (session: ShowingSession, variant: 'active' | 'archived' | 'trash') => (
     <div
       key={session.id}
@@ -511,6 +520,15 @@ const ShowingHub = () => {
               );
             })()}
           </div>
+          {/* Show which agent/broker this session belongs to */}
+          {isAssistantMode && (() => {
+            const agentName = getAgentName(session.agent_profile_id);
+            return agentName ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                Broker: <span className="font-medium text-foreground">{agentName}</span>
+              </p>
+            ) : null;
+          })()}
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Home className="w-3.5 h-3.5" />
