@@ -130,6 +130,8 @@ const ManagedAgentEdit = () => {
         twitter_url: data.twitter_url || '',
         youtube_url: data.youtube_url || '',
         website_url: data.website_url || '',
+        avatar_url: data.avatar_url || undefined,
+        brokerage_logo_url: data.brokerage_logo_url || undefined,
       });
       setAvatarPreview(data.avatar_url);
       setLogoPreview(data.brokerage_logo_url);
