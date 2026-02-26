@@ -1221,8 +1221,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
         // Calculate next showing start time
         if (i < properties.length - 1) {
-          // Add 30 minutes for the showing
-          currentTimeMinutes += 30;
+          // Pop-by: 2 min stop per address; Home Folio: 30 min per showing
+          const stopMinutes = isPopBy ? 2 : 30;
+          currentTimeMinutes += stopMinutes;
 
           // Add driving time to next property
           const drivingData = legDurations.find(
@@ -1234,9 +1235,10 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
             console.log(`[Auto-Schedule] + ${drivingMinutes} min drive to next property`);
             currentTimeMinutes += drivingMinutes;
           } else {
-            // If no driving data found, add 15 min buffer
-            console.log('[Auto-Schedule] No driving data, adding 15 min buffer');
-            currentTimeMinutes += 15;
+            // If no driving data found, add buffer (5 min for pop-by, 15 min for showing)
+            const bufferMinutes = isPopBy ? 5 : 15;
+            console.log(`[Auto-Schedule] No driving data, adding ${bufferMinutes} min buffer`);
+            currentTimeMinutes += bufferMinutes;
           }
         }
       }
@@ -1246,8 +1248,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       await Promise.all(updates);
       await fetchProperties();
 
-      toast.success(`${properties.length} properties scheduled!`, {
-        description: '30 min per showing + driving time'
+      const stopLabel = isPopBy ? '2 min per stop' : '30 min per showing';
+      toast.success(`${properties.length} ${isPopBy ? 'addresses' : 'properties'} scheduled!`, {
+        description: `${stopLabel} + driving time`
       });
     } catch (error: any) {
       console.error('[Auto-Schedule] Error:', error);
