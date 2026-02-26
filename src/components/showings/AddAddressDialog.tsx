@@ -137,6 +137,10 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
+      if (!text || !text.trim()) {
+        toast.error('File appears to be empty');
+        return;
+      }
       const addresses = parseCSV(text);
       if (addresses.length === 0) {
         toast.error('No addresses found in file. Expected columns: address, city, state, zip');
@@ -144,6 +148,9 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
       }
       setParsedAddresses(addresses);
       toast.success(`Found ${addresses.length} addresses`);
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
     };
     reader.readAsText(file);
   };
@@ -165,7 +172,7 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Add Address</DialogTitle>
         </DialogHeader>
