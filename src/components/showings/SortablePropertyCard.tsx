@@ -327,7 +327,7 @@ export function SortablePropertyCard({
             )}
             {!isPopBy && onShowingDurationChange && (
               <>
-                <span className="text-[10px] text-muted-foreground">Duration:</span>
+                <span className="text-[10px] text-muted-foreground">Showing Duration:</span>
                 <Select
                   value={String(showingDuration)}
                   onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}
@@ -398,7 +398,7 @@ export function SortablePropertyCard({
               )}
               {!isPopBy && onShowingDurationChange && (
                 <>
-                  <span className="text-xs text-muted-foreground">Duration:</span>
+                  <span className="text-xs text-muted-foreground">Showing Duration:</span>
                   <Select
                     value={String(showingDuration)}
                     onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}

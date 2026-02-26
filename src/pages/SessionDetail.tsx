@@ -443,7 +443,7 @@ const SortableGalleryCard = ({
               </button>
               {!isPopBy && onShowingDurationChange && (
                 <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">Duration:</span>
+                  <span className="text-xs text-muted-foreground">Showing Duration:</span>
                   <Select
                     value={String(showingDuration)}
                     onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}
