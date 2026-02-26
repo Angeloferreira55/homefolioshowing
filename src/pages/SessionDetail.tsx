@@ -129,6 +129,7 @@ interface SessionProperty {
   rating?: PropertyRating;
   showing_time?: string | null;
   agent_notes?: string | null;
+  recipient_name?: string | null;
   delivery_completed_at?: string | null;
   delivery_notes?: string | null;
   delivery_photo_url?: string | null;
@@ -748,6 +749,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     city?: string;
     state?: string;
     zipCode?: string;
+    recipientName?: string;
     price?: number;
     photoUrl?: string;
     beds?: number;
@@ -781,6 +783,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         city: data.city || null,
         state: data.state || null,
         zip_code: data.zipCode || null,
+        recipient_name: data.recipientName || null,
         price: data.price || null,
         photo_url: data.photoUrl || null,
         beds: data.beds || null,
@@ -821,6 +824,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     city?: string;
     state?: string;
     zipCode?: string;
+    recipientName?: string;
     price?: number;
     photoUrl?: string;
     beds?: number;
@@ -852,6 +856,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         city: data.city || null,
         state: data.state || null,
         zip_code: data.zipCode || null,
+        recipient_name: data.recipientName || null,
         price: data.price || null,
         photo_url: data.photoUrl || null,
         beds: data.beds || null,
@@ -1463,9 +1468,18 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       setRouteCoordinates(routeCoords);
       setIsRoutePopoverOpen(false); // Close popover after success
 
-      const successMessage = retryCount > 0
+      // Warn if some addresses failed to geocode
+      const geocodedCount = data.geocodedCount ?? properties.length;
+      const totalCount = data.totalCount ?? properties.length;
+      const failedCount = totalCount - geocodedCount;
+
+      let successMessage = retryCount > 0
         ? `Route optimized after ${retryCount} ${retryCount === 1 ? 'retry' : 'retries'}! Total drive time: ${timeStr}`
         : `Route optimized! Total drive time: ${timeStr}`;
+
+      if (failedCount > 0) {
+        successMessage += ` (${failedCount} ${failedCount === 1 ? 'address' : 'addresses'} could not be located)`;
+      }
 
       toast.success(successMessage);
 

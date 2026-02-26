@@ -62,6 +62,7 @@ interface SessionProperty {
   rating?: PropertyRating;
   showing_time?: string | null;
   agent_notes?: string | null;
+  recipient_name?: string | null;
   delivery_completed_at?: string | null;
   delivery_notes?: string | null;
   delivery_photo_url?: string | null;
@@ -423,6 +424,9 @@ export function SortablePropertyCard({
                 </>
               )}
             </div>
+            {isPopBy && property.recipient_name && (
+              <p className="text-xs font-semibold text-primary w-full">{property.recipient_name}</p>
+            )}
             <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-2 sm:truncate">
               {property.address}
               {property.city && `, ${property.city}`}

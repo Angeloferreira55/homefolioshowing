@@ -17,6 +17,7 @@ interface AddressData {
   city?: string;
   state?: string;
   zipCode?: string;
+  recipientName?: string;
 }
 
 interface AddAddressDialogProps {
@@ -27,7 +28,7 @@ interface AddAddressDialogProps {
 }
 
 // Columns to ignore — never import these as address data
-const SKIP_HEADERS = ['name', 'first', 'last', 'email', 'e-mail', 'phone', 'cell', 'mobile', 'fax', 'company', 'birthday', 'notes', 'tags', 'group', 'label', 'source'];
+const SKIP_HEADERS = ['email', 'e-mail', 'phone', 'cell', 'mobile', 'fax', 'company', 'birthday', 'notes', 'tags', 'group', 'label', 'source'];
 
 function looksLikeAddress(value: string): boolean {
   if (!value || value.length < 3) return false;
@@ -54,6 +55,9 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
   let cityCol = -1;
   let stateCol = -1;
   let zipCol = -1;
+  let nameCol = -1;
+  let firstNameCol = -1;
+  let lastNameCol = -1;
 
   if (hasHeader) {
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
@@ -64,6 +68,9 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
       else if (h.includes('city') || h.includes('town')) cityCol = i;
       else if (h.includes('state') || h.includes('province')) stateCol = i;
       else if (h.includes('zip') || h.includes('postal') || h.includes('postcode')) zipCol = i;
+      else if (h === 'name' || h === 'full name' || h === 'fullname' || h === 'client' || h === 'client name' || h === 'recipient' || h === 'contact') nameCol = i;
+      else if (h === 'first' || h === 'first name' || h === 'firstname') firstNameCol = i;
+      else if (h === 'last' || h === 'last name' || h === 'lastname') lastNameCol = i;
     });
   }
 
@@ -105,11 +112,23 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
     const rawState = stateCol >= 0 ? cols[stateCol]?.trim() : undefined;
     const rawZip = zipCol >= 0 ? cols[zipCol]?.trim() : undefined;
 
+    // Build recipient name from name column or first+last columns
+    let recipientName: string | undefined;
+    if (nameCol >= 0 && cols[nameCol]?.trim()) {
+      recipientName = cols[nameCol].trim();
+    } else if (firstNameCol >= 0 || lastNameCol >= 0) {
+      const first = firstNameCol >= 0 ? cols[firstNameCol]?.trim() : '';
+      const last = lastNameCol >= 0 ? cols[lastNameCol]?.trim() : '';
+      const combined = [first, last].filter(Boolean).join(' ');
+      if (combined) recipientName = combined;
+    }
+
     addresses.push({
       address,
       city: rawCity && !rawCity.includes('@') ? rawCity : undefined,
       state: rawState && rawState.length <= 3 ? rawState : undefined,
       zipCode: rawZip && /^\d{3,10}(-\d+)?$/.test(rawZip) ? rawZip : undefined,
+      recipientName,
     });
   }
 
@@ -293,7 +312,7 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 <p className="font-medium">Click to upload CSV</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Columns: address, city, state, zip
+                  Columns: name, address, city, state, zip
                 </p>
               </div>
             ) : (
@@ -327,6 +346,9 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
                 <div className="max-h-48 overflow-y-auto space-y-1.5">
                   {parsedAddresses.map((addr, idx) => (
                     <div key={idx} className="p-2 bg-muted/50 rounded-md text-sm">
+                      {addr.recipientName && (
+                        <p className="text-xs font-semibold text-primary">{addr.recipientName}</p>
+                      )}
                       <p className="font-medium">{addr.address}</p>
                       {(addr.city || addr.state || addr.zipCode) && (
                         <p className="text-xs text-muted-foreground">

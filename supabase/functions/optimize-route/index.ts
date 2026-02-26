@@ -63,23 +63,25 @@ async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] 
 }
 
 /**
- * Nearest-neighbor heuristic for TSP, optimizing for minimum total driving time.
- * Returns the order of indices (not including the origin twice; caller can handle round-trip).
+ * Nearest-neighbor heuristic for TSP.
+ * excludeIdx: optional index to exclude from the greedy search (e.g. fixed destination).
  */
-function nearestNeighborTSP(durations: number[][], startIdx: number): number[] {
+function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?: number): number[] {
   const n = durations.length;
   const visited = new Set<number>([startIdx]);
+  if (excludeIdx !== undefined) visited.add(excludeIdx);
   const route = [startIdx];
   let current = startIdx;
 
-  while (visited.size < n) {
+  while (visited.size < (excludeIdx !== undefined ? n : n)) {
+    if (visited.size >= n) break;
     let best = -1;
     let bestTime = Infinity;
 
     for (let i = 0; i < n; i++) {
       if (visited.has(i)) continue;
       const time = durations[current][i];
-      if (time !== null && time < bestTime) {
+      if (time !== null && time !== undefined && time < bestTime) {
         bestTime = time;
         best = i;
       }
@@ -91,13 +93,19 @@ function nearestNeighborTSP(durations: number[][], startIdx: number): number[] {
     current = best;
   }
 
+  // If there's a fixed destination, append it at the end
+  if (excludeIdx !== undefined) {
+    route.push(excludeIdx);
+  }
+
   return route;
 }
 
 /**
  * 2-opt improvement: iteratively reverses segments to reduce total time.
+ * fixStart/fixEnd: if true, the first/last element is locked in place.
  */
-function twoOptImprove(route: number[], durations: number[][], isRoundTrip: boolean): number[] {
+function twoOptImprove(route: number[], durations: number[][], fixStart: boolean, fixEnd: boolean): number[] {
   const improved = [...route];
   const n = improved.length;
   let madeSwap = true;
@@ -107,16 +115,17 @@ function twoOptImprove(route: number[], durations: number[][], isRoundTrip: bool
     for (let i = 0; i < r.length - 1; i++) {
       sum += durations[r[i]][r[i + 1]] ?? 0;
     }
-    if (isRoundTrip && r.length > 1) {
-      sum += durations[r[r.length - 1]][r[0]] ?? 0;
-    }
     return sum;
   };
 
+  // Don't swap fixed endpoints
+  const iStart = fixStart ? 1 : 0;
+  const jEnd = fixEnd ? n - 1 : n;
+
   while (madeSwap) {
     madeSwap = false;
-    for (let i = 1; i < n - 1; i++) {
-      for (let j = i + 1; j < n; j++) {
+    for (let i = iStart; i < jEnd - 1; i++) {
+      for (let j = i + 1; j < jEnd; j++) {
         const newRoute = [
           ...improved.slice(0, i),
           ...improved.slice(i, j + 1).reverse(),
@@ -247,8 +256,8 @@ Deno.serve(async (req) => {
     if (geoError || geoData?.error) {
       console.error("Geocoding function error:", geoError || geoData?.error);
       return new Response(
-        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Failed to geocode addresses. Please ensure each address includes city and state." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -266,21 +275,24 @@ Deno.serve(async (req) => {
 
     const geocoded = normalized.filter((p) => coordsById.has(p.id));
     const ungeocodedIds = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.id);
+    const failedAddresses = normalized.filter((p) => !coordsById.has(p.id)).map((p) => p.fullAddress);
 
     console.log(
       `Geocoded ${geocoded.length}/${normalized.length} properties` +
-        (ungeocodedIds.length ? `; missing: ${ungeocodedIds.join(", ")}` : ""),
+        (failedAddresses.length ? `; FAILED: ${failedAddresses.join(" | ")}` : ""),
     );
 
     if (geocoded.length < 2) {
-      console.warn("Not enough geocoded properties to optimize; returning original order");
       return new Response(
-        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          error: `Could not locate enough addresses to optimize (only ${geocoded.length} of ${normalized.length} found). Please ensure each address includes city and state.`,
+          failedAddresses,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Build coordinate list for OSRM: origin (if any) + geocoded properties
+    // Build coordinate list for OSRM: origin (if any) + geocoded properties + destination (if any)
     const osrmCoords: Coordinates[] = [];
     const idxToId: string[] = [];
 
@@ -294,7 +306,7 @@ Deno.serve(async (req) => {
       idxToId.push(p.id);
     }
 
-    // Add destination if specified (different from origin)
+    // Add destination as the last index
     if (hasDestination && destCoords) {
       osrmCoords.push(destCoords);
       idxToId.push(DEST_ID);
@@ -304,20 +316,23 @@ Deno.serve(async (req) => {
     const durations = await getOSRMDurationMatrix(osrmCoords);
 
     if (!durations) {
-      console.warn("OSRM failed; falling back to original order");
       return new Response(
-        JSON.stringify({ optimizedOrder: normalized.map((p) => p.id) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Failed to calculate driving times. The routing service may be temporarily unavailable — please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Run nearest-neighbor starting from origin index (0 if origin, else first property)
-    const startIdx = hasOrigin ? 0 : 0;
-    let route = nearestNeighborTSP(durations, startIdx);
+    // Determine fixed start and end indices
+    const startIdx = 0; // origin or first property
+    const destIdx = hasDestination ? osrmCoords.length - 1 : undefined;
 
-    // Apply 2-opt improvement (only round trip if no explicit destination)
-    const isRoundTrip = !hasDestination;
-    route = twoOptImprove(route, durations, isRoundTrip);
+    // Run nearest-neighbor, excluding destination from greedy search (it will be appended at end)
+    let route = nearestNeighborTSP(durations, startIdx, destIdx);
+
+    // Apply 2-opt improvement with fixed endpoints
+    const fixStart = hasOrigin; // origin is locked at position 0
+    const fixEnd = hasDestination; // destination is locked at last position
+    route = twoOptImprove(route, durations, fixStart, fixEnd);
 
     // Convert indices to property IDs (exclude origin and destination markers)
     const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID && id !== DEST_ID);
@@ -339,18 +354,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Add return to origin only if round trip (no explicit destination)
-    if (isRoundTrip && route.length > 1) {
-      const returnTime = durations[route[route.length - 1]][route[0]] ?? 0;
-      totalSeconds += returnTime;
-      legDurations.push({
-        from: idxToId[route[route.length - 1]],
-        to: idxToId[route[0]],
-        seconds: returnTime,
-      });
-    }
-
-    console.log("Optimized order:", optimizedOrder.join(" → "), `(${Math.round(totalSeconds / 60)} min)`);
+    console.log("Optimized order:", optimizedOrder.join(" -> "), `(${Math.round(totalSeconds / 60)} min)`);
 
     // Build route coordinates for map display
     const routeCoordinates = route.map((idx) => {
@@ -365,6 +369,9 @@ Deno.serve(async (req) => {
         totalSeconds,
         legDurations,
         routeCoordinates,
+        geocodedCount: geocoded.length,
+        totalCount: normalized.length,
+        ...(failedAddresses.length > 0 ? { failedAddresses } : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
