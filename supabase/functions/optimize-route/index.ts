@@ -211,9 +211,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (properties.length > 20) {
+    if (properties.length > 50) {
       return new Response(
-        JSON.stringify({ error: "Too many properties to optimize at once (max 20)." }),
+        JSON.stringify({ error: "Too many properties to optimize at once (max 50)." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
