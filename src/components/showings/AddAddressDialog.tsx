@@ -26,32 +26,52 @@ interface AddAddressDialogProps {
   onAddMultiple?: (data: AddressData[]) => void;
 }
 
-function parseCSV(text: string): AddressData[] {
+// Columns to ignore — never import these as address data
+const SKIP_HEADERS = ['name', 'first', 'last', 'email', 'e-mail', 'phone', 'cell', 'mobile', 'fax', 'company', 'birthday', 'notes', 'tags', 'group', 'label', 'source'];
+
+function looksLikeAddress(value: string): boolean {
+  if (!value || value.length < 3) return false;
+  // Must contain at least one digit (street number)
+  if (!/\d/.test(value)) return false;
+  // Reject if it looks like an email
+  if (value.includes('@')) return false;
+  // Reject if it looks like a phone number (mostly digits/dashes/parens)
+  if (/^[\d\s\-().+]+$/.test(value)) return false;
+  return true;
+}
+
+function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
   const lines = text.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length === 0) return [];
+  if (lines.length === 0) return { addresses: [], skipped: 0 };
 
   // Detect header row
   const firstLine = lines[0].toLowerCase();
-  const hasHeader = firstLine.includes('address') || firstLine.includes('street') || firstLine.includes('city');
+  const hasHeader = firstLine.includes('address') || firstLine.includes('street') || firstLine.includes('city') || firstLine.includes('zip');
   const dataLines = hasHeader ? lines.slice(1) : lines;
 
   // Try to detect column positions from header
-  let addressCol = 0;
-  let cityCol = 1;
-  let stateCol = 2;
-  let zipCol = 3;
+  let addressCol = -1;
+  let cityCol = -1;
+  let stateCol = -1;
+  let zipCol = -1;
 
   if (hasHeader) {
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
     headers.forEach((h, i) => {
-      if (h.includes('address') || h.includes('street')) addressCol = i;
-      else if (h.includes('city')) cityCol = i;
-      else if (h.includes('state')) stateCol = i;
-      else if (h.includes('zip') || h.includes('postal')) zipCol = i;
+      // Skip columns that are clearly not address-related
+      if (SKIP_HEADERS.some(skip => h.includes(skip))) return;
+      if (h.includes('address') || h.includes('street') || h.includes('addr')) addressCol = i;
+      else if (h.includes('city') || h.includes('town')) cityCol = i;
+      else if (h.includes('state') || h.includes('province')) stateCol = i;
+      else if (h.includes('zip') || h.includes('postal') || h.includes('postcode')) zipCol = i;
     });
   }
 
+  // If no address column found in header, try first column
+  if (addressCol === -1) addressCol = 0;
+
   const addresses: AddressData[] = [];
+  let skipped = 0;
 
   for (const line of dataLines) {
     if (!line.trim()) continue;
@@ -73,17 +93,27 @@ function parseCSV(text: string): AddressData[] {
     cols.push(current.trim());
 
     const address = cols[addressCol]?.trim();
-    if (!address) continue;
+
+    // Skip rows without a valid-looking street address
+    if (!looksLikeAddress(address)) {
+      skipped++;
+      continue;
+    }
+
+    // Clean city/state/zip — strip any value that looks like email or phone
+    const rawCity = cityCol >= 0 ? cols[cityCol]?.trim() : undefined;
+    const rawState = stateCol >= 0 ? cols[stateCol]?.trim() : undefined;
+    const rawZip = zipCol >= 0 ? cols[zipCol]?.trim() : undefined;
 
     addresses.push({
       address,
-      city: cols[cityCol]?.trim() || undefined,
-      state: cols[stateCol]?.trim() || undefined,
-      zipCode: cols[zipCol]?.trim() || undefined,
+      city: rawCity && !rawCity.includes('@') ? rawCity : undefined,
+      state: rawState && rawState.length <= 3 ? rawState : undefined,
+      zipCode: rawZip && /^\d{3,10}(-\d+)?$/.test(rawZip) ? rawZip : undefined,
     });
   }
 
-  return addresses;
+  return { addresses, skipped };
 }
 
 const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddressDialogProps) => {
@@ -141,13 +171,14 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
         toast.error('File appears to be empty');
         return;
       }
-      const addresses = parseCSV(text);
+      const { addresses, skipped } = parseCSV(text);
       if (addresses.length === 0) {
-        toast.error('No addresses found in file. Expected columns: address, city, state, zip');
+        toast.error('No valid addresses found. Each row needs a street address with a number (e.g. "123 Main St").');
         return;
       }
       setParsedAddresses(addresses);
-      toast.success(`Found ${addresses.length} addresses`);
+      const skippedMsg = skipped > 0 ? ` (${skipped} rows without valid address skipped)` : '';
+      toast.success(`Found ${addresses.length} addresses${skippedMsg}`);
     };
     reader.onerror = () => {
       toast.error('Failed to read file');
