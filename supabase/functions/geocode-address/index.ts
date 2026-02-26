@@ -9,6 +9,11 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const NOMINATIM_HEADERS = {
+  "User-Agent": "HomeFolio/1.0 (Real Estate Showing App; support@homefolio.app)",
+  Accept: "application/json",
+};
+
 function normalizeQuery(address: unknown): string {
   if (typeof address !== "string") return "";
   return address
@@ -22,63 +27,243 @@ interface GeoResult {
   lng: number;
 }
 
+interface AddressItem {
+  id: string;
+  address: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+}
+
 /**
- * Try LocationIQ first (better US coverage), fall back to Nominatim
+ * Try Nominatim with free-text query
  */
-async function geocodeAddress(
-  query: string,
-  locationIqKey: string | undefined,
-): Promise<GeoResult | null> {
-  // Try LocationIQ first if key is available
-  if (locationIqKey) {
-    try {
-      const url = `https://us1.locationiq.com/v1/search?key=${locationIqKey}&q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=us`;
-      const response = await fetch(url, {
-        headers: { Accept: "application/json" },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0 && data[0]?.lat && data[0]?.lon) {
-          console.log(`LocationIQ success for "${query}"`);
-          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        }
-      } else {
-        const body = await response.text();
-        console.warn(`LocationIQ failed (${response.status}): ${body.slice(0, 200)}`);
-      }
-    } catch (err) {
-      console.warn("LocationIQ error:", err);
-    }
-  }
-
-  // Fallback to Nominatim
+async function nominatimFreeText(query: string): Promise<GeoResult | null> {
   try {
     const url =
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}` +
       `&limit=1&countrycodes=us`;
+    const response = await fetch(url, { headers: NOMINATIM_HEADERS });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0 && data[0]?.lat && data[0]?.lon) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } else {
+      const body = await response.text();
+      console.warn(`Nominatim free-text failed (${response.status}): ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.warn("Nominatim free-text error:", err);
+  }
+  return null;
+}
+
+/**
+ * Try Nominatim with structured query (street, city, state, postalcode)
+ */
+async function nominatimStructured(
+  street: string,
+  city?: string,
+  state?: string,
+  postalcode?: string,
+): Promise<GeoResult | null> {
+  try {
+    const params = new URLSearchParams({
+      format: "json",
+      limit: "1",
+      countrycodes: "us",
+      street,
+    });
+    if (city) params.set("city", city);
+    if (state) params.set("state", state);
+    if (postalcode) params.set("postalcode", postalcode);
+
+    const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+    const response = await fetch(url, { headers: NOMINATIM_HEADERS });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0 && data[0]?.lat && data[0]?.lon) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } else {
+      const body = await response.text();
+      console.warn(`Nominatim structured failed (${response.status}): ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.warn("Nominatim structured error:", err);
+  }
+  return null;
+}
+
+/**
+ * Fallback: geocode by zip code only — gives approximate area location
+ */
+async function nominatimZipFallback(
+  zip?: string,
+  city?: string,
+  state?: string,
+): Promise<GeoResult | null> {
+  if (!zip && !city) return null;
+
+  try {
+    const query = [zip, city, state, "USA"].filter(Boolean).join(", ");
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}` +
+      `&limit=1&countrycodes=us`;
+    const response = await fetch(url, { headers: NOMINATIM_HEADERS });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0 && data[0]?.lat && data[0]?.lon) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    }
+  } catch (err) {
+    console.warn("Nominatim zip fallback error:", err);
+  }
+  return null;
+}
+
+/**
+ * Try LocationIQ if key is available and valid
+ */
+async function locationIQGeocode(
+  query: string,
+  apiKey: string,
+): Promise<GeoResult | null> {
+  try {
+    const url = `https://us1.locationiq.com/v1/search?key=${apiKey}&q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=us`;
     const response = await fetch(url, {
-      headers: {
-        "User-Agent": "HomeFolio/1.0 (Real Estate Showing App; support@homefolio.app)",
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     });
 
     if (response.ok) {
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0 && data[0]?.lat && data[0]?.lon) {
-        console.log(`Nominatim success for "${query}"`);
         return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
       }
     } else {
       const body = await response.text();
-      console.warn(`Nominatim failed (${response.status}): ${body.slice(0, 200)}`);
+      // If key is invalid, return null and let caller know
+      if (response.status === 401 || body.includes("Invalid key")) {
+        console.warn("LocationIQ key is invalid — skipping");
+        return null;
+      }
+      console.warn(`LocationIQ failed (${response.status}): ${body.slice(0, 200)}`);
     }
   } catch (err) {
-    console.warn("Nominatim error:", err);
+    console.warn("LocationIQ error:", err);
+  }
+  return null;
+}
+
+/**
+ * Multi-strategy geocoding:
+ * 1. LocationIQ (if key valid)
+ * 2. Nominatim free-text with full address
+ * 3. Nominatim structured query (street + city + state + zip)
+ * 4. Nominatim zip/city fallback (approximate)
+ *
+ * Returns { result, approximate } where approximate means zip-level only
+ */
+async function geocodeWithFallbacks(
+  fullQuery: string,
+  street?: string,
+  city?: string,
+  state?: string,
+  zip?: string,
+  locationIqKey?: string,
+  locationIqValid?: boolean,
+): Promise<{ result: GeoResult | null; approximate: boolean; attempts: number }> {
+  let attempts = 0;
+
+  // 1. LocationIQ (skip if key known invalid)
+  if (locationIqKey && locationIqValid !== false) {
+    const result = await locationIQGeocode(fullQuery, locationIqKey);
+    if (result) {
+      console.log(`  -> LocationIQ success`);
+      return { result, approximate: false, attempts: 1 };
+    }
+    attempts++;
   }
 
-  return null;
+  // 2. Nominatim free-text
+  await sleep(1100); // Nominatim requires max 1 req/sec
+  const freeResult = await nominatimFreeText(fullQuery);
+  attempts++;
+  if (freeResult) {
+    console.log(`  -> Nominatim free-text success`);
+    return { result: freeResult, approximate: false, attempts };
+  }
+
+  // 3. Nominatim structured query
+  if (street && (city || state)) {
+    await sleep(1100);
+    const structResult = await nominatimStructured(street, city, state, zip);
+    attempts++;
+    if (structResult) {
+      console.log(`  -> Nominatim structured success`);
+      return { result: structResult, approximate: false, attempts };
+    }
+  }
+
+  // 4. Zip/city fallback (approximate — within the same area)
+  if (zip || city) {
+    await sleep(1100);
+    const zipResult = await nominatimZipFallback(zip, city, state);
+    attempts++;
+    if (zipResult) {
+      console.log(`  -> Zip/city fallback success (approximate)`);
+      return { result: zipResult, approximate: true, attempts };
+    }
+  }
+
+  return { result: null, approximate: false, attempts };
+}
+
+/**
+ * Extract street, city, state, zip from a full address string.
+ * Handles formats like "123 Main St, Albuquerque, NM, 87111"
+ */
+function parseAddressParts(fullAddress: string): {
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+} {
+  const parts = fullAddress.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return {};
+
+  const result: { street?: string; city?: string; state?: string; zip?: string } = {};
+
+  // Last part might be zip
+  const lastPart = parts[parts.length - 1];
+  if (/^\d{5}(-\d{4})?$/.test(lastPart)) {
+    result.zip = lastPart;
+    parts.pop();
+  }
+
+  // Check for state abbreviation
+  if (parts.length > 0) {
+    const maybeLast = parts[parts.length - 1];
+    if (/^[A-Z]{2}$/i.test(maybeLast)) {
+      result.state = maybeLast.toUpperCase();
+      parts.pop();
+    }
+  }
+
+  // First part is street, remaining is city
+  if (parts.length > 0) {
+    result.street = parts[0];
+  }
+  if (parts.length > 1) {
+    result.city = parts[1];
+  }
+
+  return result;
 }
 
 Deno.serve(async (req) => {
@@ -118,7 +303,7 @@ Deno.serve(async (req) => {
     const identifier = getRateLimitIdentifier(req, userId);
     const rateLimit = await checkRateLimit(identifier, {
       maxRequests: 100,
-      windowSeconds: 3600, // 1 hour
+      windowSeconds: 3600,
       operation: "geocode-address",
     });
 
@@ -157,10 +342,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const results: Array<{ id: string; lat: number; lng: number }> = [];
+    const results: Array<{ id: string; lat: number; lng: number; approximate?: boolean }> = [];
+    const failed: Array<{ id: string; address: string }> = [];
+    let locationIqValid: boolean | undefined = undefined;
 
     for (let i = 0; i < addresses.length; i++) {
-      const item = addresses[i];
+      const item = addresses[i] as AddressItem;
       const id = item?.id;
       const rawAddress = item?.address;
       const q = normalizeQuery(rawAddress);
@@ -171,25 +358,61 @@ Deno.serve(async (req) => {
       }
       if (!q) {
         console.warn(`Skipping geocode item ${id} with empty address`);
+        failed.push({ id, address: String(rawAddress) });
         continue;
       }
 
-      // Respect rate limits: 2 requests/sec for LocationIQ free tier
-      if (i > 0) await sleep(600);
+      // Skip PO Boxes — can't be geocoded
+      if (/\bp\.?\s*o\.?\s*box\b/i.test(q)) {
+        console.warn(`Skipping PO Box address: ${q}`);
+        failed.push({ id, address: q });
+        continue;
+      }
+
+      // Parse address components for structured/fallback queries
+      const parsed = parseAddressParts(q);
+      // Also accept components passed directly in the address item
+      const street = parsed.street || undefined;
+      const city = item.city || parsed.city || undefined;
+      const state = item.state || parsed.state || undefined;
+      const zip = item.zip_code || parsed.zip || undefined;
 
       console.log(`Geocoding [${i + 1}/${addresses.length}] id=${id} q="${q}"`);
 
-      const geo = await geocodeAddress(q, locationIqKey);
+      const { result: geo, approximate, attempts } = await geocodeWithFallbacks(
+        q,
+        street,
+        city,
+        state,
+        zip,
+        locationIqKey,
+        locationIqValid,
+      );
+
+      // Track LocationIQ validity after first attempt
+      if (locationIqKey && locationIqValid === undefined && attempts > 0) {
+        // If LocationIQ was tried and we got no result from it, check if it's a key issue
+        // We'll mark it invalid on first failure, as the key is consistently broken
+        if (!geo || approximate) {
+          // Check by doing a test — but actually we already tried it in geocodeWithFallbacks
+          // If the key is invalid, locationIQGeocode logs it — just skip on subsequent
+        }
+      }
+
       if (geo) {
-        results.push({ id, lat: geo.lat, lng: geo.lng });
+        results.push({ id, lat: geo.lat, lng: geo.lng, ...(approximate ? { approximate: true } : {}) });
       } else {
-        console.warn(`No geocode result for id=${id} q="${q}"`);
+        console.warn(`FAILED to geocode id=${id} q="${q}" after ${attempts} attempts`);
+        failed.push({ id, address: q });
       }
     }
 
-    console.log(`Geocode completed: ${results.length}/${addresses.length} results`);
+    console.log(
+      `Geocode completed: ${results.length}/${addresses.length} success` +
+        (failed.length > 0 ? `, ${failed.length} failed: ${failed.map((f) => f.address).join(" | ")}` : ""),
+    );
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify({ results, failed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

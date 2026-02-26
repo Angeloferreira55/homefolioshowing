@@ -25,6 +25,44 @@ function buildFullAddress(p: { address: string; city?: string | null; state?: st
 }
 
 /**
+ * Haversine distance in meters between two coordinates.
+ */
+function haversineDistance(a: Coordinates, b: Coordinates): number {
+  const R = 6371000; // Earth's radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLon = Math.sin(dLon / 2);
+  const h = sinLat * sinLat + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * sinLon * sinLon;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Build a duration matrix from haversine distances.
+ * Assumes average driving speed of 40 km/h (~25 mph) in urban areas.
+ * Returns seconds.
+ */
+function buildHaversineDurationMatrix(coords: Coordinates[]): number[][] {
+  const AVG_SPEED_MPS = 40000 / 3600; // 40 km/h in m/s
+  const n = coords.length;
+  const matrix: number[][] = [];
+  for (let i = 0; i < n; i++) {
+    matrix[i] = [];
+    for (let j = 0; j < n; j++) {
+      if (i === j) {
+        matrix[i][j] = 0;
+      } else {
+        const dist = haversineDistance(coords[i], coords[j]);
+        // Multiply by 1.4 to account for road distance vs straight-line
+        matrix[i][j] = (dist * 1.4) / AVG_SPEED_MPS;
+      }
+    }
+  }
+  return matrix;
+}
+
+/**
  * Get driving durations matrix from OSRM public API.
  * Returns a 2D array [from][to] of durations in seconds.
  */
@@ -312,14 +350,14 @@ Deno.serve(async (req) => {
       idxToId.push(DEST_ID);
     }
 
-    // Get driving time matrix from OSRM
-    const durations = await getOSRMDurationMatrix(osrmCoords);
+    // Get driving time matrix from OSRM, fall back to haversine if unavailable
+    let durations = await getOSRMDurationMatrix(osrmCoords);
+    let usedHaversine = false;
 
     if (!durations) {
-      return new Response(
-        JSON.stringify({ error: "Failed to calculate driving times. The routing service may be temporarily unavailable — please try again." }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      console.warn("OSRM unavailable — falling back to haversine distance matrix");
+      durations = buildHaversineDurationMatrix(osrmCoords);
+      usedHaversine = true;
     }
 
     // Determine fixed start and end indices
@@ -337,8 +375,8 @@ Deno.serve(async (req) => {
     // Convert indices to property IDs (exclude origin and destination markers)
     const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID && id !== DEST_ID);
 
-    // Append ungeocoded properties at the end
-    const optimizedOrder = [...orderedIds, ...ungeocodedIds];
+    // Don't include ungeocoded properties — they'll be auto-removed by the frontend
+    const optimizedOrder = orderedIds;
 
     // Calculate total driving time for the optimized route
     let totalSeconds = 0;
@@ -371,7 +409,8 @@ Deno.serve(async (req) => {
         routeCoordinates,
         geocodedCount: geocoded.length,
         totalCount: normalized.length,
-        ...(failedAddresses.length > 0 ? { failedAddresses } : {}),
+        usedHaversine,
+        ...(ungeocodedIds.length > 0 ? { ungeocodedIds, failedAddresses } : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

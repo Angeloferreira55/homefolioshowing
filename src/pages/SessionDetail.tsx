@@ -1468,17 +1468,29 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       setRouteCoordinates(routeCoords);
       setIsRoutePopoverOpen(false); // Close popover after success
 
-      // Warn if some addresses failed to geocode
-      const geocodedCount = data.geocodedCount ?? properties.length;
-      const totalCount = data.totalCount ?? properties.length;
-      const failedCount = totalCount - geocodedCount;
+      // Auto-delete properties whose addresses could not be geocoded
+      const ungeocodedIds: string[] = data.ungeocodedIds || [];
+      const failedAddresses: string[] = data.failedAddresses || [];
+
+      if (ungeocodedIds.length > 0) {
+        console.log(`Auto-removing ${ungeocodedIds.length} properties with invalid addresses:`, failedAddresses);
+        await Promise.all(
+          ungeocodedIds.map(id =>
+            supabase.from('session_properties').delete().eq('id', id)
+          )
+        );
+        toast.info(
+          `Removed ${ungeocodedIds.length} ${ungeocodedIds.length === 1 ? 'address' : 'addresses'} that could not be located`,
+          { description: failedAddresses.join(', ') }
+        );
+      }
 
       let successMessage = retryCount > 0
         ? `Route optimized after ${retryCount} ${retryCount === 1 ? 'retry' : 'retries'}! Total drive time: ${timeStr}`
         : `Route optimized! Total drive time: ${timeStr}`;
 
-      if (failedCount > 0) {
-        successMessage += ` (${failedCount} ${failedCount === 1 ? 'address' : 'addresses'} could not be located)`;
+      if (data.usedHaversine) {
+        successMessage += ' (estimated — routing service unavailable)';
       }
 
       toast.success(successMessage);
