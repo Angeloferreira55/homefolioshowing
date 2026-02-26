@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -106,6 +106,14 @@ export function SortablePropertyCard({
   const [timeValue, setTimeValue] = useState(property.showing_time || '');
   const [currentShowingTime, setCurrentShowingTime] = useState(property.showing_time);
   const [savingTime, setSavingTime] = useState(false);
+
+  // Sync local state when parent re-fetches properties
+  useEffect(() => {
+    setCurrentShowingTime(property.showing_time);
+    if (!editingTime) {
+      setTimeValue(property.showing_time || '');
+    }
+  }, [property.showing_time]);
 
   const {
     attributes,
