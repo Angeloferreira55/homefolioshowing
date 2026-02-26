@@ -952,6 +952,75 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     }
   };
 
+  const handleMoveToNewSession = async () => {
+    if (selectedProperties.size === 0 || !session) return;
+
+    const sessionLabel = window.prompt(
+      `Move ${selectedProperties.size} ${isPopBy ? 'addresses' : 'properties'} to a new session.\n\nEnter a name for the new session:`,
+      `${session.title} - Day 2`
+    );
+
+    if (!sessionLabel) return; // User cancelled
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      // Create a new session with same settings
+      const { data: newSession, error: createError } = await supabase
+        .from('showing_sessions')
+        .insert({
+          admin_id: user.id,
+          title: sessionLabel,
+          client_name: session.client_name,
+          session_date: session.session_date,
+          notes: session.notes,
+          share_password: session.share_password,
+          session_type: session.session_type || 'home_folio',
+        })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+
+      // Move selected properties to the new session and re-index them
+      const selectedIds = Array.from(selectedProperties);
+      const updates = selectedIds.map((propId, idx) =>
+        supabase
+          .from('session_properties')
+          .update({ session_id: newSession.id, order_index: idx })
+          .eq('id', propId)
+      );
+
+      await Promise.all(updates);
+
+      // Re-index remaining properties in the current session
+      const remainingProperties = properties.filter(p => !selectedProperties.has(p.id));
+      const reindexUpdates = remainingProperties.map((prop, idx) =>
+        supabase
+          .from('session_properties')
+          .update({ order_index: idx })
+          .eq('id', prop.id)
+      );
+      await Promise.all(reindexUpdates);
+
+      toast.success(`Moved ${selectedIds.length} ${isPopBy ? 'addresses' : 'properties'} to "${sessionLabel}"`, {
+        action: {
+          label: 'Open',
+          onClick: () => navigate(`/admin/showings/${newSession.id}`),
+        },
+      });
+      setSelectedProperties(new Set());
+      fetchProperties();
+    } catch (error: any) {
+      console.error('Move to new session error:', error);
+      toast.error(error.message || 'Failed to move properties');
+    }
+  };
+
   const handleSelectProperty = (id: string, selected: boolean) => {
     setSelectedProperties((prev) => {
       const next = new Set(prev);
@@ -1818,6 +1887,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 onClear={handleClearSelection}
                 onSelectAll={handleSelectAll}
                 onDelete={handleBulkDelete}
+                onMoveToNewSession={handleMoveToNewSession}
                 totalCount={properties.length}
               />
             )}

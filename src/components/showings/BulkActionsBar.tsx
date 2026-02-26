@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { X, Trash2, Archive, CheckSquare } from 'lucide-react';
+import { X, Trash2, CheckSquare, FolderOutput } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,7 @@ interface BulkActionsBarProps {
   onClear: () => void;
   onSelectAll: () => void;
   onDelete: () => void;
+  onMoveToNewSession?: () => void;
   totalCount: number;
 }
 
@@ -25,6 +26,7 @@ export function BulkActionsBar({
   onClear,
   onSelectAll,
   onDelete,
+  onMoveToNewSession,
   totalCount,
 }: BulkActionsBarProps) {
   if (selectedCount === 0) return null;
@@ -57,6 +59,19 @@ export function BulkActionsBar({
           <CheckSquare className="w-4 h-4" />
           {allSelected ? 'Deselect All' : 'Select All'}
         </Button>
+
+        {onMoveToNewSession && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2 hover:bg-primary-foreground/10"
+            onClick={onMoveToNewSession}
+          >
+            <FolderOutput className="w-4 h-4" />
+            <span className="hidden sm:inline">Move to New Session</span>
+            <span className="sm:hidden">Move</span>
+          </Button>
+        )}
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
