@@ -21,7 +21,7 @@ interface ImageCropDialogProps {
   title?: string;
 }
 
-function createCroppedImage(imageSrc: string, pixelCrop: Area): Promise<Blob> {
+function createCroppedImage(imageSrc: string, pixelCrop: Area, outputFormat: 'image/png' | 'image/jpeg' = 'image/jpeg'): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -52,8 +52,8 @@ function createCroppedImage(imageSrc: string, pixelCrop: Area): Promise<Blob> {
           if (blob) resolve(blob);
           else reject(new Error('Failed to create blob'));
         },
-        'image/jpeg',
-        0.92
+        outputFormat,
+        outputFormat === 'image/jpeg' ? 0.92 : undefined
       );
     };
     image.onerror = () => reject(new Error('Failed to load image'));
@@ -86,7 +86,9 @@ export default function ImageCropDialog({
     if (!croppedAreaPixels) return;
     setSaving(true);
     try {
-      const blob = await createCroppedImage(imageSrc, croppedAreaPixels);
+      const isPng = imageSrc.startsWith('data:image/png') || imageSrc.toLowerCase().endsWith('.png');
+      const format = isPng ? 'image/png' as const : 'image/jpeg' as const;
+      const blob = await createCroppedImage(imageSrc, croppedAreaPixels, format);
       onCropComplete(blob);
     } catch (err) {
       console.error('Crop error:', err);

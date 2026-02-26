@@ -1,4 +1,4 @@
-project_id = "anisswuwtkgqtqvsymrg"
+project_id = "ypwkxaqbnjfalbopfwsx"
 
 [functions.scrape-listing]
 verify_jwt = false
@@ -43,4 +43,43 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-create-user]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.admin-list-users]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = false
+
+[functions.admin-update-user]
+verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.team-create-user]
+verify_jwt = false
+
+[functions.team-delete-user]
+verify_jwt = false
+
+[functions.team-list-users]
+verify_jwt = false
+
+[functions.update-welcome-password]
+verify_jwt = false
+
+[functions.upload-delivery-photo]
+verify_jwt = false
+
+[functions.validate-welcome-token]
 verify_jwt = false

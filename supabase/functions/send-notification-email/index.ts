@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Sending feedback email to ${profile.email}`);
 
       const { data: emailData, error: emailError } = await resend.emails.send({
-        from: "Homefolio <notifications@resend.dev>",
+        from: "HomeFolio <notifications@home-folio.net>",
         to: [profile.email],
         subject,
         html,
@@ -187,7 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending ${type} email to ${profile.email}`);
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Homefolio <notifications@resend.dev>",
+      from: "HomeFolio <notifications@home-folio.net>",
       to: [profile.email],
       subject,
       html,

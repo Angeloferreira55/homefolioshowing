@@ -195,18 +195,21 @@ const ManagedAgentEdit = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setCropImageSrc(event.target?.result as string);
-      setCropTarget('logo');
-    };
-    reader.readAsDataURL(file);
+    // Upload logo directly without cropping (logos don't need cropping and SVG/special formats break the crop dialog)
+    setUploadingLogo(true);
+    setLogoPreview(URL.createObjectURL(file));
+    const url = await uploadImage(file, 'logo');
+    if (url) {
+      setFormData(prev => ({ ...prev, brokerage_logo_url: url }));
+    }
+    setUploadingLogo(false);
     if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     setCropImageSrc(null);
-    const file = new File([croppedBlob], `${cropTarget}-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    const ext = croppedBlob.type === 'image/png' ? 'png' : 'jpg';
+    const file = new File([croppedBlob], `${cropTarget}-${Date.now()}.${ext}`, { type: croppedBlob.type });
 
     if (cropTarget === 'avatar') {
       setUploadingAvatar(true);

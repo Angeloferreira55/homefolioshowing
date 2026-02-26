@@ -33,8 +33,8 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'noreply@homefolio.app',
-        to: 'admin@homefolio.app',
+        from: 'HomeFolio <noreply@home-folio.net>',
+        to: 'contact@home-folio.net',
         subject: `🎉 New HomeFolio Signup`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

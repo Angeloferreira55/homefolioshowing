@@ -115,9 +115,10 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // 0. Test override: grant assistant tier to specific accounts for testing
+    // 0. Owner accounts: permanent Pro access
     const TIER_OVERRIDES: Record<string, string> = {
-      "contact@home-folio.net": "assistant",
+      "angelo@houseforsaleabq.com": "pro",
+      "contact@home-folio.net": "pro",
     };
     if (TIER_OVERRIDES[user.email]) {
       const overrideTier = TIER_OVERRIDES[user.email];
