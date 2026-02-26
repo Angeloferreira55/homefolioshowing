@@ -101,6 +101,17 @@ async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] 
 }
 
 /**
+ * Calculate total route time from a duration matrix.
+ */
+function routeTime(route: number[], durations: number[][]): number {
+  let sum = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    sum += durations[route[i]][route[i + 1]] ?? 0;
+  }
+  return sum;
+}
+
+/**
  * Nearest-neighbor heuristic for TSP.
  * excludeIdx: optional index to exclude from the greedy search (e.g. fixed destination).
  */
@@ -111,8 +122,7 @@ function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?
   const route = [startIdx];
   let current = startIdx;
 
-  while (visited.size < (excludeIdx !== undefined ? n : n)) {
-    if (visited.size >= n) break;
+  while (visited.size < n) {
     let best = -1;
     let bestTime = Infinity;
 
@@ -125,13 +135,12 @@ function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?
       }
     }
 
-    if (best === -1) break; // No reachable nodes left
+    if (best === -1) break;
     visited.add(best);
     route.push(best);
     current = best;
   }
 
-  // If there's a fixed destination, append it at the end
   if (excludeIdx !== undefined) {
     route.push(excludeIdx);
   }
@@ -140,7 +149,8 @@ function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?
 }
 
 /**
- * 2-opt improvement: iteratively reverses segments to reduce total time.
+ * 2-opt improvement using incremental cost calculation.
+ * Only recalculates the 2 edges that change instead of the full route.
  * fixStart/fixEnd: if true, the first/last element is locked in place.
  */
 function twoOptImprove(route: number[], durations: number[][], fixStart: boolean, fixEnd: boolean): number[] {
@@ -148,15 +158,6 @@ function twoOptImprove(route: number[], durations: number[][], fixStart: boolean
   const n = improved.length;
   let madeSwap = true;
 
-  const totalTime = (r: number[]) => {
-    let sum = 0;
-    for (let i = 0; i < r.length - 1; i++) {
-      sum += durations[r[i]][r[i + 1]] ?? 0;
-    }
-    return sum;
-  };
-
-  // Don't swap fixed endpoints
   const iStart = fixStart ? 1 : 0;
   const jEnd = fixEnd ? n - 1 : n;
 
@@ -164,13 +165,35 @@ function twoOptImprove(route: number[], durations: number[][], fixStart: boolean
     madeSwap = false;
     for (let i = iStart; i < jEnd - 1; i++) {
       for (let j = i + 1; j < jEnd; j++) {
-        const newRoute = [
-          ...improved.slice(0, i),
-          ...improved.slice(i, j + 1).reverse(),
-          ...improved.slice(j + 1),
-        ];
-        if (totalTime(newRoute) < totalTime(improved)) {
-          improved.splice(0, improved.length, ...newRoute);
+        // Calculate cost change from reversing segment [i..j]
+        // Old edges: (i-1)->i and j->(j+1)
+        // New edges: (i-1)->j and i->(j+1)
+        const prevI = i > 0 ? improved[i - 1] : -1;
+        const nextJ = j < n - 1 ? improved[j + 1] : -1;
+
+        let oldCost = 0;
+        let newCost = 0;
+
+        if (prevI >= 0) {
+          oldCost += durations[prevI][improved[i]] ?? 0;
+          newCost += durations[prevI][improved[j]] ?? 0;
+        }
+        if (nextJ >= 0) {
+          oldCost += durations[improved[j]][nextJ] ?? 0;
+          newCost += durations[improved[i]][nextJ] ?? 0;
+        }
+
+        if (newCost < oldCost) {
+          // Reverse segment in-place
+          let left = i;
+          let right = j;
+          while (left < right) {
+            const tmp = improved[left];
+            improved[left] = improved[right];
+            improved[right] = tmp;
+            left++;
+            right--;
+          }
           madeSwap = true;
         }
       }
@@ -178,6 +201,59 @@ function twoOptImprove(route: number[], durations: number[][], fixStart: boolean
   }
 
   return improved;
+}
+
+/**
+ * Multi-start TSP: try nearest-neighbor from multiple starting points,
+ * improve each with 2-opt, and return the best route found.
+ */
+function solveRoute(
+  durations: number[][],
+  fixedStart?: number,
+  fixedEnd?: number,
+): number[] {
+  const n = durations.length;
+  const hasFixedStart = fixedStart !== undefined;
+  const hasFixedEnd = fixedEnd !== undefined;
+
+  // Determine which starting points to try
+  let startCandidates: number[];
+  if (hasFixedStart) {
+    startCandidates = [fixedStart];
+  } else {
+    // Try all points as starting positions (or up to 15 for large sets)
+    startCandidates = Array.from({ length: n }, (_, i) => i);
+    if (hasFixedEnd) {
+      startCandidates = startCandidates.filter((i) => i !== fixedEnd);
+    }
+    // Limit to 15 candidates to keep runtime reasonable
+    if (startCandidates.length > 15) {
+      // Pick evenly spaced candidates + always include first and last
+      const step = Math.floor(startCandidates.length / 15);
+      const sampled = new Set<number>();
+      for (let i = 0; i < startCandidates.length; i += step) {
+        sampled.add(startCandidates[i]);
+      }
+      sampled.add(startCandidates[0]);
+      sampled.add(startCandidates[startCandidates.length - 1]);
+      startCandidates = Array.from(sampled);
+    }
+  }
+
+  let bestRoute: number[] | null = null;
+  let bestTime = Infinity;
+
+  for (const start of startCandidates) {
+    let route = nearestNeighborTSP(durations, start, fixedEnd);
+    route = twoOptImprove(route, durations, hasFixedStart, hasFixedEnd);
+    const time = routeTime(route, durations);
+    if (time < bestTime) {
+      bestTime = time;
+      bestRoute = route;
+    }
+  }
+
+  return bestRoute || [0];
 }
 
 Deno.serve(async (req) => {
@@ -283,7 +359,7 @@ Deno.serve(async (req) => {
       ...(typeof startingPoint === "string" && startingPoint.trim()
         ? [{ id: ORIGIN_ID, address: startingPoint.trim() }]
         : []),
-      ...normalized.map((p) => ({ id: p.id, address: p.fullAddress })),
+      ...normalized.map((p) => ({ id: p.id, address: p.fullAddress, city: p.city, state: p.state, zip_code: p.zip_code })),
       ...(hasEndingPoint ? [{ id: DEST_ID, address: endingPoint.trim() }] : []),
     ];
 
@@ -360,17 +436,10 @@ Deno.serve(async (req) => {
       usedHaversine = true;
     }
 
-    // Determine fixed start and end indices
-    const startIdx = 0; // origin or first property
-    const destIdx = hasDestination ? osrmCoords.length - 1 : undefined;
-
-    // Run nearest-neighbor, excluding destination from greedy search (it will be appended at end)
-    let route = nearestNeighborTSP(durations, startIdx, destIdx);
-
-    // Apply 2-opt improvement with fixed endpoints
-    const fixStart = hasOrigin; // origin is locked at position 0
-    const fixEnd = hasDestination; // destination is locked at last position
-    route = twoOptImprove(route, durations, fixStart, fixEnd);
+    // Solve TSP with multi-start optimization
+    const fixedStart = hasOrigin ? 0 : undefined;
+    const fixedEnd = hasDestination ? osrmCoords.length - 1 : undefined;
+    const route = solveRoute(durations, fixedStart, fixedEnd);
 
     // Convert indices to property IDs (exclude origin and destination markers)
     const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID && id !== DEST_ID);

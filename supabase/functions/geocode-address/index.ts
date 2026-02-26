@@ -177,7 +177,7 @@ async function geocodeWithFallbacks(
   zip?: string,
   locationIqKey?: string,
   locationIqValid?: boolean,
-): Promise<{ result: GeoResult | null; approximate: boolean; attempts: number }> {
+): Promise<{ result: GeoResult | null; approximate: boolean; attempts: number; locationIqWorked?: boolean }> {
   let attempts = 0;
 
   // 1. LocationIQ (skip if key known invalid)
@@ -185,7 +185,7 @@ async function geocodeWithFallbacks(
     const result = await locationIQGeocode(fullQuery, locationIqKey);
     if (result) {
       console.log(`  -> LocationIQ success`);
-      return { result, approximate: false, attempts: 1 };
+      return { result, approximate: false, attempts: 1, locationIqWorked: true };
     }
     attempts++;
   }
@@ -379,7 +379,7 @@ Deno.serve(async (req) => {
 
       console.log(`Geocoding [${i + 1}/${addresses.length}] id=${id} q="${q}"`);
 
-      const { result: geo, approximate, attempts } = await geocodeWithFallbacks(
+      const { result: geo, approximate, locationIqWorked } = await geocodeWithFallbacks(
         q,
         street,
         city,
@@ -389,13 +389,14 @@ Deno.serve(async (req) => {
         locationIqValid,
       );
 
-      // Track LocationIQ validity after first attempt
-      if (locationIqKey && locationIqValid === undefined && attempts > 0) {
-        // If LocationIQ was tried and we got no result from it, check if it's a key issue
-        // We'll mark it invalid on first failure, as the key is consistently broken
-        if (!geo || approximate) {
-          // Check by doing a test — but actually we already tried it in geocodeWithFallbacks
-          // If the key is invalid, locationIQGeocode logs it — just skip on subsequent
+      // Track LocationIQ validity: if we tried it and it didn't work, mark invalid for remaining addresses
+      if (locationIqKey && locationIqValid === undefined) {
+        if (locationIqWorked) {
+          locationIqValid = true;
+        } else {
+          // First attempt failed — mark as invalid so we skip it for all remaining addresses
+          locationIqValid = false;
+          console.warn("LocationIQ failed on first attempt — skipping for remaining addresses");
         }
       }
 
