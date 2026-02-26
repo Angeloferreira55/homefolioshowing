@@ -176,6 +176,10 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
         toast.error('No valid addresses found. Each row needs a street address with a number (e.g. "123 Main St").');
         return;
       }
+      if (addresses.length > 50) {
+        toast.error(`Found ${addresses.length} addresses but the limit is 50 per session. Please split your CSV into smaller batches so you can optimize the route for each day.`);
+        return;
+      }
       setParsedAddresses(addresses);
       const skippedMsg = skipped > 0 ? ` (${skipped} rows without valid address skipped)` : '';
       toast.success(`Found ${addresses.length} addresses${skippedMsg}`);

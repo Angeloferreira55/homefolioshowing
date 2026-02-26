@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import {
   Home,
   FileText,
-  ExternalLink,
   Trash2,
   Star,
   MessageSquare,
@@ -554,13 +553,6 @@ export function SortablePropertyCard({
             {property.doc_count ? <span className="text-muted-foreground">({property.doc_count})</span> : null}
           </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="h-8 w-8 sm:h-9 sm:w-9"
-          >
-            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
