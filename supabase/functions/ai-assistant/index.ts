@@ -144,6 +144,65 @@ Team5 ($49/mo):
 - Team collaboration
 - Perfect for small teams
 
+== POP-BY FOLIO (Pop-By Delivery Routes) ==
+Pop-By Folio is a separate session type designed for real estate agents who do "pop-by" deliveries — dropping off gifts, treats, or marketing materials at client homes, past clients, or sphere of influence contacts.
+
+HOW TO: CREATE A POP-BY ROUTE
+1. From the dashboard, click "Create Session"
+2. Select "Pop-By Folio" as the session type (not "Home Folio")
+3. Enter a title (e.g. "Valentine's Pop-Bys") and date
+4. Note: Pop-By sessions do NOT require a Client Name or Session Notes — those fields are hidden
+
+HOW TO: ADD ADDRESSES TO A POP-BY
+Method 1 - Manual Entry:
+- Click "Add Address"
+- Enter the street address, city, state, and ZIP
+- Click "Add Address"
+
+Method 2 - CSV Upload (Bulk Import):
+- Click "Add Address" → switch to "CSV Upload" tab
+- Upload a CSV file with address columns
+- HomeFolio automatically detects address, city, state, and zip columns
+- Only valid street addresses are imported (emails, phone numbers, names are filtered out)
+- Review the parsed addresses and click "Add All"
+
+HOW TO: OPTIMIZE A POP-BY ROUTE
+1. Optionally set a Starting Point and/or Ending Point address
+2. Click "Optimize Route" — this calculates the most efficient driving order using real road distances
+3. Click "Auto-schedule Times" to assign estimated arrival times
+4. Pop-by stops default to 2 minutes each (vs 30 min for regular showings)
+
+HOW TO: USE THE POP-BY DELIVERY VIEW (Client/Driver Portal)
+1. Share the session link with whoever is making the deliveries
+2. The delivery view shows a simplified list of addresses (no property photos, prices, or ratings)
+3. Each address shows:
+   - Delivery Notes (gate codes, instructions set by the agent)
+   - A "Get Directions" link to open in Google Maps / Apple Maps
+   - A "Mark as Delivered" button
+4. When marking as delivered, the driver can:
+   - Add optional notes ("Left at front door")
+   - Take/upload a delivery photo
+5. A progress bar shows how many deliveries are completed (e.g. "3 of 12 delivered")
+6. Deliveries can be undone if marked by mistake
+
+POP-BY vs HOME FOLIO — KEY DIFFERENCES:
+| Feature              | Home Folio          | Pop-By Folio          |
+|---------------------|--------------------|-----------------------|
+| Purpose             | Property showings   | Gift/material delivery |
+| Properties          | Full listing data   | Addresses only         |
+| Photos/Price/Stats  | Yes                | No                     |
+| Client Ratings      | Yes                | No                     |
+| Documents           | Yes                | No                     |
+| Delivery Tracking   | No                 | Yes                    |
+| Delivery Photos     | No                 | Yes                    |
+| Showing Duration    | 15-60 min selectable| 2 min per stop         |
+| Auto-schedule       | Configurable       | 2 min stops + drive    |
+
+ADMIN VIEW FOR POP-BYS:
+- Property cards show delivery status badges (Pending / Delivered)
+- "Edit" button lets you add Delivery Notes (gate codes, special instructions)
+- Delivered addresses show timestamp and delivery photo (if taken)
+
 == COMMON QUESTIONS ==
 
 Q: How do clients view my sessions?
@@ -169,6 +228,21 @@ A: Go to My Profile → Subscription to view plans and upgrade. Changes take eff
 
 Q: What happens when I reach my session limit (Starter plan)?
 A: You'll need to delete old sessions or upgrade to Pro for unlimited sessions.
+
+Q: How do I create a pop-by route?
+A: From the dashboard, click "Create Session" and select "Pop-By Folio" as the session type. Then add addresses manually or via CSV upload. Use "Optimize Route" to get the best driving order, then "Auto-schedule Times" to set arrival times (2 min per stop by default).
+
+Q: What is a Pop-By Folio?
+A: Pop-By Folio is for planning delivery routes — when you want to drop off gifts, treats, or marketing materials at client addresses. It's simpler than a Home Folio session: no property photos, prices, or ratings. Instead, it has delivery tracking with completion status and optional delivery photos.
+
+Q: How do I import addresses from a CSV for pop-bys?
+A: Click "Add Address" then switch to the "CSV Upload" tab. Upload your CSV file — HomeFolio automatically detects address columns and filters out non-address data like emails and phone numbers. Review the parsed results and click "Add All."
+
+Q: How does delivery tracking work?
+A: Share your Pop-By session link with whoever is making the deliveries. They'll see a simplified view with each address, a "Get Directions" button, and a "Mark as Delivered" button. They can add notes and take a delivery photo. You'll see the delivery status on each address in your admin view.
+
+Q: Can I set the showing duration for each property?
+A: Yes! For Home Folio sessions, each property has a "Duration" dropdown where you can select 15 min, 30 min, 45 min, or 1 hour. This is used by the Auto-schedule Times feature to calculate arrival times. Pop-By sessions use a fixed 2 minutes per stop.
 
 == TROUBLESHOOTING ==
 
