@@ -164,6 +164,8 @@ interface SortableGalleryCardProps {
   drivingFromStart: number | null;
   onPhotoUploaded?: () => void;
   isPopBy?: boolean;
+  showingDuration?: number;
+  onShowingDurationChange?: (id: string, minutes: number) => void;
 }
 
 const SortableGalleryCard = ({
@@ -184,6 +186,8 @@ const SortableGalleryCard = ({
   drivingFromStart,
   onPhotoUploaded,
   isPopBy = false,
+  showingDuration = 30,
+  onShowingDurationChange,
 }: SortableGalleryCardProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -424,18 +428,38 @@ const SortableGalleryCard = ({
               </Button>
             </div>
           ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditTime(property.id, property.showing_time || '');
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-lg transition-colors cursor-pointer"
-            >
-              <Clock className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">
-                {formatDisplayTime(property.showing_time) || 'Add time'}
-              </span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditTime(property.id, property.showing_time || '');
+                }}
+                className="flex-1 flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 border border-primary/20 rounded-lg transition-colors cursor-pointer"
+              >
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">
+                  {formatDisplayTime(property.showing_time) || 'Add time'}
+                </span>
+              </button>
+              {!isPopBy && onShowingDurationChange && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Select
+                    value={String(showingDuration)}
+                    onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}
+                  >
+                    <SelectTrigger className="h-9 w-[80px] text-xs px-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 min</SelectItem>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="45">45 min</SelectItem>
+                      <SelectItem value="60">1 hour</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Stats */}
@@ -1944,6 +1968,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           drivingFromStart={startDrivingMinutes}
                           onPhotoUploaded={fetchProperties}
                           isPopBy={isPopBy}
+                          showingDuration={showingDurations[property.id] || 30}
+                          onShowingDurationChange={(id, minutes) => setShowingDurations(prev => ({ ...prev, [id]: minutes }))}
                         />
                       );
                     })}
