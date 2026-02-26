@@ -18,6 +18,13 @@ import {
   CheckCircle2,
   ClipboardList,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,6 +80,8 @@ interface SortablePropertyCardProps {
   onTimeUpdated?: () => void;
   formatPrice: (price: number | null) => string | null;
   isPopBy?: boolean;
+  showingDuration?: number;
+  onShowingDurationChange?: (id: string, minutes: number) => void;
 }
 
 export function SortablePropertyCard({
@@ -87,6 +96,8 @@ export function SortablePropertyCard({
   onTimeUpdated,
   formatPrice,
   isPopBy = false,
+  showingDuration = 30,
+  onShowingDurationChange,
 }: SortablePropertyCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -314,6 +325,22 @@ export function SortablePropertyCard({
                 {formatDisplayTime(currentShowingTime) || 'Add time'}
               </button>
             )}
+            {!isPopBy && onShowingDurationChange && (
+              <Select
+                value={String(showingDuration)}
+                onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}
+              >
+                <SelectTrigger className="h-6 w-[70px] text-[10px] px-1.5" onClick={(e) => e.stopPropagation()}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 min</SelectItem>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="45">45 min</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
@@ -365,6 +392,22 @@ export function SortablePropertyCard({
                   <Clock className="w-3 h-3" />
                   {formatDisplayTime(currentShowingTime) || 'Add time'}
                 </button>
+              )}
+              {!isPopBy && onShowingDurationChange && (
+                <Select
+                  value={String(showingDuration)}
+                  onValueChange={(v) => onShowingDurationChange(property.id, Number(v))}
+                >
+                  <SelectTrigger className="h-7 w-[80px] text-xs px-2" onClick={(e) => e.stopPropagation()}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
             </div>
             <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-2 sm:truncate">

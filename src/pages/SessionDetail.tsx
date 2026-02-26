@@ -507,6 +507,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [showManageAddresses, setShowManageAddresses] = useState(false);
   const [brokerageLogo, setBrokerageLogo] = useState<string | null>(null);
   const [editDetailsPropertyId, setEditDetailsPropertyId] = useState<string | null>(null);
+  const [showingDurations, setShowingDurations] = useState<Record<string, number>>({});
   const [legDurations, setLegDurations] = useState<Array<{ from: string; to: string; seconds: number }>>([]);
   const [routeCoordinates, setRouteCoordinates] = useState<Array<{ id: string; lat: number; lng: number }>>([]);
   const [editDetailsPropertyAddress, setEditDetailsPropertyAddress] = useState('');
@@ -1221,8 +1222,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
         // Calculate next showing start time
         if (i < properties.length - 1) {
-          // Pop-by: 2 min stop per address; Home Folio: 30 min per showing
-          const stopMinutes = isPopBy ? 2 : 30;
+          // Pop-by: 2 min stop per address; Home Folio: per-property duration (default 30)
+          const stopMinutes = isPopBy ? 2 : (showingDurations[property.id] || 30);
           currentTimeMinutes += stopMinutes;
 
           // Add driving time to next property
@@ -1248,9 +1249,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       await Promise.all(updates);
       await fetchProperties();
 
-      const stopLabel = isPopBy ? '2 min per stop' : '30 min per showing';
       toast.success(`${properties.length} ${isPopBy ? 'addresses' : 'properties'} scheduled!`, {
-        description: `${stopLabel} + driving time`
+        description: isPopBy ? '2 min per stop + driving time' : 'Per-property durations + driving time'
       });
     } catch (error: any) {
       console.error('[Auto-Schedule] Error:', error);
@@ -1862,6 +1862,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           onTimeUpdated={fetchProperties}
                           formatPrice={formatPrice}
                           isPopBy={isPopBy}
+                          showingDuration={showingDurations[property.id] || 30}
+                          onShowingDurationChange={(id, minutes) => setShowingDurations(prev => ({ ...prev, [id]: minutes }))}
                         />
 
                         {/* Driving time indicator between properties */}
