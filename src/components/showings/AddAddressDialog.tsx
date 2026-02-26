@@ -176,13 +176,14 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
         toast.error('No valid addresses found. Each row needs a street address with a number (e.g. "123 Main St").');
         return;
       }
-      if (addresses.length > 50) {
-        toast.error(`Found ${addresses.length} addresses but the limit is 50 per session. Please split your CSV into smaller batches so you can optimize the route for each day.`);
-        return;
-      }
       setParsedAddresses(addresses);
       const skippedMsg = skipped > 0 ? ` (${skipped} rows without valid address skipped)` : '';
-      toast.success(`Found ${addresses.length} addresses${skippedMsg}`);
+      if (addresses.length > 50) {
+        const batches = Math.ceil(addresses.length / 50);
+        toast.success(`Found ${addresses.length} addresses — will auto-split into ${batches} sessions${skippedMsg}`);
+      } else {
+        toast.success(`Found ${addresses.length} addresses${skippedMsg}`);
+      }
     };
     reader.onerror = () => {
       toast.error('Failed to read file');
@@ -317,6 +318,11 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
               <div className="space-y-3">
                 <p className="text-sm font-medium text-center">
                   {parsedAddresses.length} addresses found
+                  {parsedAddresses.length > 50 && (
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      Will auto-split into {Math.ceil(parsedAddresses.length / 50)} sessions (50 per session)
+                    </span>
+                  )}
                 </p>
                 <div className="max-h-48 overflow-y-auto space-y-1.5">
                   {parsedAddresses.map((addr, idx) => (
@@ -331,7 +337,10 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
                   ))}
                 </div>
                 <Button onClick={handleAddAll} className="w-full">
-                  Add All {parsedAddresses.length} Addresses
+                  {parsedAddresses.length > 50
+                    ? `Add All ${parsedAddresses.length} Addresses (${Math.ceil(parsedAddresses.length / 50)} sessions)`
+                    : `Add All ${parsedAddresses.length} Addresses`
+                  }
                 </Button>
               </div>
             )}

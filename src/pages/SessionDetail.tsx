@@ -846,10 +846,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         return;
       }
 
-      const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
-      
-      const insertData = propertiesData.map((data, index) => ({
-        session_id: id,
+      const mapToRow = (data: typeof propertiesData[0], sessionId: string, orderIndex: number) => ({
+        session_id: sessionId,
         address: data.address,
         city: data.city || null,
         state: data.state || null,
@@ -869,14 +867,64 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         heating: data.heating || null,
         cooling: data.cooling || null,
         features: data.features || null,
-        order_index: maxOrder + 1 + index,
-      }));
+        order_index: orderIndex,
+      });
 
-      const { error } = await supabase.from('session_properties').insert(insertData);
+      const BATCH_SIZE = 50;
+      const maxOrder = properties.reduce((max, p) => Math.max(max, p.order_index), -1);
 
-      if (error) throw error;
+      if (propertiesData.length <= BATCH_SIZE) {
+        // All fit in current session
+        const insertData = propertiesData.map((data, index) => mapToRow(data, id!, maxOrder + 1 + index));
+        const { error } = await supabase.from('session_properties').insert(insertData);
+        if (error) throw error;
+        toast.success(`${propertiesData.length} ${isPopBy ? 'addresses' : 'properties'} added!`);
+      } else {
+        // Auto-split into batches of 50
+        const batches: Array<typeof propertiesData> = [];
+        for (let i = 0; i < propertiesData.length; i += BATCH_SIZE) {
+          batches.push(propertiesData.slice(i, i + BATCH_SIZE));
+        }
 
-      toast.success(`${propertiesData.length} properties added!`);
+        // First batch → current session
+        const firstBatch = batches[0].map((data, index) => mapToRow(data, id!, maxOrder + 1 + index));
+        const { error: firstError } = await supabase.from('session_properties').insert(firstBatch);
+        if (firstError) throw firstError;
+
+        // Remaining batches → new sessions
+        const newSessionIds: string[] = [];
+        for (let b = 1; b < batches.length; b++) {
+          const dayNumber = b + 1;
+          const { data: newSession, error: createError } = await supabase
+            .from('showing_sessions')
+            .insert({
+              admin_id: user.id,
+              title: `${session?.title} - Day ${dayNumber}`,
+              client_name: session?.client_name,
+              session_date: session?.session_date,
+              notes: session?.notes,
+              share_password: session?.share_password,
+              session_type: session?.session_type || 'home_folio',
+            })
+            .select('id')
+            .single();
+
+          if (createError) throw createError;
+          newSessionIds.push(newSession.id);
+
+          const batchData = batches[b].map((data, index) => mapToRow(data, newSession.id, index));
+          const { error: insertError } = await supabase.from('session_properties').insert(batchData);
+          if (insertError) throw insertError;
+        }
+
+        toast.success(
+          `${propertiesData.length} addresses imported across ${batches.length} sessions (${batches.map(b => b.length).join(' + ')})`,
+          newSessionIds.length === 1
+            ? { action: { label: 'Open Day 2', onClick: () => navigate(`/admin/showings/${newSessionIds[0]}`) } }
+            : undefined,
+        );
+      }
+
       fetchProperties();
     } catch (error: any) {
       console.error('Add multiple properties error:', error);
