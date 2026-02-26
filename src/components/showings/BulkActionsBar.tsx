@@ -34,7 +34,7 @@ export function BulkActionsBar({
   const allSelected = selectedCount === totalCount;
 
   return (
-    <div className="sticky top-0 z-40 bg-primary text-primary-foreground rounded-xl p-4 mb-4 flex items-center justify-between animate-in slide-in-from-top-2 duration-200">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground rounded-xl p-3 sm:p-4 flex items-center justify-between gap-3 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 w-[calc(100%-2rem)] max-w-2xl">
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
