@@ -2157,6 +2157,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         onOpenChange={setIsAddAddressOpen}
         onAdd={handleAddProperty}
         onAddMultiple={handleAddMultipleProperties}
+        existingAddresses={properties.map(p => p.address)}
       />
 
       <QRCodeDialog

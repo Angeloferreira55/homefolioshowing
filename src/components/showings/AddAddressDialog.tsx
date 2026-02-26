@@ -25,10 +25,35 @@ interface AddAddressDialogProps {
   onOpenChange: (open: boolean) => void;
   onAdd: (data: AddressData) => void;
   onAddMultiple?: (data: AddressData[]) => void;
+  existingAddresses?: string[];
 }
 
 // Columns to ignore — never import these as address data
 const SKIP_HEADERS = ['email', 'e-mail', 'phone', 'cell', 'mobile', 'fax', 'company', 'birthday', 'notes', 'tags', 'group', 'label', 'source'];
+
+/** Normalize an address string for duplicate comparison */
+function normalizeAddress(addr: string): string {
+  return addr
+    .toLowerCase()
+    .replace(/[.,#\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b(street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|trail|trl)\b/g, (m) => {
+      const abbrevs: Record<string, string> = {
+        street: 'st', avenue: 'ave', boulevard: 'blvd', drive: 'dr',
+        road: 'rd', lane: 'ln', court: 'ct', place: 'pl',
+        way: 'way', circle: 'cir', trail: 'trl',
+      };
+      return abbrevs[m] || m;
+    })
+    .replace(/\b(north|south|east|west|northeast|northwest|southeast|southwest)\b/g, (m) => {
+      const abbrevs: Record<string, string> = {
+        north: 'n', south: 's', east: 'e', west: 'w',
+        northeast: 'ne', northwest: 'nw', southeast: 'se', southwest: 'sw',
+      };
+      return abbrevs[m] || m;
+    })
+    .trim();
+}
 
 function looksLikeAddress(value: string): boolean {
   if (!value || value.length < 3) return false;
@@ -41,9 +66,9 @@ function looksLikeAddress(value: string): boolean {
   return true;
 }
 
-function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
+function parseCSV(text: string, existingAddresses: string[] = []): { addresses: AddressData[]; skipped: number; duplicates: number } {
   const lines = text.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length === 0) return { addresses: [], skipped: 0 };
+  if (lines.length === 0) return { addresses: [], skipped: 0, duplicates: 0 };
 
   // Detect header row
   const firstLine = lines[0].toLowerCase();
@@ -79,6 +104,10 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
 
   const addresses: AddressData[] = [];
   let skipped = 0;
+  let duplicates = 0;
+
+  // Build set of normalized existing addresses for dedup
+  const seen = new Set(existingAddresses.map(a => normalizeAddress(a)));
 
   for (const line of dataLines) {
     if (!line.trim()) continue;
@@ -107,6 +136,14 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
       continue;
     }
 
+    // Skip duplicates (within CSV and against existing addresses)
+    const normalized = normalizeAddress(address);
+    if (seen.has(normalized)) {
+      duplicates++;
+      continue;
+    }
+    seen.add(normalized);
+
     // Clean city/state/zip — strip any value that looks like email or phone
     const rawCity = cityCol >= 0 ? cols[cityCol]?.trim() : undefined;
     const rawState = stateCol >= 0 ? cols[stateCol]?.trim() : undefined;
@@ -132,10 +169,10 @@ function parseCSV(text: string): { addresses: AddressData[]; skipped: number } {
     });
   }
 
-  return { addresses, skipped };
+  return { addresses, skipped, duplicates };
 }
 
-const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddressDialogProps) => {
+const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAddresses = [] }: AddAddressDialogProps) => {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -159,6 +196,13 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
     const trimmed = address.trim();
     if (!trimmed) {
       toast.error('Please enter an address');
+      return;
+    }
+
+    // Check for duplicate against existing addresses
+    const normalized = normalizeAddress(trimmed);
+    if (existingAddresses.some(a => normalizeAddress(a) === normalized)) {
+      toast.error('This address already exists in the session');
       return;
     }
 
@@ -190,18 +234,25 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddAddre
         toast.error('File appears to be empty');
         return;
       }
-      const { addresses, skipped } = parseCSV(text);
+      const { addresses, skipped, duplicates } = parseCSV(text, existingAddresses);
       if (addresses.length === 0) {
-        toast.error('No valid addresses found. Each row needs a street address with a number (e.g. "123 Main St").');
+        if (duplicates > 0) {
+          toast.error(`All addresses are duplicates (${duplicates} already in session)`);
+        } else {
+          toast.error('No valid addresses found. Each row needs a street address with a number (e.g. "123 Main St").');
+        }
         return;
       }
       setParsedAddresses(addresses);
-      const skippedMsg = skipped > 0 ? ` (${skipped} rows without valid address skipped)` : '';
+      const notes: string[] = [];
+      if (skipped > 0) notes.push(`${skipped} invalid skipped`);
+      if (duplicates > 0) notes.push(`${duplicates} duplicates removed`);
+      const noteMsg = notes.length > 0 ? ` (${notes.join(', ')})` : '';
       if (addresses.length > 50) {
         const batches = Math.ceil(addresses.length / 50);
-        toast.success(`Found ${addresses.length} addresses — will auto-split into ${batches} sessions${skippedMsg}`);
+        toast.success(`Found ${addresses.length} addresses — will auto-split into ${batches} sessions${noteMsg}`);
       } else {
-        toast.success(`Found ${addresses.length} addresses${skippedMsg}`);
+        toast.success(`Found ${addresses.length} addresses${noteMsg}`);
       }
     };
     reader.onerror = () => {
