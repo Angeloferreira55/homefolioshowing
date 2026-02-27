@@ -163,8 +163,18 @@ const Auth = () => {
         return;
       }
 
-      toast.success('Phone verified! Check your email to confirm your account.');
-      setVerificationStep(false);
+      // Phone verified + email auto-confirmed — sign the user in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        toast.success('Phone verified! Check your email to confirm your account.');
+        setVerificationStep(false);
+      } else {
+        toast.success('Phone verified! Welcome to HomeFolio.');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Verification failed');
       setOtpCode('');

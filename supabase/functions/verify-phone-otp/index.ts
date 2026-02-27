@@ -73,7 +73,7 @@ serve(async (req) => {
       });
     }
 
-    // Verification approved — update profile with verified phone
+    // Verification approved — update profile and auto-confirm email
     if (userId) {
       const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
@@ -91,6 +91,18 @@ serve(async (req) => {
 
       if (profileError) {
         console.error('Error updating profile phone:', profileError);
+      }
+
+      // Auto-confirm the user's email since phone is verified
+      const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        { email_confirm: true }
+      );
+
+      if (confirmError) {
+        console.error('Error auto-confirming email:', confirmError);
+      } else {
+        console.log(`Email auto-confirmed for user ${userId}`);
       }
     }
 
