@@ -35,9 +35,63 @@ interface AddressItem {
   zip_code?: string;
 }
 
-/**
- * Try Nominatim with free-text query
- */
+// ── Strategy 1: Google Maps Geocoding (most accurate, needs API key) ──
+
+async function googleMapsGeocode(
+  query: string,
+  apiKey: string,
+): Promise<GeoResult | null> {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+    const response = await fetch(url);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.status === "OK" && data.results?.length > 0) {
+        const loc = data.results[0].geometry.location;
+        return { lat: loc.lat, lng: loc.lng };
+      }
+      if (data.status === "REQUEST_DENIED" || data.status === "OVER_QUERY_LIMIT") {
+        console.warn(`Google Maps Geocoding: ${data.status} — ${data.error_message || ""}`);
+        return null;
+      }
+      // ZERO_RESULTS — address not found
+      if (data.status === "ZERO_RESULTS") {
+        console.warn(`Google Maps: no results for "${query}"`);
+        return null;
+      }
+    }
+  } catch (err) {
+    console.warn("Google Maps geocoding error:", err);
+  }
+  return null;
+}
+
+// ── Strategy 2: US Census Bureau Geocoder (free, reliable for US) ──
+
+async function censusGeocode(query: string): Promise<GeoResult | null> {
+  try {
+    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(query)}&benchmark=Public_AR_Current&format=json`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+
+    if (response.ok) {
+      const data = await response.json();
+      const matches = data?.result?.addressMatches;
+      if (Array.isArray(matches) && matches.length > 0) {
+        const coords = matches[0].coordinates;
+        if (coords?.y && coords?.x) {
+          return { lat: coords.y, lng: coords.x };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Census geocoder error:", err);
+  }
+  return null;
+}
+
+// ── Strategy 3: Nominatim free-text ──
+
 async function nominatimFreeText(query: string): Promise<GeoResult | null> {
   try {
     const url =
@@ -60,9 +114,8 @@ async function nominatimFreeText(query: string): Promise<GeoResult | null> {
   return null;
 }
 
-/**
- * Try Nominatim with structured query (street, city, state, postalcode)
- */
+// ── Strategy 4: Nominatim structured query ──
+
 async function nominatimStructured(
   street: string,
   city?: string,
@@ -98,9 +151,8 @@ async function nominatimStructured(
   return null;
 }
 
-/**
- * Fallback: geocode by zip code only — gives approximate area location
- */
+// ── Strategy 5: Zip/city fallback (approximate) ──
+
 async function nominatimZipFallback(
   zip?: string,
   city?: string,
@@ -127,9 +179,8 @@ async function nominatimZipFallback(
   return null;
 }
 
-/**
- * Try LocationIQ if key is available and valid
- */
+// ── LocationIQ (legacy, only used if Google Maps key is missing) ──
+
 async function locationIQGeocode(
   query: string,
   apiKey: string,
@@ -147,7 +198,6 @@ async function locationIQGeocode(
       }
     } else {
       const body = await response.text();
-      // If key is invalid, return null and let caller know
       if (response.status === 401 || body.includes("Invalid key")) {
         console.warn("LocationIQ key is invalid — skipping");
         return null;
@@ -161,13 +211,15 @@ async function locationIQGeocode(
 }
 
 /**
- * Multi-strategy geocoding:
- * 1. LocationIQ (if key valid)
- * 2. Nominatim free-text with full address
- * 3. Nominatim structured query (street + city + state + zip)
- * 4. Nominatim zip/city fallback (approximate)
+ * Multi-strategy geocoding with priority order:
+ * 1. Google Maps Geocoding (most accurate, fastest)
+ * 2. US Census Bureau Geocoder (free, reliable for US)
+ * 3. Nominatim free-text
+ * 4. Nominatim structured query
+ * 5. Zip/city fallback (approximate — last resort)
  *
- * Returns { result, approximate } where approximate means zip-level only
+ * Google Maps and Census can be called without rate-limit delays.
+ * Nominatim requires 1 req/sec.
  */
 async function geocodeWithFallbacks(
   fullQuery: string,
@@ -175,23 +227,47 @@ async function geocodeWithFallbacks(
   city?: string,
   state?: string,
   zip?: string,
+  googleMapsKey?: string,
+  googleMapsValid?: boolean,
   locationIqKey?: string,
   locationIqValid?: boolean,
-): Promise<{ result: GeoResult | null; approximate: boolean; attempts: number; locationIqWorked?: boolean }> {
+): Promise<{
+  result: GeoResult | null;
+  approximate: boolean;
+  attempts: number;
+  googleMapsWorked?: boolean;
+  locationIqWorked?: boolean;
+}> {
   let attempts = 0;
 
-  // 1. LocationIQ (skip if key known invalid)
-  if (locationIqKey && locationIqValid !== false) {
-    const result = await locationIQGeocode(fullQuery, locationIqKey);
-    if (result) {
-      console.log(`  -> LocationIQ success`);
-      return { result, approximate: false, attempts: 1, locationIqWorked: true };
-    }
+  // 1. Google Maps Geocoding (skip if key known invalid)
+  if (googleMapsKey && googleMapsValid !== false) {
+    const result = await googleMapsGeocode(fullQuery, googleMapsKey);
     attempts++;
+    if (result) {
+      return { result, approximate: false, attempts, googleMapsWorked: true };
+    }
   }
 
-  // 2. Nominatim free-text
-  await sleep(1100); // Nominatim requires max 1 req/sec
+  // 2. US Census Bureau Geocoder (free, no rate limit)
+  const censusResult = await censusGeocode(fullQuery);
+  attempts++;
+  if (censusResult) {
+    console.log(`  -> Census Geocoder success`);
+    return { result: censusResult, approximate: false, attempts };
+  }
+
+  // 3. LocationIQ (skip if key known invalid or Google Maps is working)
+  if (locationIqKey && locationIqValid !== false && !googleMapsKey) {
+    const result = await locationIQGeocode(fullQuery, locationIqKey);
+    attempts++;
+    if (result) {
+      return { result, approximate: false, attempts, locationIqWorked: true };
+    }
+  }
+
+  // 4. Nominatim free-text (requires 1 req/sec rate limit)
+  await sleep(1100);
   const freeResult = await nominatimFreeText(fullQuery);
   attempts++;
   if (freeResult) {
@@ -199,7 +275,7 @@ async function geocodeWithFallbacks(
     return { result: freeResult, approximate: false, attempts };
   }
 
-  // 3. Nominatim structured query
+  // 5. Nominatim structured query
   if (street && (city || state)) {
     await sleep(1100);
     const structResult = await nominatimStructured(street, city, state, zip);
@@ -210,7 +286,7 @@ async function geocodeWithFallbacks(
     }
   }
 
-  // 4. Zip/city fallback (approximate — within the same area)
+  // 6. Zip/city fallback (approximate — within the same area)
   if (zip || city) {
     await sleep(1100);
     const zipResult = await nominatimZipFallback(zip, city, state);
@@ -328,9 +404,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    const googleMapsKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
     const locationIqKey = Deno.env.get("LOCATIONIQ_API_KEY");
-    if (!locationIqKey) {
-      console.warn("LOCATIONIQ_API_KEY not set; using Nominatim only");
+
+    if (googleMapsKey) {
+      console.log("Using Google Maps Geocoding as primary strategy");
+    } else if (locationIqKey) {
+      console.warn("GOOGLE_MAPS_API_KEY not set; using LocationIQ + Nominatim");
+    } else {
+      console.warn("No geocoding API keys set; using Census + Nominatim only");
     }
 
     const { addresses } = await req.json();
@@ -344,6 +426,7 @@ Deno.serve(async (req) => {
 
     const results: Array<{ id: string; lat: number; lng: number; approximate?: boolean }> = [];
     const failed: Array<{ id: string; address: string }> = [];
+    let googleMapsValid: boolean | undefined = undefined;
     let locationIqValid: boolean | undefined = undefined;
 
     for (let i = 0; i < addresses.length; i++) {
@@ -371,7 +454,6 @@ Deno.serve(async (req) => {
 
       // Parse address components for structured/fallback queries
       const parsed = parseAddressParts(q);
-      // Also accept components passed directly in the address item
       const street = parsed.street || undefined;
       const city = item.city || parsed.city || undefined;
       const state = item.state || parsed.state || undefined;
@@ -379,28 +461,47 @@ Deno.serve(async (req) => {
 
       console.log(`Geocoding [${i + 1}/${addresses.length}] id=${id} q="${q}"`);
 
-      const { result: geo, approximate, locationIqWorked } = await geocodeWithFallbacks(
-        q,
-        street,
-        city,
-        state,
-        zip,
-        locationIqKey,
-        locationIqValid,
-      );
+      const { result: geo, approximate, attempts, googleMapsWorked, locationIqWorked } =
+        await geocodeWithFallbacks(
+          q,
+          street,
+          city,
+          state,
+          zip,
+          googleMapsKey,
+          googleMapsValid,
+          locationIqKey,
+          locationIqValid,
+        );
 
-      // Track LocationIQ validity: if we tried it and it didn't work, mark invalid for remaining addresses
+      // Track Google Maps validity
+      if (googleMapsKey && googleMapsValid === undefined) {
+        if (googleMapsWorked) {
+          googleMapsValid = true;
+        }
+        // Don't mark Google as invalid on first failure — address might just not exist
+        // Only mark invalid if we get REQUEST_DENIED (handled inside googleMapsGeocode)
+      }
+
+      // Track LocationIQ validity
       if (locationIqKey && locationIqValid === undefined) {
         if (locationIqWorked) {
           locationIqValid = true;
-        } else {
-          // First attempt failed — mark as invalid so we skip it for all remaining addresses
+        } else if (!googleMapsKey) {
           locationIqValid = false;
           console.warn("LocationIQ failed on first attempt — skipping for remaining addresses");
         }
       }
 
       if (geo) {
+        const strategy = googleMapsWorked
+          ? "google"
+          : attempts <= 2
+            ? "census"
+            : "nominatim";
+        console.log(
+          `  -> Success via ${strategy}: lat=${geo.lat.toFixed(5)}, lng=${geo.lng.toFixed(5)}${approximate ? " (approximate)" : ""}`,
+        );
         results.push({ id, lat: geo.lat, lng: geo.lng, ...(approximate ? { approximate: true } : {}) });
       } else {
         console.warn(`FAILED to geocode id=${id} q="${q}" after ${attempts} attempts`);

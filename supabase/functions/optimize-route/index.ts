@@ -28,7 +28,7 @@ function buildFullAddress(p: { address: string; city?: string | null; state?: st
  * Haversine distance in meters between two coordinates.
  */
 function haversineDistance(a: Coordinates, b: Coordinates): number {
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
@@ -45,6 +45,7 @@ function haversineDistance(a: Coordinates, b: Coordinates): number {
  */
 function buildHaversineDurationMatrix(coords: Coordinates[]): number[][] {
   const AVG_SPEED_MPS = 40000 / 3600; // 40 km/h in m/s
+  const ROAD_FACTOR = 1.4; // roads are ~40% longer than straight line
   const n = coords.length;
   const matrix: number[][] = [];
   for (let i = 0; i < n; i++) {
@@ -54,8 +55,7 @@ function buildHaversineDurationMatrix(coords: Coordinates[]): number[][] {
         matrix[i][j] = 0;
       } else {
         const dist = haversineDistance(coords[i], coords[j]);
-        // Multiply by 1.4 to account for road distance vs straight-line
-        matrix[i][j] = (dist * 1.4) / AVG_SPEED_MPS;
+        matrix[i][j] = (dist * ROAD_FACTOR) / AVG_SPEED_MPS;
       }
     }
   }
@@ -65,11 +65,13 @@ function buildHaversineDurationMatrix(coords: Coordinates[]): number[][] {
 /**
  * Get driving durations matrix from OSRM public API.
  * Returns a 2D array [from][to] of durations in seconds.
+ * Patches null entries with haversine estimates.
  */
-async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] | null> {
-  if (coords.length < 2) return null;
+async function getOSRMDurationMatrix(
+  coords: Coordinates[],
+): Promise<{ durations: number[][] | null; hasNulls: boolean }> {
+  if (coords.length < 2) return { durations: null, hasNulls: false };
 
-  // OSRM expects "lon,lat;lon,lat;..." format
   const coordString = coords.map((c) => `${c.lon},${c.lat}`).join(";");
   const url = `https://router.project-osrm.org/table/v1/driving/${coordString}?annotations=duration`;
 
@@ -77,26 +79,50 @@ async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] 
 
   try {
     const response = await fetch(url, {
-      headers: {
-        "User-Agent": "HomeFolio/1.0 (https://homefolioshowing.lovable.app)",
-      },
+      headers: { "User-Agent": "HomeFolio/1.0 (https://home-folio.net)" },
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
       console.error("OSRM API error:", response.status, await response.text());
-      return null;
+      return { durations: null, hasNulls: false };
     }
 
     const data = await response.json();
     if (data.code !== "Ok" || !data.durations) {
       console.error("OSRM returned non-OK:", data.code, data.message);
-      return null;
+      return { durations: null, hasNulls: false };
     }
 
-    return data.durations as number[][];
+    // Patch null entries with haversine estimates
+    const durations = data.durations as (number | null)[][];
+    let hasNulls = false;
+    const AVG_SPEED_MPS = 40000 / 3600;
+    const ROAD_FACTOR = 1.4;
+
+    for (let i = 0; i < durations.length; i++) {
+      for (let j = 0; j < durations[i].length; j++) {
+        if (durations[i][j] === null || durations[i][j] === undefined) {
+          hasNulls = true;
+          if (i === j) {
+            durations[i][j] = 0;
+          } else {
+            // Fall back to haversine estimate for this pair
+            const dist = haversineDistance(coords[i], coords[j]);
+            durations[i][j] = (dist * ROAD_FACTOR) / AVG_SPEED_MPS;
+          }
+        }
+      }
+    }
+
+    if (hasNulls) {
+      console.warn("OSRM returned null for some coordinate pairs — patched with haversine estimates");
+    }
+
+    return { durations: durations as number[][], hasNulls };
   } catch (err) {
     console.error("OSRM fetch error:", err);
-    return null;
+    return { durations: null, hasNulls: false };
   }
 }
 
@@ -106,7 +132,7 @@ async function getOSRMDurationMatrix(coords: Coordinates[]): Promise<number[][] 
 function routeTime(route: number[], durations: number[][]): number {
   let sum = 0;
   for (let i = 0; i < route.length - 1; i++) {
-    sum += durations[route[i]][route[i + 1]] ?? 0;
+    sum += durations[route[i]][route[i + 1]];
   }
   return sum;
 }
@@ -129,7 +155,7 @@ function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?
     for (let i = 0; i < n; i++) {
       if (visited.has(i)) continue;
       const time = durations[current][i];
-      if (time !== null && time !== undefined && time < bestTime) {
+      if (time < bestTime) {
         bestTime = time;
         best = i;
       }
@@ -149,13 +175,14 @@ function nearestNeighborTSP(durations: number[][], startIdx: number, excludeIdx?
 }
 
 /**
- * 2-opt improvement using incremental cost calculation.
- * Only recalculates the 2 edges that change instead of the full route.
- * fixStart/fixEnd: if true, the first/last element is locked in place.
+ * 2-opt improvement using FULL route cost comparison.
+ * This correctly handles asymmetric duration matrices (A→B ≠ B→A)
+ * where reversing a segment changes internal edge costs.
  */
 function twoOptImprove(route: number[], durations: number[][], fixStart: boolean, fixEnd: boolean): number[] {
-  const improved = [...route];
+  let improved = [...route];
   const n = improved.length;
+  let bestCost = routeTime(improved, durations);
   let madeSwap = true;
 
   const iStart = fixStart ? 1 : 0;
@@ -165,35 +192,22 @@ function twoOptImprove(route: number[], durations: number[][], fixStart: boolean
     madeSwap = false;
     for (let i = iStart; i < jEnd - 1; i++) {
       for (let j = i + 1; j < jEnd; j++) {
-        // Calculate cost change from reversing segment [i..j]
-        // Old edges: (i-1)->i and j->(j+1)
-        // New edges: (i-1)->j and i->(j+1)
-        const prevI = i > 0 ? improved[i - 1] : -1;
-        const nextJ = j < n - 1 ? improved[j + 1] : -1;
-
-        let oldCost = 0;
-        let newCost = 0;
-
-        if (prevI >= 0) {
-          oldCost += durations[prevI][improved[i]] ?? 0;
-          newCost += durations[prevI][improved[j]] ?? 0;
-        }
-        if (nextJ >= 0) {
-          oldCost += durations[improved[j]][nextJ] ?? 0;
-          newCost += durations[improved[i]][nextJ] ?? 0;
+        // Create candidate route with segment [i..j] reversed
+        const candidate = [...improved];
+        let left = i;
+        let right = j;
+        while (left < right) {
+          const tmp = candidate[left];
+          candidate[left] = candidate[right];
+          candidate[right] = tmp;
+          left++;
+          right--;
         }
 
-        if (newCost < oldCost) {
-          // Reverse segment in-place
-          let left = i;
-          let right = j;
-          while (left < right) {
-            const tmp = improved[left];
-            improved[left] = improved[right];
-            improved[right] = tmp;
-            left++;
-            right--;
-          }
+        const candidateCost = routeTime(candidate, durations);
+        if (candidateCost < bestCost) {
+          improved = candidate;
+          bestCost = candidateCost;
           madeSwap = true;
         }
       }
@@ -204,8 +218,48 @@ function twoOptImprove(route: number[], durations: number[][], fixStart: boolean
 }
 
 /**
+ * Or-opt improvement: try moving single nodes to better positions.
+ * Works well for asymmetric matrices.
+ */
+function orOptImprove(route: number[], durations: number[][], fixStart: boolean, fixEnd: boolean): number[] {
+  let improved = [...route];
+  const n = improved.length;
+  let bestCost = routeTime(improved, durations);
+  let madeMove = true;
+
+  const iStart = fixStart ? 1 : 0;
+  const iEnd = fixEnd ? n - 1 : n;
+
+  while (madeMove) {
+    madeMove = false;
+    for (let i = iStart; i < iEnd; i++) {
+      for (let j = iStart; j < iEnd; j++) {
+        if (j === i || j === i - 1) continue;
+
+        // Try moving node at position i to position after j
+        const candidate = [...improved];
+        const [node] = candidate.splice(i, 1);
+        const insertPos = j > i ? j : j + 1;
+        candidate.splice(insertPos, 0, node);
+
+        const candidateCost = routeTime(candidate, durations);
+        if (candidateCost < bestCost) {
+          improved = candidate;
+          bestCost = candidateCost;
+          madeMove = true;
+          break; // Restart inner loop with new route
+        }
+      }
+      if (madeMove) break; // Restart outer loop
+    }
+  }
+
+  return improved;
+}
+
+/**
  * Multi-start TSP: try nearest-neighbor from multiple starting points,
- * improve each with 2-opt, and return the best route found.
+ * improve each with 2-opt + or-opt, and return the best route found.
  */
 function solveRoute(
   durations: number[][],
@@ -213,6 +267,8 @@ function solveRoute(
   fixedEnd?: number,
 ): number[] {
   const n = durations.length;
+  if (n <= 1) return [0];
+
   const hasFixedStart = fixedStart !== undefined;
   const hasFixedEnd = fixedEnd !== undefined;
 
@@ -221,14 +277,12 @@ function solveRoute(
   if (hasFixedStart) {
     startCandidates = [fixedStart];
   } else {
-    // Try all points as starting positions (or up to 15 for large sets)
     startCandidates = Array.from({ length: n }, (_, i) => i);
     if (hasFixedEnd) {
       startCandidates = startCandidates.filter((i) => i !== fixedEnd);
     }
     // Limit to 15 candidates to keep runtime reasonable
     if (startCandidates.length > 15) {
-      // Pick evenly spaced candidates + always include first and last
       const step = Math.floor(startCandidates.length / 15);
       const sampled = new Set<number>();
       for (let i = 0; i < startCandidates.length; i += step) {
@@ -246,6 +300,7 @@ function solveRoute(
   for (const start of startCandidates) {
     let route = nearestNeighborTSP(durations, start, fixedEnd);
     route = twoOptImprove(route, durations, hasFixedStart, hasFixedEnd);
+    route = orOptImprove(route, durations, hasFixedStart, hasFixedEnd);
     const time = routeTime(route, durations);
     if (time < bestTime) {
       bestTime = time;
@@ -293,7 +348,7 @@ Deno.serve(async (req) => {
     const identifier = getRateLimitIdentifier(req, userId);
     const rateLimit = await checkRateLimit(identifier, {
       maxRequests: 30,
-      windowSeconds: 3600, // 1 hour
+      windowSeconds: 3600,
       operation: "optimize-route",
     });
 
@@ -347,8 +402,8 @@ Deno.serve(async (req) => {
     }));
 
     console.log(
-      "Optimizing route for properties:",
-      normalized.map((p, i) => `${i + 1}. ID: ${p.id} - ${p.fullAddress}`).join("\n"),
+      "Optimizing route for properties:\n" +
+        normalized.map((p, i) => `  ${i + 1}. ${p.fullAddress}`).join("\n"),
     );
 
     // Use the existing geocoder function for address -> coords
@@ -359,7 +414,13 @@ Deno.serve(async (req) => {
       ...(typeof startingPoint === "string" && startingPoint.trim()
         ? [{ id: ORIGIN_ID, address: startingPoint.trim() }]
         : []),
-      ...normalized.map((p) => ({ id: p.id, address: p.fullAddress, city: p.city, state: p.state, zip_code: p.zip_code })),
+      ...normalized.map((p) => ({
+        id: p.id,
+        address: p.fullAddress,
+        city: p.city,
+        state: p.state,
+        zip_code: p.zip_code,
+      })),
       ...(hasEndingPoint ? [{ id: DEST_ID, address: endingPoint.trim() }] : []),
     ];
 
@@ -420,20 +481,33 @@ Deno.serve(async (req) => {
       idxToId.push(p.id);
     }
 
-    // Add destination as the last index
     if (hasDestination && destCoords) {
       osrmCoords.push(destCoords);
       idxToId.push(DEST_ID);
     }
 
+    // Log coordinates for debugging
+    console.log(
+      "Coordinates for routing:\n" +
+        osrmCoords.map((c, i) => `  ${idxToId[i]}: lat=${c.lat.toFixed(5)}, lon=${c.lon.toFixed(5)}`).join("\n"),
+    );
+
     // Get driving time matrix from OSRM, fall back to haversine if unavailable
-    let durations = await getOSRMDurationMatrix(osrmCoords);
+    const osrmResult = await getOSRMDurationMatrix(osrmCoords);
+    let durations = osrmResult.durations;
     let usedHaversine = false;
 
     if (!durations) {
       console.warn("OSRM unavailable — falling back to haversine distance matrix");
       durations = buildHaversineDurationMatrix(osrmCoords);
       usedHaversine = true;
+    }
+
+    // Log the duration matrix for debugging
+    console.log("Duration matrix (minutes):");
+    for (let i = 0; i < durations.length; i++) {
+      const row = durations[i].map((d) => `${Math.round(d / 60)}`).join(", ");
+      console.log(`  ${idxToId[i]}: [${row}]`);
     }
 
     // Solve TSP with multi-start optimization
@@ -443,8 +517,6 @@ Deno.serve(async (req) => {
 
     // Convert indices to property IDs (exclude origin and destination markers)
     const orderedIds = route.map((idx) => idxToId[idx]).filter((id) => id !== ORIGIN_ID && id !== DEST_ID);
-
-    // Don't include ungeocoded properties — they'll be auto-removed by the frontend
     const optimizedOrder = orderedIds;
 
     // Calculate total driving time for the optimized route
@@ -452,7 +524,7 @@ Deno.serve(async (req) => {
     const legDurations: Array<{ from: string; to: string; seconds: number }> = [];
 
     for (let i = 0; i < route.length - 1; i++) {
-      const legTime = durations[route[i]][route[i + 1]] ?? 0;
+      const legTime = durations[route[i]][route[i + 1]];
       totalSeconds += legTime;
       legDurations.push({
         from: idxToId[route[i]],
@@ -461,13 +533,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("Optimized order:", optimizedOrder.join(" -> "), `(${Math.round(totalSeconds / 60)} min)`);
+    console.log(
+      `Optimized route (${Math.round(totalSeconds / 60)} min total):\n` +
+        route.map((idx, i) => {
+          const id = idxToId[idx];
+          const leg = i < route.length - 1 ? ` → ${Math.round(durations[route[i]][route[i + 1]] / 60)} min →` : "";
+          return `  ${i + 1}. ${id}${leg}`;
+        }).join("\n"),
+    );
 
     // Build route coordinates for map display
     const routeCoordinates = route.map((idx) => {
-      const id = idxToId[idx];
       const coords = osrmCoords[idx];
-      return { id, lat: coords.lat, lng: coords.lon };
+      return { id: idxToId[idx], lat: coords.lat, lng: coords.lon };
     });
 
     return new Response(

@@ -311,8 +311,28 @@ const BulkMLSImportDialog = ({ open, onOpenChange, onImport, existingAddresses =
       return;
     }
 
-    // Normalize addresses for comparison (lowercase, trim whitespace)
-    const normalizeAddress = (addr: string) => addr.toLowerCase().trim();
+    // Normalize addresses for comparison (handles abbreviations like St/Street, Ave/Avenue)
+    const normalizeAddress = (addr: string) =>
+      addr
+        .toLowerCase()
+        .replace(/[.,#\-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\b(street|st|avenue|ave|boulevard|blvd|drive|dr|road|rd|lane|ln|court|ct|place|pl|way|circle|cir|trail|trl)\b/g, (m) => {
+          const abbrevs: Record<string, string> = {
+            street: 'st', avenue: 'ave', boulevard: 'blvd', drive: 'dr',
+            road: 'rd', lane: 'ln', court: 'ct', place: 'pl',
+            way: 'way', circle: 'cir', trail: 'trl',
+          };
+          return abbrevs[m] || m;
+        })
+        .replace(/\b(north|south|east|west|northeast|northwest|southeast|southwest)\b/g, (m) => {
+          const abbrevs: Record<string, string> = {
+            north: 'n', south: 's', east: 'e', west: 'w',
+            northeast: 'ne', northwest: 'nw', southeast: 'se', southwest: 'sw',
+          };
+          return abbrevs[m] || m;
+        })
+        .trim();
     const existingNormalized = new Set(existingAddresses.map(normalizeAddress));
 
     // Filter out duplicates

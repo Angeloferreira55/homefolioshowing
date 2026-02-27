@@ -45,6 +45,12 @@ import {
   ImagePlus,
   CheckCircle2,
   ClipboardList,
+  Undo2,
+  Archive,
+  RotateCcw,
+  MapPin,
+  Car,
+  Timer,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -543,6 +549,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isRoutePopoverOpen, setIsRoutePopoverOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
+  const [recentlyDeleted, setRecentlyDeleted] = useState<SessionProperty[]>([]);
+  const [showArchive, setShowArchive] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -965,8 +973,78 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     }
   };
 
+  /**
+   * Fetch OSRM driving time between two coordinates.
+   * Returns seconds, or a haversine estimate if OSRM fails.
+   */
+  const fetchDrivingTime = async (
+    from: { lat: number; lng: number },
+    to: { lat: number; lng: number }
+  ): Promise<number> => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.code === 'Ok' && data.routes?.[0]) {
+          return data.routes[0].duration;
+        }
+      }
+    } catch (err) {
+      console.warn('OSRM fetch failed, using haversine estimate');
+    }
+    // Haversine fallback
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(to.lat - from.lat);
+    const dLon = toRad(to.lng - from.lng);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(dLon / 2) ** 2;
+    const dist = 2 * R * Math.asin(Math.sqrt(a));
+    return (dist * 1.4) / (40000 / 3600);
+  };
+
+  /** Restore a previously deleted property back into the session */
+  const handleRestoreProperty = async (property: SessionProperty, originalIndex: number) => {
+    try {
+      const { error } = await supabase
+        .from('session_properties')
+        .insert({
+          id: property.id,
+          session_id: id,
+          address: property.address,
+          city: property.city,
+          state: property.state,
+          zip_code: property.zip_code,
+          price: property.price,
+          photo_url: property.photo_url,
+          order_index: originalIndex,
+          beds: property.beds,
+          baths: property.baths,
+          sqft: property.sqft,
+          showing_time: property.showing_time,
+          agent_notes: property.agent_notes,
+          recipient_name: property.recipient_name,
+        });
+
+      if (error) throw error;
+
+      // Remove from recently deleted
+      setRecentlyDeleted(prev => prev.filter(p => p.id !== property.id));
+
+      // Re-fetch to get correct order
+      fetchProperties();
+      toast.success('Property restored');
+    } catch (error) {
+      toast.error('Failed to restore property');
+    }
+  };
+
   const handleDeleteProperty = async (propertyId: string) => {
     try {
+      // Save property data before deleting (for undo)
+      const deletedProperty = properties.find(p => p.id === propertyId);
+      const deletedIndex = properties.findIndex(p => p.id === propertyId);
+
       const { error } = await supabase
         .from('session_properties')
         .delete()
@@ -974,13 +1052,56 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
       if (error) throw error;
 
-      toast.success('Property removed');
+      // Update properties locally — no fetchProperties() needed
+      const newProperties = properties.filter(p => p.id !== propertyId);
+      setProperties(newProperties);
+
       setSelectedProperties((prev) => {
         const next = new Set(prev);
         next.delete(propertyId);
         return next;
       });
-      fetchProperties();
+
+      // Add to recently deleted archive
+      if (deletedProperty) {
+        setRecentlyDeleted(prev => [...prev, deletedProperty]);
+      }
+
+      // Show toast with undo
+      toast.success('Property removed', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            if (deletedProperty) handleRestoreProperty(deletedProperty, deletedIndex);
+          },
+        },
+        duration: 8000,
+      });
+
+      // Recalculate driving times if route was optimized
+      if (legDurations.length > 0 && routeCoordinates.length > 0) {
+        const prevProperty = deletedIndex > 0 ? properties[deletedIndex - 1] : null;
+        const nextProperty = deletedIndex < properties.length - 1 ? properties[deletedIndex + 1] : null;
+
+        // Remove legs involving deleted property
+        const newLegs = legDurations.filter(
+          leg => leg.from !== propertyId && leg.to !== propertyId
+        );
+
+        // Calculate new leg for the gap (prev→next)
+        if (prevProperty && nextProperty) {
+          const prevCoord = routeCoordinates.find(c => c.id === prevProperty.id);
+          const nextCoord = routeCoordinates.find(c => c.id === nextProperty.id);
+
+          if (prevCoord && nextCoord) {
+            const seconds = await fetchDrivingTime(prevCoord, nextCoord);
+            newLegs.push({ from: prevProperty.id, to: nextProperty.id, seconds });
+          }
+        }
+
+        setLegDurations(newLegs);
+        setRouteCoordinates(prev => prev.filter(c => c.id !== propertyId));
+      }
     } catch (error) {
       toast.error('Failed to delete property');
     }
@@ -990,6 +1111,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     if (selectedProperties.size === 0) return;
 
     try {
+      const removedIds = new Set(selectedProperties);
+      const deletedProps = properties.filter(p => removedIds.has(p.id));
+
       const { error } = await supabase
         .from('session_properties')
         .delete()
@@ -997,9 +1121,74 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
       if (error) throw error;
 
-      toast.success(`${selectedProperties.size} properties removed`);
+      // Update properties locally
+      const newProperties = properties.filter(p => !removedIds.has(p.id));
+      setProperties(newProperties);
+
+      // Add to recently deleted archive
+      setRecentlyDeleted(prev => [...prev, ...deletedProps]);
+
+      const count = selectedProperties.size;
       setSelectedProperties(new Set());
-      fetchProperties();
+
+      // Show toast with undo
+      toast.success(`${count} properties removed`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const inserts = deletedProps.map(p => ({
+                id: p.id,
+                session_id: id,
+                address: p.address,
+                city: p.city,
+                state: p.state,
+                zip_code: p.zip_code,
+                price: p.price,
+                photo_url: p.photo_url,
+                order_index: p.order_index,
+                beds: p.beds,
+                baths: p.baths,
+                sqft: p.sqft,
+                showing_time: p.showing_time,
+                agent_notes: p.agent_notes,
+                recipient_name: p.recipient_name,
+              }));
+              await supabase.from('session_properties').insert(inserts);
+              setRecentlyDeleted(prev => prev.filter(p => !removedIds.has(p.id)));
+              fetchProperties();
+              toast.success(`${count} properties restored`);
+            } catch {
+              toast.error('Failed to restore properties');
+            }
+          },
+        },
+        duration: 8000,
+      });
+
+      // Recalculate driving times if route was optimized
+      if (legDurations.length > 0 && routeCoordinates.length > 0) {
+        const newRouteCoords = routeCoordinates.filter(c => !removedIds.has(c.id));
+
+        // Keep legs not involving any removed property
+        const keptLegs = legDurations.filter(
+          leg => !removedIds.has(leg.from) && !removedIds.has(leg.to)
+        );
+        const keptLegKeys = new Set(keptLegs.map(l => `${l.from}→${l.to}`));
+
+        // Find adjacent pairs needing new driving times
+        const newLegs = [...keptLegs];
+        for (let i = 0; i < newRouteCoords.length - 1; i++) {
+          const key = `${newRouteCoords[i].id}→${newRouteCoords[i + 1].id}`;
+          if (!keptLegKeys.has(key)) {
+            const seconds = await fetchDrivingTime(newRouteCoords[i], newRouteCoords[i + 1]);
+            newLegs.push({ from: newRouteCoords[i].id, to: newRouteCoords[i + 1].id, seconds });
+          }
+        }
+
+        setLegDurations(newLegs);
+        setRouteCoordinates(newRouteCoords);
+      }
     } catch (error) {
       toast.error('Failed to delete properties');
     }
@@ -1951,6 +2140,94 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         {/* Route Map - Temporarily disabled due to geocoding issues */}
         {/* TODO: Debug and re-enable map feature */}
 
+        {/* Route Summary Card */}
+        {(() => {
+          const firstTime = properties[0]?.showing_time;
+          const lastProp = properties[properties.length - 1];
+          const lastTime = lastProp?.showing_time;
+          const hasSchedule = firstTime && lastTime && properties.length >= 2;
+          const hasDrivingData = legDurations.length > 0;
+
+          if (!hasSchedule && !hasDrivingData) return null;
+
+          // Parse times
+          const parseMinutes = (t: string) => {
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+          };
+          const formatTime12 = (totalMin: number) => {
+            const h = Math.floor(totalMin / 60) % 24;
+            const m = totalMin % 60;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+          };
+
+          // Total driving time from leg durations
+          const totalDriveSeconds = legDurations
+            .filter(l => l.from !== '__origin__')
+            .reduce((sum, l) => sum + l.seconds, 0);
+          const totalDriveMinutes = Math.round(totalDriveSeconds / 60);
+
+          // Total stop time
+          const totalStopMinutes = properties.reduce((sum, p) => {
+            return sum + (isPopBy ? 2 : (showingDurations[p.id] || 30));
+          }, 0);
+
+          // Start and end times
+          const startMin = hasSchedule ? parseMinutes(firstTime) : null;
+          const lastStopDuration = isPopBy ? 2 : (showingDurations[lastProp?.id] || 30);
+          const endMin = hasSchedule ? parseMinutes(lastTime) + lastStopDuration : null;
+          const totalSessionMinutes = startMin !== null && endMin !== null ? endMin - startMin : null;
+
+          const formatDuration = (mins: number) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            if (h > 0 && m > 0) return `${h}h ${m}m`;
+            if (h > 0) return `${h}h`;
+            return `${m}m`;
+          };
+
+          return (
+            <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                {hasSchedule && startMin !== null && (
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">Start:</span>
+                    <span className="font-semibold">{formatTime12(startMin)}</span>
+                  </div>
+                )}
+                {hasSchedule && endMin !== null && (
+                  <div className="flex items-center gap-1.5">
+                    <Timer className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">End:</span>
+                    <span className="font-semibold">{formatTime12(endMin)}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span className="font-semibold">{properties.length} {isPopBy ? 'stops' : 'showings'}</span>
+                </div>
+                {hasDrivingData && totalDriveMinutes > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Car className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">Drive:</span>
+                    <span className="font-semibold">{formatDuration(totalDriveMinutes)}</span>
+                  </div>
+                )}
+                {totalSessionMinutes !== null && totalSessionMinutes > 0 && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <Route className="w-4 h-4 text-primary" />
+                    <span className="text-muted-foreground">Total:</span>
+                    <span className="font-bold text-primary">{formatDuration(totalSessionMinutes)}</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* Properties List */}
         {properties.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
@@ -2141,6 +2418,62 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <Plus className="w-4 h-4 mr-2" />
               {isPopBy ? 'Add First Address' : 'Add First Property'}
             </Button>
+          </div>
+        )}
+
+        {/* Recently Deleted Archive */}
+        {recentlyDeleted.length > 0 && (
+          <div className="mt-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-foreground mb-2"
+              onClick={() => setShowArchive(!showArchive)}
+            >
+              <Archive className="w-4 h-4" />
+              Recently Deleted ({recentlyDeleted.length})
+              <ChevronDown className={`w-4 h-4 transition-transform ${showArchive ? 'rotate-180' : ''}`} />
+            </Button>
+
+            {showArchive && (
+              <div className="space-y-2 border border-dashed border-muted-foreground/20 rounded-lg p-3">
+                {recentlyDeleted.map((property) => (
+                  <div
+                    key={property.id}
+                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg opacity-70"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{property.address}</p>
+                      {(property.city || property.state || property.zip_code) && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[property.city, property.state, property.zip_code].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 ml-3 shrink-0"
+                      onClick={() => handleRestoreProperty(property, properties.length)}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Restore
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground text-xs"
+                  onClick={() => {
+                    setRecentlyDeleted([]);
+                    setShowArchive(false);
+                  }}
+                >
+                  Clear Archive
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </>
