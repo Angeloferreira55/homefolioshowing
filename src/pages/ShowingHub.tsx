@@ -886,7 +886,7 @@ const ShowingHub = () => {
                        </li>
                        <li className="flex items-start gap-2">
                          <span className="text-primary mt-1">✓</span>
-                         <span>Schedule specific times for each property</span>
+                         <span>Optimize your route for your showings</span>
                        </li>
                        <li className="flex items-start gap-2">
                          <span className="text-primary mt-1">✓</span>
@@ -894,15 +894,15 @@ const ShowingHub = () => {
                        </li>
                        <li className="flex items-start gap-2">
                          <span className="text-primary mt-1">✓</span>
-                         <span>Protect links with optional access codes</span>
-                       </li>
-                       <li className="flex items-start gap-2">
-                         <span className="text-primary mt-1">✓</span>
                          <span>View client feedback and ratings</span>
                        </li>
                        <li className="flex items-start gap-2">
                          <span className="text-primary mt-1">✓</span>
-                         <span>Optimize your route for your showings</span>
+                         <span>Schedule specific times for each property</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <span className="text-primary mt-1">✓</span>
+                         <span>Protect links with optional access codes</span>
                        </li>
                      </ul>
                    </div>
