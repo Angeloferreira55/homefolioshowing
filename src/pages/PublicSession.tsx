@@ -60,6 +60,7 @@ interface ShowingSession {
   notes: string | null;
   admin_id: string;
   session_type?: string | null;
+  gift_label?: string | null;
 }
 
 interface PropertyRating {
@@ -781,6 +782,12 @@ const PublicSession = () => {
                   </p>
                 );
               })()}
+              {isPopBy && session.gift_label && (
+                <p className="flex items-center gap-2 text-primary-foreground/80 mt-1.5 text-sm sm:text-base">
+                  <span>🎁</span>
+                  {session.gift_label}
+                </p>
+              )}
               {session.notes && !isPopBy && (
                 <p className="mt-3 sm:mt-4 text-primary-foreground/90 bg-primary-foreground/10 p-3 sm:p-4 rounded-lg text-sm sm:text-base">
                   {session.notes}

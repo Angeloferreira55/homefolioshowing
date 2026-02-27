@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Loader2, Lock, RefreshCw, Users, X } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock, RefreshCw, Users, X, Gift } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -34,6 +34,8 @@ interface SessionData {
   notes?: string | null;
   share_password?: string | null;
   agent_profile_id?: string | null;
+  session_type?: string | null;
+  gift_label?: string | null;
 }
 
 interface EditSessionDialogProps {
@@ -47,6 +49,7 @@ interface EditSessionDialogProps {
     notes?: string;
     accessCode?: string | null;
     agentProfileId?: string | null;
+    giftLabel?: string;
   }) => Promise<void>;
   agentProfiles?: AgentOption[];
 }
@@ -69,7 +72,9 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave, agentProfiles 
   const [accessCodeEnabled, setAccessCodeEnabled] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [giftLabel, setGiftLabel] = useState('');
   const hasAgents = agentProfiles && agentProfiles.length > 0;
+  const isPopBy = session?.session_type === 'pop_by';
 
   useEffect(() => {
     if (session) {
@@ -86,6 +91,7 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave, agentProfiles 
       setAccessCodeEnabled(!!session.share_password);
       setAccessCode(session.share_password || '');
       setSelectedAgentId(session.agent_profile_id || null);
+      setGiftLabel(session.gift_label || '');
     }
   }, [session]);
 
@@ -113,6 +119,7 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave, agentProfiles 
         notes: notes.trim() || undefined,
         accessCode: accessCodeEnabled ? accessCode : null,
         agentProfileId: hasAgents ? selectedAgentId : undefined,
+        giftLabel: isPopBy ? giftLabel.trim() || undefined : undefined,
       });
       onOpenChange(false);
     } finally {
@@ -192,6 +199,23 @@ const EditSessionDialog = ({ session, open, onOpenChange, onSave, agentProfiles 
               </PopoverContent>
             </Popover>
           </div>
+
+          {/* Gift / Item Label — Pop-By only */}
+          {isPopBy && (
+          <div className="space-y-2">
+            <Label htmlFor="edit-gift-label" className="flex items-center gap-1.5">
+              <Gift className="w-4 h-4" />
+              Gift / Item
+            </Label>
+            <Input
+              id="edit-gift-label"
+              value={giftLabel}
+              onChange={(e) => setGiftLabel(e.target.value)}
+              placeholder="Valentine's Cookies, Market Update Packet..."
+              maxLength={100}
+            />
+          </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="edit-client-name">Client Name *</Label>

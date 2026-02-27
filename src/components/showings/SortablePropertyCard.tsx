@@ -66,6 +66,7 @@ interface SessionProperty {
   delivery_completed_at?: string | null;
   delivery_notes?: string | null;
   delivery_photo_url?: string | null;
+  category_tags?: string[] | null;
 }
 
 interface SortablePropertyCardProps {
@@ -426,6 +427,15 @@ export function SortablePropertyCard({
             </div>
             {isPopBy && property.recipient_name && (
               <p className="text-xs font-semibold text-primary w-full">{property.recipient_name}</p>
+            )}
+            {isPopBy && property.category_tags && property.category_tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 w-full">
+                {property.category_tags.map((tag) => (
+                  <span key={tag} className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             )}
             <h3 className="font-semibold text-foreground text-sm sm:text-base line-clamp-2 sm:truncate">
               {property.address}

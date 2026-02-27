@@ -51,6 +51,11 @@ import {
   MapPin,
   Car,
   Timer,
+  Gift,
+  Filter,
+  Printer,
+  Save,
+  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -62,6 +67,7 @@ import EditPropertyDetailsDialog from '@/components/showings/EditPropertyDetails
 import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 
+import AddressTemplatesDialog from '@/components/showings/AddressTemplatesDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard';
@@ -140,6 +146,7 @@ interface SessionProperty {
   delivery_completed_at?: string | null;
   delivery_notes?: string | null;
   delivery_photo_url?: string | null;
+  category_tags?: string[] | null;
 }
 
 interface ShowingSession {
@@ -151,6 +158,7 @@ interface ShowingSession {
   notes: string | null;
   share_password: string | null;
   session_type: string | null;
+  gift_label: string | null;
 }
 
 // Sortable Gallery Card Component
@@ -553,6 +561,18 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [recentlyDeleted, setRecentlyDeleted] = useState<SessionProperty[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
+  // Compute filtered properties for display (tag filter for pop-by)
+  const filteredProperties = activeTagFilter
+    ? properties.filter(p => p.category_tags?.includes(activeTagFilter))
+    : properties;
+
+  // Collect all unique tags across properties for the filter dropdown
+  const allTags = Array.from(
+    new Set(properties.flatMap(p => p.category_tags || []))
+  ).sort();
 
   // DnD sensors
   const sensors = useSensors(
@@ -1438,17 +1458,22 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     sessionDate?: Date;
     notes?: string;
     accessCode?: string | null;
+    giftLabel?: string;
   }) => {
     try {
+      const updatePayload: Record<string, any> = {
+        title: data.title,
+        client_name: data.clientName,
+        session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
+        notes: data.notes || null,
+        share_password: data.accessCode,
+      };
+      if (isPopBy) {
+        updatePayload.gift_label = data.giftLabel || null;
+      }
       const { error } = await supabase
         .from('showing_sessions')
-        .update({
-          title: data.title,
-          client_name: data.clientName,
-          session_date: data.sessionDate ? formatDateString(data.sessionDate) : null,
-          notes: data.notes || null,
-          share_password: data.accessCode,
-        })
+        .update(updatePayload)
         .eq('id', id);
 
       if (error) throw error;
@@ -1793,7 +1818,13 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               </p>
             );
           })()}
-          
+          {isPopBy && session.gift_label && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+              <Gift className="w-4 h-4 text-orange-500" />
+              {session.gift_label}
+            </p>
+          )}
+
           {/* Actions - Horizontal on mobile, inline buttons */}
           <div className="flex flex-wrap gap-2 mt-4">
             <Button 
@@ -1878,7 +1909,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground">
-              {isPopBy ? 'Addresses' : 'Properties'} ({properties.length})
+              {isPopBy ? 'Addresses' : 'Properties'} ({activeTagFilter ? `${filteredProperties.length} / ${properties.length}` : properties.length})
             </h2>
             <Button
               variant="accent"
@@ -2161,6 +2192,85 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <span className="sm:hidden">Import</span>
             </Button>
             )}
+            {isPopBy && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-9 text-xs sm:text-sm"
+                onClick={() => {
+                  // Open print report in new window
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) {
+                    toast.error('Please allow popups to print the report');
+                    return;
+                  }
+                  const deliveredCount = properties.filter(p => p.delivery_completed_at).length;
+                  const pendingCount = properties.length - deliveredCount;
+                  const rows = properties.map((p, i) => `
+                    <tr>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${i + 1}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${p.address}${p.city ? `, ${p.city}` : ''}${p.state ? `, ${p.state}` : ''} ${p.zip_code || ''}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${p.recipient_name || '—'}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${(p.category_tags || []).join(', ') || '—'}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;color:${p.delivery_completed_at ? '#16a34a' : '#d97706'};font-weight:600;">${p.delivery_completed_at ? 'Delivered' : 'Pending'}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${p.delivery_completed_at ? new Date(p.delivery_completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}</td>
+                      <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${p.delivery_notes || p.agent_notes || '—'}</td>
+                    </tr>
+                  `).join('');
+
+                  const sessionDateStr = session?.session_date ? (() => {
+                    const [y, m, d] = session.session_date!.split('-').map(Number);
+                    return format(new Date(y, m - 1, d), 'MMM d, yyyy');
+                  })() : '';
+
+                  printWindow.document.write(`<!DOCTYPE html>
+                    <html><head><title>Delivery Report - ${session?.title || ''}</title>
+                    <style>
+                      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; color: #1a1a1a; }
+                      h1 { font-size: 22px; margin-bottom: 4px; }
+                      .meta { color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+                      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                      th { padding: 10px 8px; border-bottom: 2px solid #1a1a1a; text-align: left; font-weight: 700; }
+                      .summary { margin-top: 24px; padding: 16px; background: #f3f4f6; border-radius: 8px; font-size: 14px; }
+                      .summary span { font-weight: 700; }
+                      @media print { body { padding: 0; } .summary { background: #f3f4f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                    </style></head><body>
+                    <h1>${session?.title || 'Delivery Report'}</h1>
+                    <div class="meta">
+                      ${sessionDateStr ? `Date: ${sessionDateStr}<br/>` : ''}
+                      ${session?.gift_label ? `Gift: ${session.gift_label}<br/>` : ''}
+                    </div>
+                    <table>
+                      <thead><tr>
+                        <th>#</th><th>Address</th><th>Recipient</th><th>Tags</th><th>Status</th><th>Time</th><th>Notes</th>
+                      </tr></thead>
+                      <tbody>${rows}</tbody>
+                    </table>
+                    <div class="summary">
+                      <span>${deliveredCount}</span> delivered &bull; <span>${pendingCount}</span> pending &bull; <span>${properties.length}</span> total stops
+                    </div>
+                    <script>window.onload=function(){window.print();}</script>
+                    </body></html>`);
+                  printWindow.document.close();
+                }}
+              >
+                <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Print Report</span>
+                <span className="sm:hidden">Print</span>
+              </Button>
+            )}
+            {isPopBy && properties.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-9 text-xs sm:text-sm"
+                onClick={() => setIsTemplateDialogOpen(true)}
+              >
+                <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Save as Template</span>
+                <span className="sm:hidden">Save List</span>
+              </Button>
+            )}
             </div>
 
             {/* View Toggle */}
@@ -2186,6 +2296,39 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
             </div>
           </div>
         </div>
+
+        {/* Tag Filter - Pop-By only */}
+        {isPopBy && allTags.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <Tag className="w-4 h-4 text-muted-foreground" />
+            <button
+              onClick={() => setActiveTagFilter(null)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                !activeTagFilter
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              All ({properties.length})
+            </button>
+            {allTags.map(tag => {
+              const count = properties.filter(p => p.category_tags?.includes(tag)).length;
+              return (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    activeTagFilter === tag
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {tag} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Route Map - Temporarily disabled due to geocoding issues */}
         {/* TODO: Debug and re-enable map feature */}
@@ -2279,7 +2422,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         })()}
 
         {/* Properties List */}
-        {properties.length > 0 ? (
+        {filteredProperties.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {/* Bulk Actions Bar - Only in List View */}
             {viewMode === 'list' && (
@@ -2301,13 +2444,13 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={properties.map((p) => p.id)}
+                  items={filteredProperties.map((p) => p.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-3 sm:space-y-4">
-                    {properties.map((property, index) => {
+                    {filteredProperties.map((property, index) => {
                     // Find driving time to next property
-                    const nextProperty = properties[index + 1];
+                    const nextProperty = filteredProperties[index + 1];
                     const drivingTimeToNext = legDurations.find(
                       leg => leg.from === property.id && leg.to === nextProperty?.id
                     );
@@ -2385,13 +2528,13 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={properties.map((p) => p.id)}
+                  items={filteredProperties.map((p) => p.id)}
                   strategy={rectSortingStrategy}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    {properties.map((property, index) => {
+                    {filteredProperties.map((property, index) => {
                       // Calculate driving times
-                      const prevProperty = properties[index - 1];
+                      const prevProperty = filteredProperties[index - 1];
                       const drivingTimeFromPrev = legDurations.find(
                         leg => leg.from === prevProperty?.id && leg.to === property.id
                       );
@@ -2449,6 +2592,14 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 </SortableContext>
               </DndContext>
             )}
+          </div>
+        ) : activeTagFilter && properties.length > 0 ? (
+          <div className="text-center py-12 bg-card rounded-xl">
+            <Filter className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground mb-3">No addresses match the tag "{activeTagFilter}"</p>
+            <Button variant="outline" size="sm" onClick={() => setActiveTagFilter(null)}>
+              Clear Filter
+            </Button>
           </div>
         ) : (
           <div className="text-center py-16 bg-card rounded-xl">
@@ -2611,6 +2762,23 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         onImport={handleAddMultipleProperties}
         existingAddresses={properties.map(p => p.address)}
       />
+
+      {isPopBy && (
+        <AddressTemplatesDialog
+          open={isTemplateDialogOpen}
+          onOpenChange={setIsTemplateDialogOpen}
+          mode="save"
+          sessionTitle={session.title}
+          currentAddresses={properties.map(p => ({
+            address: p.address,
+            city: p.city || undefined,
+            state: p.state || undefined,
+            zipCode: p.zip_code || undefined,
+            recipientName: p.recipient_name || undefined,
+            categoryTags: p.category_tags || undefined,
+          }))}
+        />
+      )}
 
       {session && (
         <MoveToSessionDialog

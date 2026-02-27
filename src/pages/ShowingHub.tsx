@@ -44,6 +44,7 @@ interface ShowingSession {
   archived_at?: string | null;
   agent_profile_id?: string | null;
   session_type?: string | null;
+  gift_label?: string | null;
   property_count?: number;
   rating_count?: number;
 }
@@ -115,7 +116,8 @@ const ShowingHub = () => {
           deleted_at,
           archived_at,
           agent_profile_id,
-          session_type
+          session_type,
+          gift_label
         `) as any)
         .order('created_at', { ascending: false });
 
@@ -193,6 +195,7 @@ const ShowingHub = () => {
     sharePassword?: string;
     agentProfileId?: string | null;
     sessionType?: string;
+    giftLabel?: string;
   }) => {
     // Enforce Starter tier limit
     if (starterAtLimit) {
@@ -222,6 +225,7 @@ const ShowingHub = () => {
         share_password: data.sharePassword || null,
         agent_profile_id: agentId || null,
         session_type: data.sessionType || 'home_folio',
+        gift_label: data.giftLabel || null,
       });
 
       if (error) throw error;
@@ -376,6 +380,7 @@ const ShowingHub = () => {
     notes?: string;
     accessCode?: string | null;
     agentProfileId?: string | null;
+    giftLabel?: string;
   }) => {
     if (!editingSession) return;
 
@@ -390,6 +395,11 @@ const ShowingHub = () => {
       // Only include agent_profile_id if assistant mode (has agents)
       if (data.agentProfileId !== undefined) {
         updatePayload.agent_profile_id = data.agentProfileId || null;
+      }
+
+      // Gift label for pop-by sessions
+      if (data.giftLabel !== undefined) {
+        updatePayload.gift_label = data.giftLabel || null;
       }
 
       const { error } = await supabase
@@ -545,6 +555,12 @@ const ShowingHub = () => {
               </span>
             )}
           </h3>
+          {session.session_type === 'pop_by' && session.gift_label && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5 mb-1">
+              <Gift className="w-3.5 h-3.5 text-orange-500" />
+              {session.gift_label}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Users className="w-4 h-4" />

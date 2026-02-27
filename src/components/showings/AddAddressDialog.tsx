@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Upload, FileText, X, MapPin } from 'lucide-react';
+import { Upload, FileText, X, MapPin, Save, Download, Trash2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AddressData {
   address: string;
@@ -172,6 +173,13 @@ function parseCSV(text: string, existingAddresses: string[] = []): { addresses: 
   return { addresses, skipped, duplicates };
 }
 
+interface SavedTemplate {
+  id: string;
+  list_name: string;
+  addresses: AddressData[];
+  created_at: string;
+}
+
 const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAddresses = [] }: AddAddressDialogProps) => {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -182,6 +190,11 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAd
   const [parsedAddresses, setParsedAddresses] = useState<AddressData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Saved lists state
+  const [templates, setTemplates] = useState<SavedTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('manual');
+
   const resetForm = () => {
     setAddress('');
     setCity('');
@@ -189,6 +202,83 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAd
     setZipCode('');
     setSelectedFile(null);
     setParsedAddresses([]);
+  };
+
+  // Fetch saved templates when "Saved Lists" tab is activated
+  useEffect(() => {
+    if (activeTab === 'saved' && open) {
+      fetchTemplates();
+    }
+  }, [activeTab, open]);
+
+  const fetchTemplates = async () => {
+    setTemplatesLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('address_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTemplates(
+        (data || []).map((t: any) => ({
+          ...t,
+          addresses: Array.isArray(t.addresses) ? t.addresses : [],
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const handleImportTemplate = (template: SavedTemplate) => {
+    // Filter out duplicates
+    const seen = new Set(existingAddresses.map(a => normalizeAddress(a)));
+    const newAddresses = template.addresses.filter(a => {
+      const norm = normalizeAddress(a.address);
+      if (seen.has(norm)) return false;
+      seen.add(norm);
+      return true;
+    });
+
+    if (newAddresses.length === 0) {
+      toast.error('All addresses in this list already exist in the session');
+      return;
+    }
+
+    const skipped = template.addresses.length - newAddresses.length;
+
+    if (onAddMultiple) {
+      onAddMultiple(newAddresses);
+    } else {
+      newAddresses.forEach(a => onAdd(a));
+    }
+
+    const note = skipped > 0 ? ` (${skipped} duplicates skipped)` : '';
+    toast.success(`Imported ${newAddresses.length} addresses from "${template.list_name}"${note}`);
+    resetForm();
+    onOpenChange(false);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('address_templates')
+        .delete()
+        .eq('id', templateId);
+
+      if (error) throw error;
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast.success('List deleted');
+    } catch (error) {
+      toast.error('Failed to delete list');
+    }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -283,15 +373,19 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAd
           <DialogTitle className="font-display text-xl">Add Address</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="manual" className="mt-2">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="manual" className="gap-1">
               <MapPin className="w-3 h-3" />
               Manual
             </TabsTrigger>
             <TabsTrigger value="csv" className="gap-1">
               <FileText className="w-3 h-3" />
-              CSV Upload
+              CSV
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="gap-1">
+              <Save className="w-3 h-3" />
+              Saved Lists
             </TabsTrigger>
           </TabsList>
 
@@ -415,6 +509,59 @@ const AddAddressDialog = ({ open, onOpenChange, onAdd, onAddMultiple, existingAd
                     : `Add All ${parsedAddresses.length} Addresses`
                   }
                 </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="saved" className="mt-4">
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-12">
+                <Save className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No saved lists yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Save addresses from a session to create reusable templates
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{template.list_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {template.addresses.length} addresses
+                        {' · '}
+                        {new Date(template.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 ml-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1"
+                        onClick={() => handleImportTemplate(template)}
+                      >
+                        <Download className="w-3 h-3" />
+                        Import
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteTemplate(template.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </TabsContent>

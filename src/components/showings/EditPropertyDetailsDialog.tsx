@@ -11,7 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload, ClipboardList, MapPin } from 'lucide-react';
+import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload, ClipboardList, MapPin, User, Tag, Plus } from 'lucide-react';
+
+const PREDEFINED_TAGS = ['Past Client', 'Sphere', 'Neighbor', 'Lead', 'VIP', 'Family'];
+const TAG_COLORS: Record<string, string> = {
+  'Past Client': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  'Sphere': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  'Neighbor': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  'Lead': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  'VIP': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  'Family': 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
+};
+const DEFAULT_TAG_COLOR = 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 
 interface EditPropertyDetailsDialogProps {
   open: boolean;
@@ -37,6 +48,9 @@ const EditPropertyDetailsDialog = ({
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [agentNotes, setAgentNotes] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [categoryTags, setCategoryTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState('');
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState<string | null>(null);
@@ -61,7 +75,7 @@ const EditPropertyDetailsDialog = ({
     try {
       const { data, error } = await supabase
         .from('session_properties')
-        .select('address, city, state, zip_code, summary, description, agent_notes, photo_url')
+        .select('address, city, state, zip_code, summary, description, agent_notes, photo_url, recipient_name, category_tags')
         .eq('id', propertyId)
         .single();
 
@@ -74,6 +88,8 @@ const EditPropertyDetailsDialog = ({
       setSummary(data?.summary || '');
       setDescription(data?.description || '');
       setAgentNotes(data?.agent_notes || '');
+      setRecipientName(data?.recipient_name || '');
+      setCategoryTags(data?.category_tags || []);
       setCurrentPhotoUrl(data?.photo_url || null);
     } catch (error) {
       console.error('Error fetching property details:', error);
@@ -164,6 +180,8 @@ const EditPropertyDetailsDialog = ({
           summary: summary.trim() || null,
           description: description.trim() || null,
           agent_notes: agentNotes.trim() || null,
+          recipient_name: recipientName.trim() || null,
+          category_tags: categoryTags,
           photo_url: photoUrl,
         })
         .eq('id', propertyId);
@@ -201,6 +219,24 @@ const EditPropertyDetailsDialog = ({
           </div>
         ) : (
           <div className="space-y-5 mt-4">
+            {/* Recipient Name — Pop-By only */}
+            {isPopBy && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <User className="w-4 h-4 text-primary" />
+                Recipient Name
+              </Label>
+              <Input
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="John & Jane Smith"
+              />
+              <p className="text-xs text-muted-foreground">
+                Who lives at this address. Shown on the delivery card.
+              </p>
+            </div>
+            )}
+
             {/* Address Fields */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
@@ -366,6 +402,86 @@ const EditPropertyDetailsDialog = ({
                   : 'Personal notes highlighted for your client.'}
               </p>
             </div>
+
+            {/* Category Tags — Pop-By only */}
+            {isPopBy && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-primary" />
+                Category Tags
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {PREDEFINED_TAGS.map((tag) => {
+                  const isActive = categoryTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        setCategoryTags(isActive
+                          ? categoryTags.filter(t => t !== tag)
+                          : [...categoryTags, tag]
+                        );
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-full transition-all ${
+                        isActive
+                          ? TAG_COLORS[tag] || DEFAULT_TAG_COLOR
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      } ${isActive ? 'ring-1 ring-current/20' : ''}`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+                {categoryTags
+                  .filter(t => !PREDEFINED_TAGS.includes(t))
+                  .map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setCategoryTags(categoryTags.filter(t => t !== tag))}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-full ${DEFAULT_TAG_COLOR} ring-1 ring-current/20 flex items-center gap-1`}
+                    >
+                      {tag}
+                      <X className="w-3 h-3" />
+                    </button>
+                  ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={customTag}
+                  onChange={(e) => setCustomTag(e.target.value)}
+                  placeholder="Add custom tag..."
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const tag = customTag.trim();
+                      if (tag && !categoryTags.includes(tag)) {
+                        setCategoryTags([...categoryTags, tag]);
+                        setCustomTag('');
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={() => {
+                    const tag = customTag.trim();
+                    if (tag && !categoryTags.includes(tag)) {
+                      setCategoryTags([...categoryTags, tag]);
+                      setCustomTag('');
+                    }
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            )}
 
             <Button
               onClick={handleSave}

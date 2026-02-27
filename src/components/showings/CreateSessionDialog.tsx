@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, RefreshCw, Lock, LockOpen, Users } from 'lucide-react';
+import { CalendarIcon, RefreshCw, Lock, LockOpen, Users, Gift } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { sessionSchema } from '@/lib/validations';
@@ -36,6 +36,7 @@ interface CreateSessionDialogProps {
     sharePassword?: string;
     agentProfileId?: string | null;
     sessionType?: string;
+    giftLabel?: string;
   }) => void;
   isOnboarding?: boolean;
   agentProfiles?: AgentOption[];
@@ -63,6 +64,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [giftLabel, setGiftLabel] = useState('');
   const hasAgents = agentProfiles && agentProfiles.length > 0;
 
   // Mark field as touched when user interacts with it
@@ -116,6 +118,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
       sharePassword: passwordEnabled && sharePassword ? sharePassword : undefined,
       agentProfileId: hasAgents ? selectedAgentId : undefined,
       sessionType,
+      giftLabel: isPopBy && giftLabel.trim() ? giftLabel.trim() : undefined,
     });
     resetForm();
     onOpenChange(false);
@@ -132,6 +135,7 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
     setDatePickerOpen(false);
     setTouchedFields(new Set());
     setSelectedAgentId(null);
+    setGiftLabel('');
   };
 
   const handleGenerateCode = () => {
@@ -235,6 +239,26 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
               </PopoverContent>
             </Popover>
           </div>
+
+          {/* Gift / Item Label — Pop-By only */}
+          {isPopBy && (
+          <div className="space-y-2">
+            <Label htmlFor="giftLabel" className="flex items-center gap-1.5">
+              <Gift className="w-4 h-4" />
+              Gift / Item
+            </Label>
+            <Input
+              id="giftLabel"
+              placeholder="Valentine's Cookies, Market Update Packet..."
+              value={giftLabel}
+              onChange={(e) => setGiftLabel(e.target.value)}
+              maxLength={100}
+            />
+            <p className="text-xs text-muted-foreground">
+              What you're delivering. Shown on the delivery view.
+            </p>
+          </div>
+          )}
 
           {/* Client Name — hidden for Pop-By */}
           {!isPopBy && (
