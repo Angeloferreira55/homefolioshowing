@@ -10,55 +10,109 @@ function buildWelcomeEmailHtml(fullName: string, welcomeToken: string, teamLeade
   const welcomeUrl = `https://home-folio.net/welcome/${welcomeToken}`;
   return `
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
-      <!-- Header -->
-      <div style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);padding:40px 32px;text-align:center;">
-        <h1 style="color:white;margin:0;font-size:28px;font-weight:700;letter-spacing:-0.5px;">HomeFolio</h1>
-        <p style="color:#94a3b8;margin:8px 0 0;font-size:14px;">Digital Property Portfolios for Real Estate</p>
-      </div>
-      <!-- Body -->
-      <div style="padding:40px 32px;">
-        <h2 style="color:#1e293b;margin:0 0 16px;font-size:24px;font-weight:600;">Welcome, ${fullName}!</h2>
-        <p style="color:#475569;font-size:16px;line-height:1.6;margin:0 0 24px;">
-          <strong>${teamLeaderName}</strong> has invited you to join their team on HomeFolio — the platform that helps real estate professionals create beautiful digital property portfolios and manage showings.
-        </p>
-        <p style="color:#475569;font-size:16px;line-height:1.6;margin:0 0 32px;">
-          Get started by setting up your password and completing your profile. It only takes a minute.
-        </p>
-        <!-- CTA Button -->
-        <div style="text-align:center;margin:0 0 32px;">
-          <a href="${welcomeUrl}" style="display:inline-block;background:#2563eb;color:white;padding:14px 40px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;letter-spacing:0.3px;">
-            Get Started
-          </a>
-        </div>
-        <!-- What you can do -->
-        <div style="background:#f8fafc;border-radius:12px;padding:24px;margin:0 0 24px;">
-          <p style="color:#1e293b;font-weight:600;margin:0 0 12px;font-size:15px;">With HomeFolio you can:</p>
-          <ul style="color:#475569;font-size:14px;line-height:2;margin:0;padding-left:20px;">
-            <li>Create stunning digital property portfolios</li>
-            <li>Organize and share showing sessions with clients</li>
-            <li>Optimize your showing routes</li>
-            <li>Collect client feedback and ratings</li>
-          </ul>
-        </div>
-        <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">
-          This link expires in 7 days. If you need a new one, ask your team leader to resend it.
-        </p>
-      </div>
-      <!-- Footer -->
-      <div style="border-top:1px solid #e2e8f0;padding:24px 32px;text-align:center;">
-        <p style="color:#94a3b8;font-size:12px;margin:0;">
-          &copy; ${new Date().getFullYear()} HomeFolio &middot; <a href="https://home-folio.net" style="color:#2563eb;text-decoration:none;">home-folio.net</a>
-        </p>
-      </div>
-    </div>
-  </div>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Welcome to HomeFolio</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;">${teamLeaderName} has invited you to join their team on HomeFolio. Set up your account now.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1e293b 0%,#334155 100%);padding:32px;text-align:left;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="text-align:left;">
+                    <a href="https://home-folio.net" style="text-decoration:none;">
+                      <img src="https://home-folio.net/logo.png" alt="HomeFolio" width="48" height="48" style="display:inline-block;vertical-align:middle;border:0;border-radius:8px;margin-right:12px;" />
+                      <span style="color:white;font-size:24px;font-weight:700;letter-spacing:-0.5px;vertical-align:middle;">HomeFolio</span>
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 32px;">
+              <h1 style="color:#1e293b;margin:0 0 16px;font-size:24px;font-weight:600;">Welcome, ${fullName}!</h1>
+              <p style="color:#475569;font-size:16px;line-height:1.6;margin:0 0 24px;">
+                <strong>${teamLeaderName}</strong> has invited you to join their team on HomeFolio &#8212; the platform that helps real estate professionals create beautiful digital property portfolios and manage showings.
+              </p>
+              <p style="color:#475569;font-size:16px;line-height:1.6;margin:0 0 32px;">
+                Get started by setting up your password and completing your profile. It only takes a minute.
+              </p>
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding:0 0 32px;">
+                    <a href="${welcomeUrl}" style="display:inline-block;background:#2563eb;color:white;padding:14px 40px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;letter-spacing:0.3px;mso-padding-alt:0;">
+                      Get Started
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <!-- What you can do -->
+              <div style="background:#f8fafc;border-radius:12px;padding:24px;margin:0 0 24px;">
+                <p style="color:#1e293b;font-weight:600;margin:0 0 12px;font-size:15px;">With HomeFolio you can:</p>
+                <ul style="color:#475569;font-size:14px;line-height:2;margin:0;padding-left:20px;">
+                  <li>Create stunning digital property portfolios</li>
+                  <li>Organize and share showing sessions with clients</li>
+                  <li>Optimize your showing routes</li>
+                  <li>Collect client feedback and ratings</li>
+                </ul>
+              </div>
+              <p style="color:#94a3b8;font-size:13px;margin:0;text-align:center;">
+                This link expires in 7 days. If you need a new one, ask your team leader to resend it.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="border-top:1px solid #e2e8f0;padding:24px 32px;text-align:center;">
+              <p style="color:#94a3b8;font-size:12px;margin:0 0 8px;">
+                &copy; ${new Date().getFullYear()} HomeFolio &middot; <a href="https://home-folio.net" style="color:#2563eb;text-decoration:none;">home-folio.net</a>
+              </p>
+              <p style="color:#b0b8c4;font-size:11px;margin:0;">
+                HomeFolio &middot; Albuquerque, NM &middot; <a href="https://home-folio.net/privacy" style="color:#94a3b8;text-decoration:underline;">Privacy Policy</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
+}
+
+function buildWelcomeEmailText(fullName: string, welcomeToken: string, teamLeaderName: string): string {
+  const welcomeUrl = `https://home-folio.net/welcome/${welcomeToken}`;
+  return `Welcome to HomeFolio, ${fullName}!
+
+${teamLeaderName} has invited you to join their team on HomeFolio - the platform that helps real estate professionals create beautiful digital property portfolios and manage showings.
+
+Get started by setting up your password and completing your profile:
+${welcomeUrl}
+
+With HomeFolio you can:
+- Create stunning digital property portfolios
+- Organize and share showing sessions with clients
+- Optimize your showing routes
+- Collect client feedback and ratings
+
+This link expires in 7 days. If you need a new one, ask your team leader to resend it.
+
+---
+HomeFolio | home-folio.net
+Albuquerque, NM`;
 }
 
 serve(async (req) => {
@@ -247,9 +301,14 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             from: 'HomeFolio <contact@home-folio.net>',
+            reply_to: 'contact@home-folio.net',
             to: email,
             subject: `Welcome to HomeFolio, ${fullName}!`,
             html: buildWelcomeEmailHtml(fullName, welcomeToken, teamLeaderName),
+            text: buildWelcomeEmailText(fullName, welcomeToken, teamLeaderName),
+            headers: {
+              'X-Entity-Ref-ID': crypto.randomUUID(),
+            },
           }),
         });
 
