@@ -95,7 +95,8 @@ function AppSidebar() {
   const isTeamLeader = subscribed && (tier === 'team' || tier === 'team5');
   const isAssistant = subscribed && tier === 'assistant';
   const filteredNavItems = navItems.filter(item => {
-    if (item.adminOnly) return isAdmin;
+    if (isAdmin) return true; // Admin accounts see all nav items
+    if (item.adminOnly) return false;
     if (item.teamLeaderOnly) return isTeamLeader;
     if (item.assistantOnly) return isAssistant;
     return true;
