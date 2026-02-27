@@ -29,7 +29,7 @@ function buildSubscriberWelcomeHtml(firstName: string): string {
                 <tr>
                   <td style="text-align:left;">
                     <a href="https://home-folio.net" style="text-decoration:none;">
-                      <img src="https://home-folio.net/logo.png" alt="HomeFolio" width="48" height="48" style="display:inline-block;vertical-align:middle;border:0;border-radius:8px;margin-right:12px;" />
+                      <img src="https://home-folio.net/logo.png" alt="HomeFolio" width="96" height="96" style="display:inline-block;vertical-align:middle;border:0;border-radius:12px;margin-right:14px;" />
                       <span style="color:white;font-size:24px;font-weight:700;letter-spacing:-0.5px;vertical-align:middle;">HomeFolio</span>
                     </a>
                   </td>
