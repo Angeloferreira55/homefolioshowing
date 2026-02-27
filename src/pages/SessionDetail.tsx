@@ -66,6 +66,7 @@ import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard';
 import { BulkActionsBar } from '@/components/showings/BulkActionsBar';
+import { MoveToSessionDialog } from '@/components/showings/MoveToSessionDialog';
 import { trackEvent } from '@/hooks/useAnalytics';
 import { sendNotificationEmail } from '@/hooks/useNotifications';
 import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
@@ -551,6 +552,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list');
   const [recentlyDeleted, setRecentlyDeleted] = useState<SessionProperty[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -1194,15 +1196,64 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     }
   };
 
-  const handleMoveToNewSession = async () => {
+  const handleOpenMoveDialog = () => {
     if (selectedProperties.size === 0 || !session) return;
+    setIsMoveDialogOpen(true);
+  };
 
-    const sessionLabel = window.prompt(
-      `Move ${selectedProperties.size} ${isPopBy ? 'addresses' : 'properties'} to a new session.\n\nEnter a name for the new session:`,
-      `${session.title} - Day 2`
-    );
+  /** Move selected properties to an existing session */
+  const handleMoveToExisting = async (targetSessionId: string, targetTitle: string) => {
+    if (selectedProperties.size === 0) return;
 
-    if (!sessionLabel) return; // User cancelled
+    try {
+      const selectedIds = Array.from(selectedProperties);
+
+      // Get current max order_index in target session
+      const { data: existingProps } = await supabase
+        .from('session_properties')
+        .select('order_index')
+        .eq('session_id', targetSessionId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+
+      const startIndex = (existingProps?.[0]?.order_index ?? -1) + 1;
+
+      // Move properties to target session
+      const updates = selectedIds.map((propId, idx) =>
+        supabase
+          .from('session_properties')
+          .update({ session_id: targetSessionId, order_index: startIndex + idx })
+          .eq('id', propId)
+      );
+      await Promise.all(updates);
+
+      // Re-index remaining properties in current session
+      const remainingProperties = properties.filter(p => !selectedProperties.has(p.id));
+      const reindexUpdates = remainingProperties.map((prop, idx) =>
+        supabase
+          .from('session_properties')
+          .update({ order_index: idx })
+          .eq('id', prop.id)
+      );
+      await Promise.all(reindexUpdates);
+
+      toast.success(`Moved ${selectedIds.length} ${isPopBy ? 'addresses' : 'properties'} to "${targetTitle}"`, {
+        action: {
+          label: 'Open',
+          onClick: () => navigate(`/admin/showings/${targetSessionId}`),
+        },
+      });
+      setSelectedProperties(new Set());
+      fetchProperties();
+    } catch (error: any) {
+      console.error('Move to existing session error:', error);
+      toast.error(error.message || 'Failed to move properties');
+    }
+  };
+
+  /** Create a new session and move selected properties to it */
+  const handleMoveToNew = async (sessionLabel: string) => {
+    if (selectedProperties.size === 0 || !session) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1228,7 +1279,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
       if (createError) throw createError;
 
-      // Move selected properties to the new session and re-index them
+      // Move selected properties to the new session
       const selectedIds = Array.from(selectedProperties);
       const updates = selectedIds.map((propId, idx) =>
         supabase
@@ -1236,7 +1287,6 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
           .update({ session_id: newSession.id, order_index: idx })
           .eq('id', propId)
       );
-
       await Promise.all(updates);
 
       // Re-index remaining properties in the current session
@@ -2238,7 +2288,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 onClear={handleClearSelection}
                 onSelectAll={handleSelectAll}
                 onDelete={handleBulkDelete}
-                onMoveToNewSession={handleMoveToNewSession}
+                onMoveToNewSession={handleOpenMoveDialog}
                 totalCount={properties.length}
               />
             )}
@@ -2561,6 +2611,19 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         onImport={handleAddMultipleProperties}
         existingAddresses={properties.map(p => p.address)}
       />
+
+      {session && (
+        <MoveToSessionDialog
+          open={isMoveDialogOpen}
+          onOpenChange={setIsMoveDialogOpen}
+          selectedCount={selectedProperties.size}
+          currentSessionId={session.id}
+          sessionType={session.session_type || 'home_folio'}
+          currentTitle={session.title}
+          onMoveToExisting={handleMoveToExisting}
+          onMoveToNew={handleMoveToNew}
+        />
+      )}
     </AdminLayout>
   );
 };
