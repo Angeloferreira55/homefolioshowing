@@ -56,6 +56,7 @@ import {
   Printer,
   Save,
   Tag,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -68,6 +69,7 @@ import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 
 import AddressTemplatesDialog from '@/components/showings/AddressTemplatesDialog';
+import { useActiveAgent } from '@/hooks/useActiveAgent';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
 import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard';
@@ -159,6 +161,7 @@ interface ShowingSession {
   share_password: string | null;
   session_type: string | null;
   gift_label: string | null;
+  agent_profile_id: string | null;
 }
 
 // Sortable Gallery Card Component
@@ -528,6 +531,8 @@ const SortableGalleryCard = ({
 const SessionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { managedAgents, isAssistantMode } = useActiveAgent();
+  const agentProfiles = managedAgents.map(a => ({ id: a.id, full_name: a.full_name, avatar_url: a.avatar_url }));
   const [session, setSession] = useState<ShowingSession | null>(null);
   const [properties, setProperties] = useState<SessionProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1458,6 +1463,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     sessionDate?: Date;
     notes?: string;
     accessCode?: string | null;
+    agentProfileId?: string | null;
     giftLabel?: string;
   }) => {
     try {
@@ -1468,6 +1474,9 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         notes: data.notes || null,
         share_password: data.accessCode,
       };
+      if (data.agentProfileId !== undefined) {
+        updatePayload.agent_profile_id = data.agentProfileId || null;
+      }
       if (isPopBy) {
         updatePayload.gift_label = data.giftLabel || null;
       }
@@ -1823,6 +1832,56 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <Gift className="w-4 h-4 text-orange-500" />
               {session.gift_label}
             </p>
+          )}
+
+          {/* Quick-assign agent */}
+          {isAssistantMode && agentProfiles.length > 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" />
+                Agent:
+              </span>
+              <div className="flex items-center gap-1">
+                {agentProfiles.map((agent) => (
+                  <button
+                    key={agent.id}
+                    onClick={async () => {
+                      const newAgentId = session.agent_profile_id === agent.id ? null : agent.id;
+                      try {
+                        const { error } = await supabase
+                          .from('showing_sessions')
+                          .update({ agent_profile_id: newAgentId })
+                          .eq('id', id);
+                        if (error) throw error;
+                        toast.success(newAgentId ? `Assigned to ${agent.full_name}` : 'Unassigned from agent');
+                        fetchSession();
+                      } catch {
+                        toast.error('Failed to assign agent');
+                      }
+                    }}
+                    title={agent.full_name}
+                    className={`w-8 h-8 rounded-full overflow-hidden border-2 transition-all ${
+                      session.agent_profile_id === agent.id
+                        ? 'border-primary ring-1 ring-primary scale-110'
+                        : 'border-transparent opacity-50 hover:opacity-100 hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    {agent.avatar_url ? (
+                      <img src={agent.avatar_url} alt={agent.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] font-medium">
+                        {agent.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {session.agent_profile_id && (
+                <span className="text-sm font-medium text-foreground">
+                  {agentProfiles.find(a => a.id === session.agent_profile_id)?.full_name}
+                </span>
+              )}
+            </div>
           )}
 
           {/* Actions - Horizontal on mobile, inline buttons */}
@@ -2708,6 +2767,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         open={isEditSessionOpen}
         onOpenChange={setIsEditSessionOpen}
         onSave={handleEditSession}
+        agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
       />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
