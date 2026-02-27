@@ -215,12 +215,12 @@ const ShowingHub = () => {
       toast.success('Session created!');
 
       // If an agent was explicitly selected in the dialog, switch the top thumbnail
-      // to that agent — fetchSessions will re-run automatically via the useEffect
+      // to that agent so the session list filters to show their sessions
       if (isAssistantMode && data.agentProfileId !== undefined && data.agentProfileId !== activeAgentId) {
         setActiveAgentId(data.agentProfileId);
-      } else {
-        fetchSessions();
       }
+      // Always refresh sessions to include the newly created one
+      fetchSessions();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create session');
     }
@@ -955,6 +955,7 @@ const ShowingHub = () => {
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
         agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
+        defaultAgentId={activeAgentId}
       />
 
       <CreateSessionDialog
@@ -963,6 +964,7 @@ const ShowingHub = () => {
         onCreate={handleCreateSession}
         sessionType="pop_by"
         agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
+        defaultAgentId={activeAgentId}
       />
 
       <EditSessionDialog

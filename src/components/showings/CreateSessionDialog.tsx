@@ -41,6 +41,7 @@ interface CreateSessionDialogProps {
   isOnboarding?: boolean;
   agentProfiles?: AgentOption[];
   sessionType?: string;
+  defaultAgentId?: string | null;
 }
 
 const generateAccessCode = (): string => {
@@ -53,7 +54,7 @@ const generateAccessCode = (): string => {
   return code;
 };
 
-const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false, agentProfiles, sessionType = 'home_folio' }: CreateSessionDialogProps) => {
+const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = false, agentProfiles, sessionType = 'home_folio', defaultAgentId }: CreateSessionDialogProps) => {
   const [title, setTitle] = useState('');
   const [sessionDate, setSessionDate] = useState<Date>();
   const [clientName, setClientName] = useState('');
@@ -63,9 +64,16 @@ const CreateSessionDialog = ({ open, onOpenChange, onCreate, isOnboarding = fals
   const [sharePassword, setSharePassword] = useState('');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(defaultAgentId ?? null);
   const [giftLabel, setGiftLabel] = useState('');
   const hasAgents = agentProfiles && agentProfiles.length > 0;
+
+  // Sync default agent when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSelectedAgentId(defaultAgentId ?? null);
+    }
+  }, [open, defaultAgentId]);
 
   // Mark field as touched when user interacts with it
   const handleFieldFocus = (fieldName: string) => {
