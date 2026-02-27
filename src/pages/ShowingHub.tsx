@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2, Archive, RotateCcw, Clock, MapPin } from 'lucide-react';
+import { Plus, Home, Users, Calendar, Star, Copy, ChevronRight, Pencil, Trash2, Archive, RotateCcw, Clock, MapPin, Gift } from 'lucide-react';
 import CreateSessionDialog from '@/components/showings/CreateSessionDialog';
 import EditSessionDialog from '@/components/showings/EditSessionDialog';
 import AdminLayout from '@/components/layout/AdminLayout';
@@ -114,7 +114,8 @@ const ShowingHub = () => {
           created_at,
           deleted_at,
           archived_at,
-          agent_profile_id
+          agent_profile_id,
+          session_type
         `) as any)
         .order('created_at', { ascending: false });
 
@@ -522,7 +523,9 @@ const ShowingHub = () => {
     <div
       key={session.id}
       onClick={() => variant !== 'trash' && navigate(`/admin/session/${session.id}`)}
-      className={`bg-card rounded-xl p-5 card-elevated transition-colors ${
+      className={`bg-card rounded-xl p-5 card-elevated transition-colors border-l-4 ${
+        session.session_type === 'pop_by' ? 'border-l-orange-400' : 'border-l-blue-400'
+      } ${
         variant === 'trash' ? 'opacity-75' : 'cursor-pointer hover:bg-card/80'
       }`}
     >
@@ -530,8 +533,16 @@ const ShowingHub = () => {
         <div className="flex-1">
           <h3 className="font-display text-xl font-semibold text-foreground mb-1 flex items-center gap-2">
             {session.title}
-            {session.session_type === 'pop_by' && (
-              <span className="text-xs font-normal bg-accent/10 text-accent px-2 py-0.5 rounded-full">Pop-By</span>
+            {session.session_type === 'pop_by' ? (
+              <span className="text-xs font-normal bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Gift className="w-3 h-3" />
+                Pop-By
+              </span>
+            ) : (
+              <span className="text-xs font-normal bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Home className="w-3 h-3" />
+                Home Folio
+              </span>
             )}
           </h3>
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
@@ -595,7 +606,7 @@ const ShowingHub = () => {
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Home className="w-3.5 h-3.5" />
-              {session.property_count} properties
+              {session.property_count} {session.session_type === 'pop_by' ? 'addresses' : 'properties'}
             </span>
             <span className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5" />
