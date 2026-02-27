@@ -12,7 +12,15 @@ serve(async (req) => {
   }
 
   try {
-    // Get the requesting user
+    const { memberUserId } = await req.json();
+
+    if (!memberUserId) {
+      return new Response(JSON.stringify({ error: 'Member user ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -21,19 +29,13 @@ serve(async (req) => {
       });
     }
 
-    // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verify the requesting user is authenticated
+    // Verify requesting user
     const token = authHeader.replace('Bearer ', '');
     const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
@@ -44,75 +46,44 @@ serve(async (req) => {
       });
     }
 
-    // Get the team owned by this user
+    // Verify requesting user owns a team
     const { data: team, error: teamError } = await supabaseAdmin
       .from('teams')
-      .select('id, max_members')
+      .select('id')
       .eq('owner_id', requestingUser.id)
       .single();
 
     if (teamError || !team) {
-      return new Response(JSON.stringify({ error: 'No team found. You must have an active Team subscription.' }), {
+      return new Response(JSON.stringify({ error: 'No team found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get all profiles in this team
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    // Fetch member profile, verify they belong to this team
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('user_id, full_name, email, company, phone, created_at')
+      .select('*')
+      .eq('user_id', memberUserId)
       .eq('team_id', team.id)
-      .neq('role', 'team_leader'); // Exclude the team leader themselves
+      .single();
 
-    if (profilesError) {
-      console.error('Error fetching team profiles:', profilesError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch team members' }), {
-        status: 500,
+    if (profileError || !profile) {
+      return new Response(JSON.stringify({ error: 'Team member not found' }), {
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get welcome tokens for team members
-    const { data: welcomeTokens } = await supabaseAdmin
-      .from('welcome_tokens')
-      .select('user_id, token')
-      .in('user_id', profiles?.map(p => p.user_id) || []);
-
-    // Map welcome tokens to user IDs
-    const tokenMap = new Map(welcomeTokens?.map(t => [t.user_id, t.token]) || []);
-
-    // Format the response
-    const members = profiles?.map(profile => ({
-      userId: profile.user_id,
-      email: profile.email,
-      fullName: profile.full_name,
-      company: profile.company,
-      phone: profile.phone,
-      timestamp: new Date(profile.created_at).toLocaleString(),
-      welcomeToken: tokenMap.get(profile.user_id),
-    })) || [];
-
-    // Get actual member count including the team leader
-    const { count: memberCount } = await supabaseAdmin
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('team_id', team.id);
-
     return new Response(
-      JSON.stringify({
-        success: true,
-        members,
-        memberCount: memberCount || 0,
-        maxMembers: team.max_members,
-      }),
+      JSON.stringify({ success: true, profile }),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
-    console.error('team-list-users error:', error);
+    console.error('team-get-member-profile error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
       {

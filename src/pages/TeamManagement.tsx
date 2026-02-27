@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, AlertCircle } from 'lucide-react';
+import { UserPlus, Loader2, Users, Mail, Lock, Building, Phone, User, Copy, Check, Link as LinkIcon, Trash2, AlertCircle, Send, Eye } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface TeamMember {
+  userId?: string;
   email: string;
   password: string;
   fullName: string;
@@ -179,7 +180,11 @@ const TeamManagement = () => {
         ...prev,
       ]);
 
-      toast.success(`Team member created successfully: ${email}`);
+      if (data.emailSent) {
+        toast.success(`Team member created! Welcome email sent to ${email}`);
+      } else {
+        toast.success(`Team member created successfully: ${email}`);
+      }
 
       // Refresh team members list
       await fetchTeamMembers();
@@ -247,6 +252,31 @@ const TeamManagement = () => {
     } catch (error) {
       console.error('Error deleting team member:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to remove team member');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendWelcomeEmail = async (email: string, fullName: string) => {
+    try {
+      setLoading(true);
+      const response = await supabase.functions.invoke('team-regenerate-welcome', {
+        body: { memberEmail: email },
+      });
+
+      if (response.error) throw response.error;
+      if (response.data?.error) throw new Error(response.data.error);
+
+      if (response.data?.emailSent) {
+        toast.success(`Welcome email sent to ${fullName} (${email})`);
+      } else {
+        toast.success(`Welcome link regenerated for ${fullName}`);
+      }
+
+      await fetchTeamMembers();
+    } catch (error) {
+      console.error('Error resending welcome email:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to resend welcome email');
     } finally {
       setLoading(false);
     }
@@ -578,16 +608,27 @@ const TeamManagement = () => {
                                 <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              {member.welcomeToken && (
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => resendWelcomeEmail(member.email, member.fullName)}
+                                disabled={loading}
+                                className="flex-1 gap-2"
+                                title="Resend welcome email"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                Resend Welcome
+                              </Button>
+                              {member.userId && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => copyWelcomeLink(member.welcomeToken!, index + 2000)}
-                                  className="flex-1 gap-2"
+                                  onClick={() => navigate(`/admin/team-member/${member.userId}`)}
+                                  className="gap-2"
+                                  title="View profile"
                                 >
-                                  <LinkIcon className="w-3.5 h-3.5" />
-                                  {copiedIndex === index + 2000 ? 'Copied!' : 'Copy Welcome Link'}
+                                  <Eye className="w-3.5 h-3.5" />
                                 </Button>
                               )}
                               <Button

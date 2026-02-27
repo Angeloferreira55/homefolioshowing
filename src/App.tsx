@@ -33,6 +33,7 @@ import Blog from "./pages/Blog";
 import Install from "./pages/Install";
 import ManagedAgents from "./pages/ManagedAgents";
 import ManagedAgentEdit from "./pages/ManagedAgentEdit";
+import TeamMemberProfile from "./pages/TeamMemberProfile";
 import NotFound from "./pages/NotFound";
 import { ActiveAgentProvider } from "./contexts/ActiveAgentContext";
 
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/manage-users" element={<ManageUsers />} />
             <Route path="/admin/team-management" element={<TeamManagement />} />
+            <Route path="/admin/team-member/:userId" element={<TeamMemberProfile />} />
             <Route path="/admin/agents" element={<ManagedAgents />} />
             <Route path="/admin/agents/:agentId" element={<ManagedAgentEdit />} />
             <Route path="/admin/help" element={<Help />} />
