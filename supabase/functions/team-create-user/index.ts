@@ -67,19 +67,21 @@ serve(async (req) => {
       });
     }
 
-    // Check team capacity using the helper function
-    const { data: canAdd, error: capacityError } = await supabaseAdmin
-      .rpc('can_add_team_member', { team_id: team.id });
+    // Check team capacity directly
+    const { count: memberCount, error: countError } = await supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('team_id', team.id);
 
-    if (capacityError) {
-      console.error('Error checking team capacity:', capacityError);
+    if (countError) {
+      console.error('Error checking team capacity:', countError);
       return new Response(JSON.stringify({ error: 'Failed to check team capacity' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (!canAdd) {
+    if ((memberCount || 0) >= team.max_members) {
       return new Response(JSON.stringify({ error: `Team is at capacity (${team.max_members} members max)` }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -124,7 +126,7 @@ serve(async (req) => {
         company: company || null,
         phone: phone || null,
         team_id: team.id,
-        role: 'team_member',
+        role: 'member',
       })
       .eq('user_id', newUser.user.id);
 

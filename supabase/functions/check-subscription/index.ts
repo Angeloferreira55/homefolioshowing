@@ -42,6 +42,7 @@ const ensureTeamExists = async (
     const { data: newTeam, error: teamError } = await supabaseClient
       .from('teams')
       .insert({
+        name: 'My Team',
         owner_id: userId,
         max_members: maxMembers,
       })
