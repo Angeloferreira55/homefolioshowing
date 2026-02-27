@@ -46,9 +46,9 @@ const ManagedAgents = () => {
   const fetchAgents = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await (supabase
-        .from('managed_agents' as any)
-        .select('*') as any)
+      const { data, error } = await supabase
+        .from('managed_agents')
+        .select('*')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -72,8 +72,8 @@ const ManagedAgents = () => {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      const { error } = await (supabase
-        .from('managed_agents' as any) as any)
+      const { error } = await supabase
+        .from('managed_agents')
         .delete()
         .eq('id', deleteId);
 

@@ -75,16 +75,16 @@ export function ActiveAgentProvider({ children }: { children: ReactNode }) {
   const refetchAgents = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await (supabase
-        .from('managed_agents' as any)
-        .select('id, full_name, avatar_url, email, phone, slogan, bio, company, license_number, brokerage_name, brokerage_address, brokerage_phone, brokerage_email, brokerage_logo_url, linkedin_url, instagram_url, facebook_url, twitter_url, youtube_url, website_url, created_at, updated_at') as any)
+      const { data, error } = await supabase
+        .from('managed_agents')
+        .select('*')
         .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching managed agents:', error);
         setManagedAgents([]);
       } else {
-        setManagedAgents(data || []);
+        setManagedAgents((data as ManagedAgent[]) || []);
       }
     } catch (err) {
       console.error('Error fetching managed agents:', err);
