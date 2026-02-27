@@ -115,14 +115,18 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // 0. Owner accounts: permanent Pro access
+    // 0. Owner accounts: permanent full access
     const TIER_OVERRIDES: Record<string, string> = {
-      "angelo@houseforsaleabq.com": "pro",
-      "contact@home-folio.net": "pro",
+      "angelo@houseforsaleabq.com": "team",
+      "contact@home-folio.net": "team",
     };
     if (TIER_OVERRIDES[user.email]) {
       const overrideTier = TIER_OVERRIDES[user.email];
       logStep("Tier override applied", { email: user.email, tier: overrideTier });
+
+      // Ensure team exists for owner accounts with team tier
+      await ensureTeamExists(supabaseClient, user.id, overrideTier);
+
       return new Response(JSON.stringify({
         subscribed: true,
         tier: overrideTier,
