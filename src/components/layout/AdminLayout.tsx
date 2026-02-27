@@ -33,7 +33,6 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import logoImage from '@/assets/homefolio-logo.png';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { AIAssistant } from '@/components/ai/AIAssistant';
-import { ActiveAgentProvider } from '@/contexts/ActiveAgentContext';
 import AgentSwitcher from '@/components/layout/AgentSwitcher';
 import { toast } from 'sonner';
 
@@ -220,29 +219,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <SidebarProvider>
-      <ActiveAgentProvider>
-        <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Header with trigger */}
-            <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 safe-area-top">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger className="touch-target flex items-center justify-center">
-                  <Menu className="w-5 h-5" />
-                </SidebarTrigger>
-                <AgentSwitcher />
-              </div>
-              <ThemeToggle />
-            </header>
-            <main className="flex-1 overflow-x-hidden">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-                {children}
-              </div>
-            </main>
-          </div>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header with trigger */}
+          <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 safe-area-top">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="touch-target flex items-center justify-center">
+                <Menu className="w-5 h-5" />
+              </SidebarTrigger>
+              <AgentSwitcher />
+            </div>
+            <ThemeToggle />
+          </header>
+          <main className="flex-1 overflow-x-hidden">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+              {children}
+            </div>
+          </main>
         </div>
-        <AIAssistant />
-      </ActiveAgentProvider>
+      </div>
+      <AIAssistant />
     </SidebarProvider>
   );
 }

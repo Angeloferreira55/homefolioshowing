@@ -34,6 +34,7 @@ import Install from "./pages/Install";
 import ManagedAgents from "./pages/ManagedAgents";
 import ManagedAgentEdit from "./pages/ManagedAgentEdit";
 import NotFound from "./pages/NotFound";
+import { ActiveAgentProvider } from "./contexts/ActiveAgentContext";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
         <InstallPromptBanner />
         <OfflineIndicator />
         <BrowserRouter>
+          <ActiveAgentProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/demo" element={<Demo />} />
@@ -68,7 +70,7 @@ const App = () => (
             <Route path="/admin/showings" element={<ShowingHub />} />
             <Route path="/admin/session/:id" element={<SessionDetail />} />
             <Route path="/s/:token" element={<PublicSession />} />
-            
+
             <Route path="/admin/profile" element={<Profile />} />
             <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="/admin/manage-users" element={<ManageUsers />} />
@@ -79,6 +81,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ActiveAgentProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
