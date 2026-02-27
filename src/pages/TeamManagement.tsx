@@ -28,7 +28,7 @@ interface TeamInfo {
 
 const TeamManagement = () => {
   const navigate = useNavigate();
-  const { subscribed, tier } = useSubscription();
+  const { subscribed, tier, loading: subLoading } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +42,8 @@ const TeamManagement = () => {
   const [teamInfo, setTeamInfo] = useState<TeamInfo>({ memberCount: 0, maxMembers: 0 });
 
   useEffect(() => {
+    if (subLoading) return; // Wait for subscription check to finish
+
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -59,7 +61,7 @@ const TeamManagement = () => {
       await fetchTeamMembers();
     };
     checkAuth();
-  }, [navigate, subscribed, tier]);
+  }, [navigate, subscribed, tier, subLoading]);
 
   const fetchTeamMembers = async () => {
     try {
