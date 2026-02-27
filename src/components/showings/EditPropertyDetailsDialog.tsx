@@ -6,11 +6,12 @@ import {
   ResponsiveDialogTitle,
 } from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload, ClipboardList } from 'lucide-react';
+import { Loader2, Sparkles, Home, MessageSquare, ImagePlus, X, Upload, ClipboardList, MapPin } from 'lucide-react';
 
 interface EditPropertyDetailsDialogProps {
   open: boolean;
@@ -29,6 +30,10 @@ const EditPropertyDetailsDialog = ({
   onSaved,
   isPopBy = false,
 }: EditPropertyDetailsDialogProps) => {
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [agentNotes, setAgentNotes] = useState('');
@@ -56,12 +61,16 @@ const EditPropertyDetailsDialog = ({
     try {
       const { data, error } = await supabase
         .from('session_properties')
-        .select('summary, description, agent_notes, photo_url')
+        .select('address, city, state, zip_code, summary, description, agent_notes, photo_url')
         .eq('id', propertyId)
         .single();
 
       if (error) throw error;
 
+      setAddress(data?.address || '');
+      setCity(data?.city || '');
+      setState(data?.state || '');
+      setZipCode(data?.zip_code || '');
       setSummary(data?.summary || '');
       setDescription(data?.description || '');
       setAgentNotes(data?.agent_notes || '');
@@ -148,6 +157,10 @@ const EditPropertyDetailsDialog = ({
       const { error } = await supabase
         .from('session_properties')
         .update({
+          address: address.trim(),
+          city: city.trim() || null,
+          state: state.trim() || null,
+          zip_code: zipCode.trim() || null,
           summary: summary.trim() || null,
           description: description.trim() || null,
           agent_notes: agentNotes.trim() || null,
@@ -188,6 +201,37 @@ const EditPropertyDetailsDialog = ({
           </div>
         ) : (
           <div className="space-y-5 mt-4">
+            {/* Address Fields */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                Address
+              </Label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Main Street"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="City"
+                />
+                <Input
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="State"
+                  maxLength={2}
+                />
+                <Input
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  placeholder="ZIP"
+                />
+              </div>
+            </div>
+
             {/* Property Photo — hidden for Pop-By */}
             {!isPopBy && (
             <div className="space-y-2">
