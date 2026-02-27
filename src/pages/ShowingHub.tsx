@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -67,32 +67,14 @@ const ShowingHub = () => {
   const onboarding = useOnboarding();
   const { profile } = useProfile();
   const { tier, subscribed } = useSubscription();
-  const { activeAgentId, setActiveAgentId } = useActiveAgent();
+  const { activeAgentId, setActiveAgentId, managedAgents, isAssistantMode: ctxAssistantMode } = useActiveAgent();
   const newSessionButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch managed agent profiles directly (assistant tier only)
-  const [agentProfiles, setAgentProfiles] = useState<{ id: string; full_name: string; avatar_url: string | null }[]>([]);
-  const fetchAgentProfiles = useCallback(async () => {
-    if (tier !== 'assistant' || !subscribed) return;
-    try {
-      const { data } = await (supabase
-        .from('managed_agents' as any)
-        .select('id, full_name, avatar_url') as any)
-        .order('created_at', { ascending: true });
-      setAgentProfiles(data || []);
-    } catch {
-      // non-critical
-    }
-  }, [tier, subscribed]);
-
-  useEffect(() => {
-    fetchAgentProfiles();
-  }, [fetchAgentProfiles]);
-
-  // Compute assistant mode locally (context has a timing bug with select('*'))
-  const isAssistantMode = tier === 'assistant' && subscribed && agentProfiles.length > 0;
+  // Use managed agents from context (fetches unconditionally, works for all tiers)
+  const agentProfiles = managedAgents.map(a => ({ id: a.id, full_name: a.full_name, avatar_url: a.avatar_url, brokerage_name: a.brokerage_name }));
+  const isAssistantMode = ctxAssistantMode;
   const activeAgent = activeAgentId
-    ? agentProfiles.find(a => a.id === activeAgentId) || null
+    ? managedAgents.find(a => a.id === activeAgentId) || null
     : null;
 
   // Show welcome modal only if user hasn't completed onboarding, has no sessions, and tour is not active
