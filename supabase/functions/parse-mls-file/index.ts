@@ -412,41 +412,44 @@ Optional fields (null if missing): mlsNumber, propertySubType, daysOnMarket, yea
 
 Rules: Clean numbers (remove $ and commas). Copy heating/cooling text exactly as written.`;
 
-async function parseTextWithGemini(textContent: string, apiKey: string): Promise<PropertyData[]> {
-  console.log('Parsing text with Gemini Flash...');
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: fastExtractionPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: textContent.substring(0, 10000) }] }],
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 2000,
-          responseMimeType: 'application/json',
-        },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    console.error('Gemini API error:', await response.text());
-    return [];
-  }
-
-  const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+async function parseTextWithGroq(textContent: string, apiKey: string): Promise<PropertyData[] | null> {
+  console.log('Parsing text with Groq (Llama 3.3 70B)...');
 
   try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: fastExtractionPrompt },
+          { role: 'user', content: textContent.substring(0, 8000) }
+        ],
+        temperature: 0,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Groq API error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    console.log('Groq response preview:', content.substring(0, 300));
+
     const parsed = JSON.parse(content);
     const properties = Array.isArray(parsed) ? parsed : (parsed.properties || parsed.data || [parsed]);
     return Array.isArray(properties) ? properties : [properties];
-  } catch {
-    console.error('Failed to parse Gemini response:', content.substring(0, 500));
-    return [];
+  } catch (error) {
+    console.error('Groq parsing error:', error);
+    return null;
   }
 }
 
@@ -591,12 +594,11 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { filePath, fileType, fileData, mode } = body;
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const groqApiKey = Deno.env.get('GROQ_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    const aiApiKey = geminiApiKey || openaiApiKey;
 
-    if (!aiApiKey) {
-      console.error('No AI API key configured (GEMINI_API_KEY or OPENAI_API_KEY)');
+    if (!groqApiKey && !openaiApiKey) {
+      console.error('No AI API key configured (GROQ_API_KEY or OPENAI_API_KEY)');
       return new Response(
         JSON.stringify({ success: false, error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -615,15 +617,22 @@ Deno.serve(async (req) => {
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'application/pdf' });
-        properties = await extractPdfWithVisionApi(blob, openaiApiKey || aiApiKey);
+        properties = await extractPdfWithVisionApi(blob, openaiApiKey!);
       } else if (detectedType === 'text') {
-        // Fast path: client already extracted text from PDF — uses Gemini if available
-        properties = geminiApiKey
-          ? await parseTextWithGemini(fileData, geminiApiKey)
-          : await parseTextWithOpenAI(fileData, openaiApiKey!);
+        // Fast path: client already extracted text from PDF
+        // Try Groq first (fastest), fall back to OpenAI
+        if (groqApiKey) {
+          properties = await parseTextWithGroq(fileData, groqApiKey) ?? [];
+          if (properties.length === 0 && openaiApiKey) {
+            console.log('Groq returned no results, falling back to OpenAI...');
+            properties = await parseTextWithOpenAI(fileData, openaiApiKey);
+          }
+        } else if (openaiApiKey) {
+          properties = await parseTextWithOpenAI(fileData, openaiApiKey);
+        }
       } else {
         // CSV: fileData is plain text
-        properties = await parseCSVWithAI(fileData, openaiApiKey || aiApiKey);
+        properties = await parseCSVWithAI(fileData, openaiApiKey!);
       }
 
       return new Response(
