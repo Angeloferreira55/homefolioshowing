@@ -425,7 +425,7 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: fastExtractionPrompt },
-        { role: 'user', content: textContent.substring(0, 30000) }
+        { role: 'user', content: textContent.substring(0, 8000) }
       ],
       temperature: 0,
       max_tokens: 2000,
