@@ -412,8 +412,46 @@ Optional fields (null if missing): mlsNumber, propertySubType, daysOnMarket, yea
 
 Rules: Clean numbers (remove $ and commas). Copy heating/cooling text exactly as written.`;
 
-async function parseTextWithAI(textContent: string, apiKey: string): Promise<PropertyData[]> {
-  console.log('Parsing text content with AI...');
+async function parseTextWithGemini(textContent: string, apiKey: string): Promise<PropertyData[]> {
+  console.log('Parsing text with Gemini Flash...');
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: fastExtractionPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: textContent.substring(0, 10000) }] }],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    console.error('Gemini API error:', await response.text());
+    return [];
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+
+  try {
+    const parsed = JSON.parse(content);
+    const properties = Array.isArray(parsed) ? parsed : (parsed.properties || parsed.data || [parsed]);
+    return Array.isArray(properties) ? properties : [properties];
+  } catch {
+    console.error('Failed to parse Gemini response:', content.substring(0, 500));
+    return [];
+  }
+}
+
+async function parseTextWithOpenAI(textContent: string, apiKey: string): Promise<PropertyData[]> {
+  console.log('Parsing text with OpenAI...');
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -434,7 +472,7 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
   });
 
   if (!response.ok) {
-    console.error('AI API error:', await response.text());
+    console.error('OpenAI API error:', await response.text());
     return [];
   }
 
@@ -443,11 +481,10 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
 
   try {
     const parsed = JSON.parse(content);
-    // Handle both { properties: [...] } and [...] formats
     const properties = Array.isArray(parsed) ? parsed : (parsed.properties || parsed.data || [parsed]);
     return Array.isArray(properties) ? properties : [properties];
   } catch {
-    console.error('Failed to parse AI response:', content.substring(0, 500));
+    console.error('Failed to parse OpenAI response:', content.substring(0, 500));
     return [];
   }
 }
@@ -554,10 +591,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { filePath, fileType, fileData, mode } = body;
 
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const aiApiKey = geminiApiKey || openaiApiKey;
 
-    if (!openaiApiKey) {
-      console.error('OPENAI_API_KEY not configured');
+    if (!aiApiKey) {
+      console.error('No AI API key configured (GEMINI_API_KEY or OPENAI_API_KEY)');
       return new Response(
         JSON.stringify({ success: false, error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -576,13 +615,15 @@ Deno.serve(async (req) => {
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'application/pdf' });
-        properties = await extractPdfWithVisionApi(blob, openaiApiKey);
+        properties = await extractPdfWithVisionApi(blob, openaiApiKey || aiApiKey);
       } else if (detectedType === 'text') {
-        // Fast path: client already extracted text from PDF
-        properties = await parseTextWithAI(fileData, openaiApiKey);
+        // Fast path: client already extracted text from PDF — uses Gemini if available
+        properties = geminiApiKey
+          ? await parseTextWithGemini(fileData, geminiApiKey)
+          : await parseTextWithOpenAI(fileData, openaiApiKey!);
       } else {
         // CSV: fileData is plain text
-        properties = await parseCSVWithAI(fileData, openaiApiKey);
+        properties = await parseCSVWithAI(fileData, openaiApiKey || aiApiKey);
       }
 
       return new Response(
