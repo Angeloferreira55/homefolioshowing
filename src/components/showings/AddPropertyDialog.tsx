@@ -566,15 +566,15 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="mls" className="mt-4 w-full">
+        <Tabs defaultValue="file" className="mt-4 w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="mls" className="gap-1">
-              <Search className="w-3 h-3" />
-              MLS #
-            </TabsTrigger>
             <TabsTrigger value="file" className="gap-1">
               <FileText className="w-3 h-3" />
               MLS Sheet
+            </TabsTrigger>
+            <TabsTrigger value="mls" className="gap-1">
+              <Search className="w-3 h-3" />
+              MLS #
             </TabsTrigger>
             <TabsTrigger value="manual">Manual</TabsTrigger>
           </TabsList>
@@ -848,9 +848,16 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
           </TabsContent>
 
           <TabsContent value="mls" className="space-y-4 mt-4 w-full">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center">
+              <p className="text-sm font-medium text-amber-800">Coming Soon</p>
+              <p className="text-xs text-amber-600 mt-1">
+                Direct MLS number lookup is under development. Use the MLS Sheet tab to upload a PDF in the meantime.
+              </p>
+            </div>
+
             {!showBulkImport ? (
               <>
-                <div className="space-y-2 w-full">
+                <div className="space-y-2 w-full opacity-50 pointer-events-none">
                   <Label htmlFor="mlsSearch">MLS Number</Label>
                   <div className="flex gap-2">
                     <Input
@@ -860,19 +867,16 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
                       onChange={(e) => setMlsSearchQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleMlsSearch(); } }}
                       className="flex-1"
+                      disabled
                     />
                     <Button
                       type="button"
                       onClick={handleMlsSearch}
-                      disabled={isSearchingMls}
+                      disabled
                       className="gap-2"
                     >
-                      {isSearchingMls ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4" />
-                      )}
-                      {isSearchingMls ? 'Searching...' : 'Search'}
+                      <Search className="w-4 h-4" />
+                      Search
                     </Button>
                   </div>
                   <div className="flex items-center justify-between">
