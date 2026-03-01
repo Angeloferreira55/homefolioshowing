@@ -11,7 +11,7 @@ const steps = [
     icon: Plus,
     step: '02',
     title: 'Create a Session & Add Properties',
-    description: 'Create a showing session for your client, then add properties by uploading an MLS PDF with a photo, pasting a Realtor.com link, or entering details manually. Attach documents and notes to each property.',
+    description: 'Create a showing session for your client, then add properties by uploading an MLS sheet PDF, entering details manually, or using an MLS number. Attach documents and notes to each property.',
   },
   {
     icon: MapPin,

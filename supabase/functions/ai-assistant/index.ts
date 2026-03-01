@@ -68,7 +68,7 @@ serve(async (req) => {
 
 == KEY FEATURES ==
 - Create showing sessions with multiple properties
-- Add properties via PDF upload, Realtor.com link, or manual entry
+- Add properties via MLS Sheet upload (PDF), MLS # lookup (coming soon), or manual entry
 - Upload and share property documents (disclosures, inspections, etc.)
 - Password-protect sessions for client privacy
 - Clients can view properties, rate them, and provide feedback
@@ -81,32 +81,32 @@ serve(async (req) => {
 1. Click "Create Session" from the dashboard
 2. Enter session details (title, description, date)
 3. Add properties using one of three methods:
-   a) Upload PDF (MLS listing)
-   b) Paste Realtor.com link
-   c) Manual entry (address, price, beds, baths, sqft)
+   a) MLS Sheet — upload an MLS listing PDF (details extracted automatically)
+   b) MLS # — enter an MLS number to auto-import (coming soon)
+   c) Manual — enter address, price, beds, baths, sqft by hand
 4. Add photos for each property
 5. Upload documents (optional: disclosures, inspections)
 6. Set password protection (optional but recommended)
 7. Share the link with clients
 
 == HOW TO: ADD PROPERTIES ==
-Method 1 - PDF Upload:
-- Click "Add Property" → "Upload PDF"
-- Select MLS listing PDF
-- HomeFolio extracts property details automatically
-- Review and edit if needed
+Method 1 - MLS Sheet (Recommended):
+- Click "Add Property" → "MLS Sheet" tab
+- Upload an MLS listing PDF
+- HomeFolio extracts property details automatically using AI
+- Review the extracted data and click "Add Property"
 
-Method 2 - Realtor.com Link:
-- Copy property URL from Realtor.com
-- Click "Add Property" → "From Link"
-- Paste URL and click "Import"
-- Details are automatically populated
+Method 2 - MLS # (Coming Soon):
+- Click "Add Property" → "MLS #" tab
+- Enter the MLS listing number
+- Property details will be auto-imported
+- This feature is currently under development
 
 Method 3 - Manual Entry:
-- Click "Add Property" → "Manual Entry"
-- Fill in: address, price, bedrooms, bathrooms, sqft
+- Click "Add Property" → "Manual" tab
+- Fill in: address, city, state, zip, price, bedrooms, bathrooms, sqft
 - Add photos and description
-- Save property
+- Click "Add Property"
 
 == HOW TO: SHARE A SESSION ==
 1. Go to your session
@@ -248,9 +248,6 @@ A: Yes! For Home Folio sessions, each property has a "Duration" dropdown where y
 
 Problem: Photos won't upload
 Solution: Check file size (max 10MB per image) and format (JPG, PNG supported). Try compressing large images.
-
-Problem: Can't import from Realtor.com
-Solution: Ensure the URL is a direct property link (not search results). Try manual entry if import fails.
 
 Problem: Clients can't access session
 Solution: Verify the link is correct and password (if set) is shared. Check if session is still active.
