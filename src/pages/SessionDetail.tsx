@@ -57,9 +57,18 @@ import {
   Save,
   Tag,
   Users,
+  CalendarPlus,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { generateSessionICS, generateGoogleCalendarURL } from '@/lib/calendarExport';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import AddPropertyDialog from '@/components/showings/AddPropertyDialog';
 import AddAddressDialog from '@/components/showings/AddAddressDialog';
 import BulkMLSImportDialog from '@/components/showings/BulkMLSImportDialog';
@@ -1931,6 +1940,46 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               QR Code
             </Button>
+            {!isPopBy && session.session_date && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-9 text-xs sm:text-sm"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    Calendar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      generateSessionICS(
+                        { title: session.title, session_date: session.session_date!, client_name: session.client_name },
+                        properties
+                      );
+                      toast.success('Calendar file downloaded');
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download .ics file
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const url = generateGoogleCalendarURL(
+                        { title: session.title, session_date: session.session_date!, client_name: session.client_name },
+                        properties
+                      );
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    <CalendarPlus className="w-4 h-4 mr-2" />
+                    Add to Google Calendar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button
               variant="destructive"
               size="sm"
