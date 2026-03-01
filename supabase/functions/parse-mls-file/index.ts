@@ -327,12 +327,12 @@ async function validateAndNormalizeProperties(properties: PropertyData[]): Promi
 }
 
 async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<PropertyData[]> {
-  console.log('Processing PDF with Vision API...');
-  
+  console.log('Processing PDF with OpenAI Responses API...');
+
   try {
     const arrayBuffer = await fileData.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    
+
     // Convert to base64
     let binary = '';
     const chunkSize = 8192;
@@ -341,31 +341,31 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
       binary += String.fromCharCode(...chunk);
     }
     const base64Pdf = btoa(binary);
-    
+
     console.log(`PDF size: ${bytes.length} bytes, base64 length: ${base64Pdf.length}`);
-    
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+
+    // Use OpenAI Responses API which supports PDF file inputs
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: extractionPrompt },
+        model: 'gpt-4o-mini',
+        instructions: extractionPrompt,
+        input: [
           {
             role: 'user',
             content: [
               {
-                type: 'text',
+                type: 'input_text',
                 text: 'Extract ALL property data from this MLS document with MAXIMUM accuracy. Pay special attention to:\n\n1. CRITICAL FIELDS (must find): PRICE, BEDROOMS, BATHROOMS, SQUARE FOOTAGE, ADDRESS\n2. HEATING & COOLING: Copy the EXACT text as shown. Do NOT interpret or change the wording. If it says "Central Air", write "Central Air" (not "AC" or "Air Conditioning"). If it says "Forced Air", write "Forced Air" (not "Central Heat").\n3. Read ALL pages of the document carefully\n4. Look for data in tables, grids, and text sections\n5. For California MLS: also extract APN, county, Mello-Roos\n6. Use OCR for scanned documents\n\nCommon field locations:\n- Price: Usually near top as "List Price:", "LP:", or "Price:"\n- Beds/Baths: Often as "3BR/2BA" or in details grid\n- Sqft: Look for "Living Area:", "Sq Ft:", "Total Sq Ft:"\n- Heating/Cooling: Usually in property features or details section'
               },
               {
-                type: 'image_url',
-                image_url: {
-                  url: `data:application/pdf;base64,${base64Pdf}`
-                }
+                type: 'input_file',
+                filename: 'mls-sheet.pdf',
+                file_data: `data:application/pdf;base64,${base64Pdf}`
               }
             ]
           }
@@ -376,28 +376,30 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Vision API error:', errorText);
+      console.error('OpenAI Responses API error:', errorText);
       return [];
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '[]';
-    
-    console.log('Vision API response received, parsing...');
+    // Responses API returns output array with output_text content
+    const content = data.output?.find((o: any) => o.type === 'message')
+      ?.content?.find((c: any) => c.type === 'output_text')?.text || '[]';
+
+    console.log('OpenAI response received, parsing...');
     console.log('Raw AI response preview:', content.substring(0, 500));
-    
+
     try {
       const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
       const rawProperties = JSON.parse(cleanContent);
-      
+
       // Validate and normalize the extracted properties
       return await validateAndNormalizeProperties(rawProperties);
     } catch {
-      console.error('Failed to parse Vision API response:', content.substring(0, 500));
+      console.error('Failed to parse OpenAI response:', content.substring(0, 500));
       return [];
     }
   } catch (error) {
-    console.error('Error in Vision API extraction:', error);
+    console.error('Error in PDF extraction:', error);
     return [];
   }
 }
@@ -405,14 +407,14 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
 async function parseTextWithAI(textContent: string, apiKey: string): Promise<PropertyData[]> {
   console.log('Parsing text content with AI...');
   
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: extractionPrompt },
         { role: 'user', content: `Extract property data from this MLS document text:\n\n${textContent.substring(0, 30000)}` }
@@ -441,14 +443,14 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
 async function parseCSVWithAI(csvContent: string, apiKey: string): Promise<PropertyData[]> {
   console.log('Parsing CSV with AI...');
   
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: extractionPrompt },
         { role: 'user', content: `Extract property data from this CSV:\n\n${csvContent.substring(0, 15000)}` }
@@ -490,20 +492,21 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+    // Use service role client for auth validation (more reliable in edge functions)
+    const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
     const token = authHeader.replace('Bearer ', '');
-    const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claims?.claims) {
+    const { data: { user }, error: userError } = await serviceSupabase.auth.getUser(token);
+    if (userError || !user) {
+      console.error('Auth error:', userError?.message);
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid or expired token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claims.claims.sub;
+    const userId = user.id;
     console.log('Authenticated user:', userId);
 
     // Rate limiting: 10 MLS parsing requests per hour per user
@@ -536,27 +539,53 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { filePath, fileType } = await req.json();
+    const body = await req.json();
+    const { filePath, fileType, fileData, mode } = body;
 
-    if (!filePath) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'File path is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-
-    if (!lovableApiKey) {
-      console.error('LOVABLE_API_KEY not configured');
+    if (!openaiApiKey) {
+      console.error('OPENAI_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    // ── FAST SYNC MODE: client sends base64 file data directly ──
+    if (mode === 'sync' && fileData) {
+      console.log('Processing in sync mode...');
+      const detectedType = fileType || 'pdf';
+
+      let properties: PropertyData[] = [];
+      if (detectedType === 'pdf') {
+        // Build a Blob from the base64 data
+        const binaryStr = atob(fileData);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        properties = await extractPdfWithVisionApi(blob, openaiApiKey);
+      } else {
+        // CSV / text
+        const text = atob(fileData);
+        properties = detectedType === 'csv'
+          ? await parseCSVWithAI(text, openaiApiKey)
+          : await parseTextWithAI(text, openaiApiKey);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, properties }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── ASYNC JOB MODE: existing flow for bulk imports ──
+    if (!filePath) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'File path or file data is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Create job record immediately
     const { data: job, error: jobError } = await serviceSupabase
@@ -583,8 +612,8 @@ Deno.serve(async (req) => {
 
     // Start background processing (non-blocking)
     (globalThis as any).EdgeRuntime?.waitUntil?.(
-      processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey)
-    ) ?? processInBackground(job.id, filePath, fileType, serviceSupabase, lovableApiKey);
+      processInBackground(job.id, filePath, fileType, serviceSupabase, openaiApiKey)
+    ) ?? processInBackground(job.id, filePath, fileType, serviceSupabase, openaiApiKey);
 
     // Return immediately with job ID
     return new Response(
