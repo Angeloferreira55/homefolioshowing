@@ -420,7 +420,15 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       });
 
       if (error) {
-        throw new Error(error.message);
+        // Try to extract detailed error from response context
+        let detail = error.message;
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const body = await error.context.json();
+            if (body?.error) detail = body.error;
+          }
+        } catch {}
+        throw new Error(detail);
       }
 
       if (!data.success) {
