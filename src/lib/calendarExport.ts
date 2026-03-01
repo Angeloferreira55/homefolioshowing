@@ -121,56 +121,60 @@ export function generateSessionICS(
   URL.revokeObjectURL(url);
 }
 
-export function generateGoogleCalendarURLs(
+export function generateGoogleCalendarURL(
   session: CalendarSession,
   properties: CalendarProperty[]
-): string[] {
+): string {
   const propertiesWithTime = properties.filter(p => p.showing_time);
 
+  let dates: string;
+  let location = '';
+  let details: string;
+
   if (propertiesWithTime.length > 0) {
-    // One URL per property with a showing time
     const sorted = [...propertiesWithTime].sort((a, b) =>
       (a.showing_time || '').localeCompare(b.showing_time || '')
     );
+    const firstTime = sorted[0].showing_time!;
+    const lastProp = sorted[sorted.length - 1];
+    const lastDuration = lastProp.showing_duration || 30;
+    const endTime = addMinutes(lastProp.showing_time!, lastDuration);
 
-    return sorted.map(prop => {
-      const duration = prop.showing_duration || 30;
-      const dtStart = formatICSDate(session.session_date, prop.showing_time!);
-      const dtEnd = formatICSDate(session.session_date, addMinutes(prop.showing_time!, duration));
+    const dtStart = formatICSDate(session.session_date, firstTime);
+    const dtEnd = formatICSDate(session.session_date, endTime);
+    dates = `${dtStart}/${dtEnd}`;
+    location = fullAddress(sorted[0]);
 
-      const descParts = [`Client: ${session.client_name}`];
-      if (prop.price) descParts.push(`Price: $${prop.price.toLocaleString()}`);
-      const details: string[] = [];
-      if (prop.beds) details.push(`${prop.beds} bed`);
-      if (prop.baths) details.push(`${prop.baths} bath`);
-      if (prop.sqft) details.push(`${prop.sqft.toLocaleString()} sqft`);
-      if (details.length) descParts.push(details.join(' / '));
-      if (prop.agent_notes) descParts.push(`Notes: ${prop.agent_notes}`);
-
-      const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: `Showing: ${prop.address}`,
-        dates: `${dtStart}/${dtEnd}`,
-        details: descParts.join('\n'),
-        location: fullAddress(prop),
-      });
-
-      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    // List each showing with time, address, and details
+    const propLines = sorted.map(p => {
+      const parts = [`${p.showing_time} - ${fullAddress(p)}`];
+      if (p.price) parts.push(`  $${p.price.toLocaleString()}`);
+      const info: string[] = [];
+      if (p.beds) info.push(`${p.beds} bed`);
+      if (p.baths) info.push(`${p.baths} bath`);
+      if (p.sqft) info.push(`${p.sqft.toLocaleString()} sqft`);
+      if (info.length) parts.push(`  ${info.join(' / ')}`);
+      return parts.join('\n');
     });
+    details = `Client: ${session.client_name}\n\n${propLines.join('\n\n')}`;
   } else {
-    // No showing times — single all-day event
+    // All-day event
     const [year, month, day] = session.session_date.split('-');
     const dateOnly = `${year}${month}${day}`;
+    dates = `${dateOnly}/${dateOnly}`;
+    location = properties.length > 0 ? fullAddress(properties[0]) : '';
+
     const propLines = properties.map(p => `- ${fullAddress(p)}`);
-
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text: `${session.title} - ${session.client_name}`,
-      dates: `${dateOnly}/${dateOnly}`,
-      details: `Client: ${session.client_name}\n\n${propLines.join('\n')}`,
-      location: properties.length > 0 ? fullAddress(properties[0]) : '',
-    });
-
-    return [`https://calendar.google.com/calendar/render?${params.toString()}`];
+    details = `Client: ${session.client_name}\n\n${propLines.join('\n')}`;
   }
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${session.title} - ${session.client_name}`,
+    dates,
+    details,
+    location,
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

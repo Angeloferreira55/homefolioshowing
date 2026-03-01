@@ -62,7 +62,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { generateSessionICS, generateGoogleCalendarURLs } from '@/lib/calendarExport';
+import { generateSessionICS, generateGoogleCalendarURL } from '@/lib/calendarExport';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1975,14 +1975,11 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                         ...p,
                         showing_duration: showingDurations[p.id] || 30,
                       }));
-                      const urls = generateGoogleCalendarURLs(
+                      const url = generateGoogleCalendarURL(
                         { title: session.title, session_date: session.session_date!, client_name: session.client_name },
                         propsWithDuration
                       );
-                      urls.forEach(url => window.open(url, '_blank'));
-                      if (urls.length > 1) {
-                        toast.success(`Opening ${urls.length} events in Google Calendar`);
-                      }
+                      window.open(url, '_blank');
                     }}
                   >
                     <CalendarPlus className="w-4 h-4 mr-2" />
