@@ -404,9 +404,17 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
   }
 }
 
+const fastExtractionPrompt = `Extract property data from this MLS document. Return a JSON array of objects.
+
+Required fields: address (street only), city, state (2-letter), zipCode, price (number), beds (number), baths (number), sqft (number).
+
+Optional fields (null if missing): mlsNumber, propertySubType, daysOnMarket, yearBuilt, pricePerSqft, lotSizeAcres, garageSpaces, roof, heating (exact text), cooling (exact text), taxAnnualAmount, hasHoa, hoaFee, hoaFeeFrequency, hasPid, county, apn, melloroos, communityName, schoolDistrict, publicRemarks, features (string[]).
+
+Rules: Clean numbers (remove $ and commas). Copy heating/cooling text exactly as written.`;
+
 async function parseTextWithAI(textContent: string, apiKey: string): Promise<PropertyData[]> {
   console.log('Parsing text content with AI...');
-  
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -416,10 +424,12 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: extractionPrompt },
-        { role: 'user', content: `Extract property data from this MLS document text:\n\n${textContent.substring(0, 30000)}` }
+        { role: 'system', content: fastExtractionPrompt },
+        { role: 'user', content: textContent.substring(0, 30000) }
       ],
-      temperature: 0.1,
+      temperature: 0,
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
     }),
   });
 
@@ -429,11 +439,13 @@ async function parseTextWithAI(textContent: string, apiKey: string): Promise<Pro
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '[]';
-  
+  const content = data.choices?.[0]?.message?.content || '{}';
+
   try {
-    const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanContent);
+    const parsed = JSON.parse(content);
+    // Handle both { properties: [...] } and [...] formats
+    const properties = Array.isArray(parsed) ? parsed : (parsed.properties || parsed.data || [parsed]);
+    return Array.isArray(properties) ? properties : [properties];
   } catch {
     console.error('Failed to parse AI response:', content.substring(0, 500));
     return [];
