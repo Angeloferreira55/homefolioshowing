@@ -552,25 +552,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── FAST SYNC MODE: client sends base64 file data directly ──
+    // ── FAST SYNC MODE: client sends file data directly ──
     if (mode === 'sync' && fileData) {
       console.log('Processing in sync mode...');
       const detectedType = fileType || 'pdf';
 
       let properties: PropertyData[] = [];
       if (detectedType === 'pdf') {
-        // Build a Blob from the base64 data
+        // Legacy: client sends base64 PDF binary
         const binaryStr = atob(fileData);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
         const blob = new Blob([bytes], { type: 'application/pdf' });
         properties = await extractPdfWithVisionApi(blob, openaiApiKey);
+      } else if (detectedType === 'text') {
+        // Fast path: client already extracted text from PDF
+        properties = await parseTextWithAI(fileData, openaiApiKey);
       } else {
-        // CSV / text
-        const text = atob(fileData);
-        properties = detectedType === 'csv'
-          ? await parseCSVWithAI(text, openaiApiKey)
-          : await parseTextWithAI(text, openaiApiKey);
+        // CSV: fileData is plain text
+        properties = await parseCSVWithAI(fileData, openaiApiKey);
       }
 
       return new Response(

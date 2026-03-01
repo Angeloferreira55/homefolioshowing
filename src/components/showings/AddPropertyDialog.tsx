@@ -14,6 +14,26 @@ import { toast } from 'sonner';
 import { Loader2, Upload, FileText, X, ImagePlus, AlertCircle, Search } from 'lucide-react';
 import { validateProperty, ERROR_MESSAGES } from '@/lib/errorHandling';
 
+async function extractPdfText(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.mjs',
+    import.meta.url,
+  ).toString();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => item.str)
+      .join(' ');
+    pages.push(pageText);
+  }
+  return pages.join('\n\n--- Page Break ---\n\n');
+}
+
 interface PropertyData {
   address: string;
   city?: string;
@@ -398,20 +418,20 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         fileType = 'excel';
       }
 
-      // Convert file to base64 for direct processing (faster than storage roundtrip)
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const chunk = bytes.subarray(i, i + chunkSize);
-        binary += String.fromCharCode(...chunk);
+      let fileData: string;
+
+      if (fileType === 'pdf') {
+        // Extract text client-side (much faster than sending binary to OpenAI)
+        toast.info('Reading PDF...');
+        fileData = await extractPdfText(selectedFile);
+        fileType = 'text'; // Send as text so edge function uses fast Chat Completions
+      } else {
+        fileData = await selectedFile.text();
       }
-      const fileData = btoa(binary);
 
       toast.info('Extracting property data...');
 
-      // Send file directly to edge function for synchronous processing
+      // Send extracted text to edge function (fast Chat Completions path)
       const { data, error } = await supabase.functions.invoke('parse-mls-file', {
         body: { fileData, fileType, mode: 'sync' },
       });
