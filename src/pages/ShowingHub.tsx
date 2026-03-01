@@ -194,9 +194,9 @@ const ShowingHub = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Use the agent selected in the dialog if provided (assistant mode),
-      // otherwise fall back to the header switcher selection
-      const agentId = data.agentProfileId !== undefined ? data.agentProfileId : activeAgentId;
+      // Only use the agent explicitly selected in the dialog — don't auto-assign
+      // from the header switcher to avoid accidentally branding sessions with the wrong agent
+      const agentId = data.agentProfileId !== undefined ? data.agentProfileId : null;
 
       const { error } = await supabase.from('showing_sessions').insert({
         admin_id: user.id,
@@ -955,7 +955,6 @@ const ShowingHub = () => {
         onOpenChange={setIsCreateOpen}
         onCreate={handleCreateSession}
         agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
-        defaultAgentId={activeAgentId}
       />
 
       <CreateSessionDialog
@@ -964,7 +963,6 @@ const ShowingHub = () => {
         onCreate={handleCreateSession}
         sessionType="pop_by"
         agentProfiles={agentProfiles.length > 0 ? agentProfiles : undefined}
-        defaultAgentId={activeAgentId}
       />
 
       <EditSessionDialog
