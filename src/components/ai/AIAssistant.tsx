@@ -198,11 +198,12 @@ export function AIAssistant() {
       {/* Floating Chat Button */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center group"
+        className="fixed bottom-6 right-6 z-50 h-12 px-4 rounded-full bg-gradient-to-br from-primary to-purple-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 group"
         aria-label="Open AI Assistant"
       >
-        <MessageCircle className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+        <MessageCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+        <span className="text-sm font-semibold">Help</span>
+        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white animate-pulse" />
       </button>
 
       {/* Chat Dialog */}
