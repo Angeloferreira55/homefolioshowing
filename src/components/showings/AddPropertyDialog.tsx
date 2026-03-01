@@ -34,6 +34,129 @@ async function extractPdfText(file: File): Promise<string> {
   return pages.join('\n\n--- Page Break ---\n\n');
 }
 
+// Extract first regex match as string
+function rx(text: string, patterns: RegExp[]): string | undefined {
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m?.[1]?.trim()) return m[1].trim();
+  }
+  return undefined;
+}
+
+// Extract first regex match as number
+function rxNum(text: string, patterns: RegExp[]): number | undefined {
+  const s = rx(text, patterns);
+  if (!s) return undefined;
+  const n = parseFloat(s.replace(/[,$]/g, ''));
+  return isNaN(n) ? undefined : n;
+}
+
+// Client-side regex extraction — instant, no API call
+function parseMLSTextLocally(text: string): PropertyData | null {
+  const t = text.replace(/\s+/g, ' ');
+
+  const price = rxNum(t, [
+    /(?:List\s*Price|Listing\s*Price|Price|LP)[:\s]*\$?([\d,]+)/i,
+    /\$\s*([\d,]{6,})/,
+  ]);
+
+  const beds = rxNum(t, [
+    /(?:Bedrooms?|Beds?|BR|Total\s*(?:Bed)?rooms?)[:\s]*(\d+)/i,
+    /(\d+)\s*(?:BR|[Bb]ed(?:room)?s?)\b/,
+  ]);
+
+  const baths = rxNum(t, [
+    /(?:Bathrooms?|Baths?|BA|Total\s*Baths?)[:\s]*([\d.]+)/i,
+    /([\d.]+)\s*(?:BA|[Bb]ath(?:room)?s?)\b/,
+  ]);
+
+  const sqft = rxNum(t, [
+    /(?:Living\s*Area|Approx\.?\s*(?:Living\s*)?(?:Area|SqFt|Sq\s*Ft)|Sq\.?\s*Ft\.?|Square\s*Feet|SqFt|Interior\s*Sq\s*Ft|Total\s*(?:Sq\s*Ft|SqFt))[:\s]*([\d,]+)/i,
+    /([\d,]{3,6})\s*(?:sq\.?\s*ft|sqft|square\s*feet)/i,
+  ]);
+
+  // Need at least price + beds + baths + sqft for a useful extraction
+  if (!price || !beds || !baths || !sqft) return null;
+
+  const address = rx(t, [
+    /(?:Address|Property\s*Address|Street\s*Address)[:\s]*([^,\n]{5,60})/i,
+    /(?:^|\n)\s*(\d+\s+[A-Z][A-Za-z\s]+(?:St|Ave|Dr|Rd|Blvd|Ln|Way|Ct|Pl|Cir|Loop|Trail|Trl|Pkwy|Hwy|Circle|Drive|Road|Street|Avenue|Boulevard|Lane|Court|Place)\.?\s*(?:[NSEW]{1,2}\b)?)/m,
+  ]);
+
+  const city = rx(t, [
+    /(?:City|Town)[:\s]*([A-Za-z\s]{2,30})/i,
+  ]);
+
+  const state = rx(t, [
+    /(?:State|St)[:\s]*([A-Z]{2})\b/,
+    /,\s*([A-Z]{2})\s+\d{5}/,
+  ]);
+
+  const zipCode = rx(t, [
+    /(?:Zip\s*(?:Code)?|Postal\s*Code)[:\s]*(\d{5})/i,
+    /\b([A-Z]{2})\s+(\d{5})\b/i,
+  ]);
+  // If zipCode matched the state+zip pattern, extract just the zip
+  const zipMatch = t.match(/\b[A-Z]{2}\s+(\d{5})\b/);
+
+  const mlsNumber = rx(t, [
+    /(?:MLS\s*#?|MLS\s*(?:Number|No|ID)|Listing\s*(?:ID|Number|No)|Matrix\s*(?:Unique\s*)?ID)[:\s#]*([A-Z0-9-]{4,20})/i,
+  ]);
+
+  const yearBuilt = rxNum(t, [
+    /(?:Year\s*Built|Yr\s*Built|Built\s*(?:in)?)[:\s]*(\d{4})/i,
+  ]);
+
+  const heating = rx(t, [
+    /(?:Heating|Heat\s*Type|Heat)[:\s]*([^,\n]{2,40}?)(?:\s*[,|]|\s*Cooling|\n)/i,
+  ]);
+
+  const cooling = rx(t, [
+    /(?:Cooling|Cool\s*Type|AC|Air\s*Conditioning)[:\s]*([^,\n]{2,40}?)(?:\s*[,|]|\s*Heating|\n)/i,
+  ]);
+
+  const propertyType = rx(t, [
+    /(?:Property\s*(?:Sub)?Type|Property\s*Type|Type)[:\s]*([A-Za-z\s]{3,30})/i,
+  ]);
+
+  const garageSpaces = rxNum(t, [
+    /(?:Garage\s*Spaces?|Garage|Parking\s*Spaces?)[:\s]*(\d+)/i,
+  ]);
+
+  const lotSizeAcres = rxNum(t, [
+    /(?:Lot\s*Size|Lot\s*Acres?|Lot\s*Area)[:\s]*([\d.]+)\s*(?:Acres?)?/i,
+  ]);
+
+  const taxAnnualAmount = rxNum(t, [
+    /(?:Tax(?:es)?|Annual\s*Tax(?:es)?|Tax\s*Amount)[:\s]*\$?([\d,]+)/i,
+  ]);
+
+  const hoaFee = rxNum(t, [
+    /(?:HOA\s*Fee|HOA\s*Dues?|Association\s*Fee)[:\s]*\$?([\d,]+)/i,
+  ]);
+
+  return {
+    address: address || 'Address not found',
+    city,
+    state,
+    zipCode: zipMatch?.[1] || zipCode,
+    price,
+    beds,
+    baths,
+    sqft,
+    mlsNumber,
+    yearBuilt,
+    heating,
+    cooling,
+    propertyType,
+    garageSpaces: garageSpaces !== undefined ? undefined : undefined,
+    garage: garageSpaces?.toString(),
+    lotSize: lotSizeAcres ? `${lotSizeAcres} acres` : undefined,
+    hoaFee,
+    taxAnnualAmount: taxAnnualAmount as any,
+  };
+}
+
 interface PropertyData {
   address: string;
   city?: string;
@@ -418,53 +541,73 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         fileType = 'excel';
       }
 
-      let fileData: string;
-
       if (fileType === 'pdf') {
-        // Extract text client-side (much faster than sending binary to OpenAI)
+        // Extract text client-side
         toast.info('Reading PDF...');
-        fileData = await extractPdfText(selectedFile);
-        fileType = 'text'; // Send as text so edge function uses fast Chat Completions
+        const pdfText = await extractPdfText(selectedFile);
+
+        // Try instant regex extraction first (no API call)
+        const localResult = parseMLSTextLocally(pdfText);
+        if (localResult) {
+          populateFormFromProperty(localResult);
+          toast.success('Property data extracted! Review and submit.');
+          return;
+        }
+
+        // Regex couldn't find enough fields — fall back to AI
+        toast.info('Extracting property data with AI...');
+        const { data, error } = await supabase.functions.invoke('parse-mls-file', {
+          body: { fileData: pdfText, fileType: 'text', mode: 'sync' },
+        });
+
+        if (error) {
+          let detail = error.message;
+          try {
+            if (error.context && typeof error.context.json === 'function') {
+              const body = await error.context.json();
+              if (body?.error) detail = body.error;
+            }
+          } catch {}
+          throw new Error(detail);
+        }
+
+        if (!data.success) throw new Error(data.error || 'Failed to parse file');
+        const properties = (data.properties as PropertyData[]) || [];
+        if (properties.length === 0) { toast.error('No properties found in the file'); return; }
+        if (properties.length === 1) {
+          populateFormFromProperty(properties[0]);
+          toast.success('Property data extracted! Review and submit.');
+        } else {
+          setParsedProperties(properties);
+          toast.success(`Found ${properties.length} properties!`);
+        }
       } else {
-        fileData = await selectedFile.text();
-      }
-
-      toast.info('Extracting property data...');
-
-      // Send extracted text to edge function (fast Chat Completions path)
-      const { data, error } = await supabase.functions.invoke('parse-mls-file', {
-        body: { fileData, fileType, mode: 'sync' },
-      });
-
-      if (error) {
-        let detail = error.message;
-        try {
-          if (error.context && typeof error.context.json === 'function') {
-            const body = await error.context.json();
-            if (body?.error) detail = body.error;
-          }
-        } catch {}
-        throw new Error(detail);
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to parse file');
-      }
-
-      const properties = (data.properties as PropertyData[]) || [];
-
-      if (properties.length === 0) {
-        toast.error('No properties found in the file');
-        return;
-      }
-
-      if (properties.length === 1) {
-        const prop = properties[0];
-        populateFormFromProperty(prop);
-        toast.success('Property data extracted! Review and submit.');
-      } else {
-        setParsedProperties(properties);
-        toast.success(`Found ${properties.length} properties!`);
+        // CSV / Excel — send to AI
+        const fileData = await selectedFile.text();
+        toast.info('Extracting property data...');
+        const { data, error } = await supabase.functions.invoke('parse-mls-file', {
+          body: { fileData, fileType, mode: 'sync' },
+        });
+        if (error) {
+          let detail = error.message;
+          try {
+            if (error.context && typeof error.context.json === 'function') {
+              const body = await error.context.json();
+              if (body?.error) detail = body.error;
+            }
+          } catch {}
+          throw new Error(detail);
+        }
+        if (!data.success) throw new Error(data.error || 'Failed to parse file');
+        const properties = (data.properties as PropertyData[]) || [];
+        if (properties.length === 0) { toast.error('No properties found in the file'); return; }
+        if (properties.length === 1) {
+          populateFormFromProperty(properties[0]);
+          toast.success('Property data extracted! Review and submit.');
+        } else {
+          setParsedProperties(properties);
+          toast.success(`Found ${properties.length} properties!`);
+        }
       }
     } catch (error: any) {
       console.error('Upload error:', error);
