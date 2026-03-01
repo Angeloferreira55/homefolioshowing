@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Package, CheckCircle2, ClipboardList, Camera } from 'lucide-react';
+import { Home, Calendar, CalendarPlus, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Package, CheckCircle2, ClipboardList, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -18,6 +18,13 @@ import DeliveryCompletionDialog from '@/components/public/DeliveryCompletionDial
 
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
+import { generateSessionICS, generateGoogleCalendarURL } from '@/lib/calendarExport';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useBuyerFavorites } from '@/hooks/useBuyerFavorites';
 import logoImage from '@/assets/homefolio-logo.png';
 import { logError } from '@/lib/errorLogger';
@@ -908,6 +915,46 @@ const PublicSession = () => {
               <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>Print All</span>
             </Button>
+            {session.session_date && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs sm:text-sm h-9 px-2.5 sm:px-3 print:hidden whitespace-nowrap"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span>Add to Calendar</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      generateSessionICS(
+                        { title: session.title, session_date: session.session_date!, client_name: session.client_name },
+                        properties
+                      );
+                      toast.success('Calendar file downloaded');
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download .ics file
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const url = generateGoogleCalendarURL(
+                        { title: session.title, session_date: session.session_date!, client_name: session.client_name },
+                        properties
+                      );
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    <CalendarPlus className="w-4 h-4 mr-2" />
+                    Add to Google Calendar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {getFavoriteCount() > 0 && (
               <Button
                 variant={showFavoritesOnly ? "default" : "outline"}
