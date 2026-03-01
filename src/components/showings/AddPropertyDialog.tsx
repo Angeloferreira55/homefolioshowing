@@ -390,22 +390,6 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
 
     setIsUploading(true);
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Please sign in to upload files');
-      }
-
-      // Upload file to storage
-      const filePath = `${user.id}/${Date.now()}-${selectedFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('mls-uploads')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) {
-        throw new Error(uploadError.message);
-      }
-
       // Determine file type
       let fileType = 'pdf';
       if (selectedFile.type.includes('csv') || selectedFile.name.endsWith('.csv')) {
@@ -414,13 +398,25 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
         fileType = 'excel';
       }
 
-      // Start the parsing job
+      // Convert file to base64 for direct processing (faster than storage roundtrip)
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+      }
+      const fileData = btoa(binary);
+
+      toast.info('Extracting property data...');
+
+      // Send file directly to edge function for synchronous processing
       const { data, error } = await supabase.functions.invoke('parse-mls-file', {
-        body: { filePath, fileType },
+        body: { fileData, fileType, mode: 'sync' },
       });
 
       if (error) {
-        // Try to extract detailed error from response context
         let detail = error.message;
         try {
           if (error.context && typeof error.context.json === 'function') {
@@ -432,59 +428,24 @@ const AddPropertyDialog = ({ open, onOpenChange, onAdd, onAddMultiple }: AddProp
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to start parsing');
+        throw new Error(data.error || 'Failed to parse file');
       }
 
-      const jobId = data.jobId;
-      if (!jobId) {
-        throw new Error('No job ID returned from parsing service');
+      const properties = (data.properties as PropertyData[]) || [];
+
+      if (properties.length === 0) {
+        toast.error('No properties found in the file');
+        return;
       }
 
-      // Poll for job completion
-      toast.info('Processing file...');
-      const maxAttempts = 60; // 60 seconds max
-      let attempts = 0;
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        attempts++;
-
-        const { data: job, error: jobError } = await supabase
-          .from('mls_parsing_jobs')
-          .select('status, progress, result, error')
-          .eq('id', jobId)
-          .single();
-
-        if (jobError) {
-          console.error('Job poll error:', jobError);
-          continue;
-        }
-
-        if (job.status === 'complete') {
-          const properties = (job.result as unknown as PropertyData[]) || [];
-          
-          if (properties.length === 0) {
-            toast.error('No properties found in the file');
-            return;
-          }
-
-          if (properties.length === 1) {
-            const prop = properties[0];
-            populateFormFromProperty(prop);
-            toast.success('Property data extracted! Review and submit.');
-          } else {
-            setParsedProperties(properties);
-            toast.success(`Found ${properties.length} properties!`);
-          }
-          return;
-        }
-
-        if (job.status === 'error') {
-          throw new Error(job.error || 'Failed to parse file');
-        }
+      if (properties.length === 1) {
+        const prop = properties[0];
+        populateFormFromProperty(prop);
+        toast.success('Property data extracted! Review and submit.');
+      } else {
+        setParsedProperties(properties);
+        toast.success(`Found ${properties.length} properties!`);
       }
-
-      throw new Error('Parsing timed out. Please try again.');
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error(error.message || 'Failed to process file');
