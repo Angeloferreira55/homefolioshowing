@@ -62,7 +62,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { generateSessionICS, generateGoogleCalendarURL } from '@/lib/calendarExport';
+import { generateSessionICS, generateGoogleCalendarURLs } from '@/lib/calendarExport';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1955,9 +1955,13 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => {
+                      const propsWithDuration = properties.map(p => ({
+                        ...p,
+                        showing_duration: showingDurations[p.id] || 30,
+                      }));
                       generateSessionICS(
                         { title: session.title, session_date: session.session_date!, client_name: session.client_name },
-                        properties
+                        propsWithDuration
                       );
                       toast.success('Calendar file downloaded');
                     }}
@@ -1967,11 +1971,18 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
-                      const url = generateGoogleCalendarURL(
+                      const propsWithDuration = properties.map(p => ({
+                        ...p,
+                        showing_duration: showingDurations[p.id] || 30,
+                      }));
+                      const urls = generateGoogleCalendarURLs(
                         { title: session.title, session_date: session.session_date!, client_name: session.client_name },
-                        properties
+                        propsWithDuration
                       );
-                      window.open(url, '_blank');
+                      urls.forEach(url => window.open(url, '_blank'));
+                      if (urls.length > 1) {
+                        toast.success(`Opening ${urls.length} events in Google Calendar`);
+                      }
                     }}
                   >
                     <CalendarPlus className="w-4 h-4 mr-2" />
