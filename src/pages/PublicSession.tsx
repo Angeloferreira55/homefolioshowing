@@ -15,6 +15,7 @@ import PublicPropertyDetailDialog, {
 import PublicSessionSkeleton from '@/components/skeletons/PublicSessionSkeleton';
 import PropertyCompareDialog from '@/components/public/PropertyCompareDialog';
 import DeliveryCompletionDialog from '@/components/public/DeliveryCompletionDialog';
+import { ClientPhotoUploadButton } from '@/components/public/ClientPhotoUploadButton';
 
 import AccessCodeForm from '@/components/public/AccessCodeForm';
 import { trackEvent } from '@/hooks/useAnalytics';
@@ -1247,13 +1248,28 @@ const PublicSession = () => {
                     </div>
                   )}
 
-                  {/* My Photos section - read only */}
-                  {property.client_photos && property.client_photos.length > 0 && (
-                    <div className="mb-3 sm:mb-4">
-                      <div className="flex items-center gap-2 text-muted-foreground mb-2 sm:mb-3">
-                        <Image className="w-4 h-4" />
-                        <span className="text-xs sm:text-sm">Photos ({property.client_photos.length})</span>
+                  {/* My Photos section with upload */}
+                  <div className="mb-3 sm:mb-4">
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Camera className="w-4 h-4" />
+                        <span className="text-xs sm:text-sm">
+                          My Photos{property.client_photos && property.client_photos.length > 0 ? ` (${property.client_photos.length})` : ''}
+                        </span>
                       </div>
+                      <ClientPhotoUploadButton
+                        propertyId={property.id}
+                        shareToken={token!}
+                        onPhotoUploaded={(photo) => {
+                          setProperties(prev => prev.map(p =>
+                            p.id === property.id
+                              ? { ...p, client_photos: [photo, ...(p.client_photos || [])] }
+                              : p
+                          ));
+                        }}
+                      />
+                    </div>
+                    {property.client_photos && property.client_photos.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
                         {property.client_photos.map((photo) => (
                           <div key={photo.id} className="relative flex-shrink-0">
@@ -1266,8 +1282,8 @@ const PublicSession = () => {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Action Buttons */}
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
