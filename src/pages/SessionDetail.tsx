@@ -59,6 +59,8 @@ import {
   Users,
   CalendarPlus,
   Download,
+  Camera,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -137,6 +139,13 @@ interface PropertyRating {
   feedback: FeedbackData;
 }
 
+interface ClientPhoto {
+  id: string;
+  file_url: string;
+  caption: string | null;
+  created_at: string;
+}
+
 interface SessionProperty {
   id: string;
   address: string;
@@ -158,6 +167,7 @@ interface SessionProperty {
   delivery_notes?: string | null;
   delivery_photo_url?: string | null;
   category_tags?: string[] | null;
+  client_photos?: ClientPhoto[];
 }
 
 interface ShowingSession {
@@ -500,6 +510,48 @@ const SortableGalleryCard = ({
             </div>
           )}
 
+          {/* Client Photos */}
+          {!isPopBy && property.client_photos && property.client_photos.length > 0 && (
+            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+              <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 text-xs font-medium mb-1.5">
+                <Camera className="w-3 h-3" />
+                Client Photos ({property.client_photos.length})
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {property.client_photos.map((photo) => (
+                  <img
+                    key={photo.id}
+                    src={photo.file_url}
+                    alt="Client photo"
+                    className="w-14 h-14 rounded object-cover cursor-pointer flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); window.open(photo.file_url, '_blank'); }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Client Feedback */}
+          {!isPopBy && property.rating && property.rating.feedback && Object.values(property.rating.feedback).some(v => v) && (
+            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 text-xs font-medium mb-1.5">
+                <MessageSquare className="w-3 h-3" />
+                Client Feedback
+              </div>
+              <div className="space-y-1 text-xs text-foreground">
+                {property.rating.feedback.topThingsLiked && (
+                  <p><span className="font-medium">Liked:</span> {property.rating.feedback.topThingsLiked}</p>
+                )}
+                {property.rating.feedback.concerns && (
+                  <p><span className="font-medium">Concerns:</span> {property.rating.feedback.concerns}</p>
+                )}
+                {property.rating.feedback.nextStep && (
+                  <p><span className="font-medium">Next step:</span> {property.rating.feedback.nextStep.replace(/_/g, ' ')}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
             <Button
@@ -743,7 +795,31 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
       if (error) throw error;
 
-      // Get doc counts and ratings for each property
+      // Get doc counts, ratings, and client photos for each property
+      const propertyIds = (propertiesData || []).map(p => p.id);
+
+      // Fetch client photos in bulk
+      let photosByProperty: Record<string, ClientPhoto[]> = {};
+      if (propertyIds.length > 0) {
+        const { data: photosData } = await supabase
+          .from('client_photos')
+          .select('id, file_url, caption, created_at, session_property_id')
+          .in('session_property_id', propertyIds)
+          .order('created_at', { ascending: false });
+
+        (photosData || []).forEach(photo => {
+          if (!photosByProperty[photo.session_property_id]) {
+            photosByProperty[photo.session_property_id] = [];
+          }
+          photosByProperty[photo.session_property_id].push({
+            id: photo.id,
+            file_url: photo.file_url,
+            caption: photo.caption,
+            created_at: photo.created_at,
+          });
+        });
+      }
+
       const propsWithExtras = await Promise.all(
         (propertiesData || []).map(async (prop) => {
           const [docResult, ratingResult] = await Promise.all([
@@ -774,10 +850,11 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
             };
           }
 
-          return { 
-            ...prop, 
+          return {
+            ...prop,
             doc_count: docResult.count || 0,
-            rating
+            rating,
+            client_photos: photosByProperty[prop.id] || [],
           };
         })
       );
