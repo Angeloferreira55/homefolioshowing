@@ -512,19 +512,19 @@ const SortableGalleryCard = ({
 
           {/* Client Photos */}
           {!isPopBy && property.client_photos && property.client_photos.length > 0 && (
-            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-              <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 text-xs font-medium mb-1.5">
-                <Camera className="w-3 h-3" />
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm font-medium mb-2">
+                <Camera className="w-4 h-4" />
                 Client Photos ({property.client_photos.length})
               </div>
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {property.client_photos.map((photo) => (
                   <img
                     key={photo.id}
                     src={photo.file_url}
                     alt="Client photo"
-                    className="w-14 h-14 rounded object-cover cursor-pointer flex-shrink-0"
-                    onClick={(e) => { e.stopPropagation(); window.open(photo.file_url, '_blank'); }}
+                    className="w-20 h-20 rounded-lg object-cover cursor-pointer flex-shrink-0 hover:opacity-80 transition-opacity border border-blue-200 dark:border-blue-800"
+                    onClick={() => window.open(photo.file_url, '_blank')}
                   />
                 ))}
               </div>
@@ -533,22 +533,29 @@ const SortableGalleryCard = ({
 
           {/* Client Feedback */}
           {!isPopBy && property.rating && property.rating.feedback && Object.values(property.rating.feedback).some(v => v) && (
-            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 text-xs font-medium mb-1.5">
-                <MessageSquare className="w-3 h-3" />
-                Client Feedback
+            <div
+              className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFeedbackDetail({ property, rating: property.rating! });
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm font-medium">
+                  <MessageSquare className="w-4 h-4" />
+                  Client Feedback
+                  {property.rating.rating !== null && (
+                    <span className="flex items-center gap-1 text-yellow-600">
+                      <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                      {property.rating.rating}/5
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-amber-600 dark:text-amber-400">View details →</span>
               </div>
-              <div className="space-y-1 text-xs text-foreground">
-                {property.rating.feedback.topThingsLiked && (
-                  <p><span className="font-medium">Liked:</span> {property.rating.feedback.topThingsLiked}</p>
-                )}
-                {property.rating.feedback.concerns && (
-                  <p><span className="font-medium">Concerns:</span> {property.rating.feedback.concerns}</p>
-                )}
-                {property.rating.feedback.nextStep && (
-                  <p><span className="font-medium">Next step:</span> {property.rating.feedback.nextStep.replace(/_/g, ' ')}</p>
-                )}
-              </div>
+              {property.rating.feedback.topThingsLiked && (
+                <p className="text-xs text-foreground mt-1.5 line-clamp-2">"{property.rating.feedback.topThingsLiked}"</p>
+              )}
             </div>
           )}
 
@@ -629,6 +636,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [feedbackDetail, setFeedbackDetail] = useState<{ property: SessionProperty; rating: PropertyRating } | null>(null);
 
   // Compute filtered properties for display (tag filter for pop-by)
   const filteredProperties = activeTagFilter
@@ -2986,6 +2994,116 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
           onMoveToNew={handleMoveToNew}
         />
       )}
+
+      {/* Client Feedback Detail Dialog */}
+      <Dialog open={!!feedbackDetail} onOpenChange={(open) => { if (!open) setFeedbackDetail(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Client Feedback
+            </DialogTitle>
+            {feedbackDetail && (
+              <DialogDescription className="text-sm">
+                {feedbackDetail.property.address}
+                {feedbackDetail.property.city ? `, ${feedbackDetail.property.city}` : ''}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {feedbackDetail && (
+            <div className="space-y-4 mt-2">
+              {/* Rating */}
+              {feedbackDetail.rating.rating !== null && (
+                <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-5 h-5 ${star <= (feedbackDetail.rating.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-lg font-bold">{feedbackDetail.rating.rating}/5</span>
+                </div>
+              )}
+
+              {/* Feedback fields */}
+              {feedbackDetail.rating.feedback.topThingsLiked && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">What they liked</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.topThingsLiked}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.concerns && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Concerns</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.concerns}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.priceFeel && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Price feel</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.priceFeel}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.lifestyleFit && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Lifestyle fit</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.lifestyleFit}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.layoutThoughts && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Layout thoughts</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.layoutThoughts}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.neighborhoodThoughts && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Neighborhood thoughts</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.neighborhoodThoughts}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.conditionConcerns && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Condition concerns</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.conditionConcerns}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.nextStep && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Next step</p>
+                  <p className="text-sm text-muted-foreground capitalize">{feedbackDetail.rating.feedback.nextStep.replace(/_/g, ' ')}</p>
+                </div>
+              )}
+              {feedbackDetail.rating.feedback.investigateRequest && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Wants investigated</p>
+                  <p className="text-sm text-muted-foreground">{feedbackDetail.rating.feedback.investigateRequest}</p>
+                </div>
+              )}
+
+              {/* Client photos in this dialog too */}
+              {feedbackDetail.property.client_photos && feedbackDetail.property.client_photos.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-2">Client Photos</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {feedbackDetail.property.client_photos.map((photo) => (
+                      <img
+                        key={photo.id}
+                        src={photo.file_url}
+                        alt="Client photo"
+                        className="w-24 h-24 rounded-lg object-cover cursor-pointer flex-shrink-0 hover:opacity-80 transition-opacity"
+                        onClick={() => window.open(photo.file_url, '_blank')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
