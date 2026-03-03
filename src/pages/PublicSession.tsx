@@ -293,6 +293,19 @@ const PublicSession = () => {
         metadata: { client_name: sessionData.client_name },
       });
 
+      // Notify agent that client opened the session (once per browser session)
+      const viewedKey = `hf_viewed_${sessionData.id}`;
+      if (!sessionStorage.getItem(viewedKey)) {
+        sessionStorage.setItem(viewedKey, '1');
+        supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'session_viewed',
+            sessionId: sessionData.id,
+            shareToken: token,
+          },
+        });
+      }
+
       // Success - reset retry count
       setRetryCount(0);
       setLoading(false);
@@ -1260,6 +1273,8 @@ const PublicSession = () => {
                       <ClientPhotoUploadButton
                         propertyId={property.id}
                         shareToken={token!}
+                        sessionId={session!.id}
+                        propertyAddress={property.address}
                         onPhotoUploaded={(photo) => {
                           setProperties(prev => prev.map(p =>
                             p.id === property.id

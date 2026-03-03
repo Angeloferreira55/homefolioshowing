@@ -1,14 +1,17 @@
 import { useState, useRef } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientPhotoUploadButtonProps {
   propertyId: string;
   shareToken: string;
+  sessionId: string;
+  propertyAddress: string;
   onPhotoUploaded: (photo: { id: string; file_url: string; caption: string | null; created_at: string }) => void;
 }
 
-export function ClientPhotoUploadButton({ propertyId, shareToken, onPhotoUploaded }: ClientPhotoUploadButtonProps) {
+export function ClientPhotoUploadButton({ propertyId, shareToken, sessionId, propertyAddress, onPhotoUploaded }: ClientPhotoUploadButtonProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +60,16 @@ export function ClientPhotoUploadButton({ propertyId, shareToken, onPhotoUploade
         created_at: new Date().toISOString(),
       });
       toast.success('Photo uploaded!');
+
+      // Notify agent (fire and forget)
+      supabase.functions.invoke('send-notification-email', {
+        body: {
+          type: 'client_photo_uploaded',
+          sessionId,
+          shareToken,
+          propertyAddress,
+        },
+      });
     } catch (error: any) {
       console.error('Client photo upload error:', error);
       toast.error(error.message || 'Failed to upload photo');

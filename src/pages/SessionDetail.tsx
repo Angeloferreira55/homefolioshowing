@@ -87,7 +87,6 @@ import { SortablePropertyCard } from '@/components/showings/SortablePropertyCard
 import { BulkActionsBar } from '@/components/showings/BulkActionsBar';
 import { MoveToSessionDialog } from '@/components/showings/MoveToSessionDialog';
 import { trackEvent } from '@/hooks/useAnalytics';
-import { sendNotificationEmail } from '@/hooks/useNotifications';
 import { getPublicShareOrigin } from '@/lib/publicShareOrigin';
 import { Card } from '@/components/ui/card';
 import {
@@ -935,13 +934,6 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
 
       toast.success('Property added!');
       fetchProperties();
-
-      // Send email notification (fire and forget)
-      sendNotificationEmail({
-        type: 'property_added',
-        sessionId: id!,
-        propertyAddress: data.address,
-      });
     } catch (error: any) {
       console.error('Add property error:', error);
       toast.error(error.message || 'Failed to add property');
@@ -1481,12 +1473,6 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
         metadata: { client_name: session.client_name },
       });
 
-      // Send email notification (fire and forget)
-      sendNotificationEmail({
-        type: 'session_shared',
-        sessionId: session.id,
-        shareLink: link,
-      });
     }
   };
 

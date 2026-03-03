@@ -1,12 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationPayload {
-  type: 'session_shared' | 'property_added' | 'feedback_submitted';
+  type: 'feedback_submitted' | 'session_viewed' | 'client_photo_uploaded';
   sessionId: string;
+  shareToken: string;
   propertyAddress?: string;
   rating?: number;
   feedback?: Record<string, unknown>;
-  shareLink?: string;
 }
 
 export async function sendNotificationEmail(payload: NotificationPayload): Promise<boolean> {
