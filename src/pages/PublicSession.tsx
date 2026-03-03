@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, CalendarPlus, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Package, CheckCircle2, ClipboardList, Camera } from 'lucide-react';
+import { Home, Calendar, CalendarPlus, MapPin, Star, FileText, Image, Scale, Heart, Navigation, Clock, RefreshCw, Printer, Download, Package, CheckCircle2, ClipboardList, Camera, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PropertyFeedbackDialog from '@/components/public/PropertyFeedbackDialog';
@@ -117,6 +117,44 @@ const PublicSession = () => {
   // Pop-By delivery state
   const isPopBy = session?.session_type === 'pop_by';
   const [deliveryDialogProperty, setDeliveryDialogProperty] = useState<SessionProperty | null>(null);
+
+  // Client photo deletion
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+
+  const handleDeleteClientPhoto = async (propertyId: string, photoId: string) => {
+    if (!token) return;
+    setDeletingPhotoId(photoId);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-client-photo`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ photoId, token }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete photo');
+      }
+
+      setProperties(prev => prev.map(p =>
+        p.id === propertyId
+          ? { ...p, client_photos: (p.client_photos || []).filter(ph => ph.id !== photoId) }
+          : p
+      ));
+      toast.success('Photo deleted');
+    } catch (error: any) {
+      console.error('Delete photo error:', error);
+      toast.error(error.message || 'Failed to delete photo');
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
 
   // Helper to get/set cached access with 2-hour expiration
   const ACCESS_CACHE_KEY = `homefolio_access_${token}`;
@@ -1287,13 +1325,33 @@ const PublicSession = () => {
                     {property.client_photos && property.client_photos.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
                         {property.client_photos.map((photo) => (
-                          <div key={photo.id} className="relative flex-shrink-0">
+                          <div key={photo.id} className="relative flex-shrink-0 group">
                             <img
                               src={photo.file_url}
-                              alt="Client photo"
+                              alt={photo.caption || 'Client photo'}
                               className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover cursor-pointer touch-target"
                               onClick={() => window.open(photo.file_url, '_blank')}
                             />
+                            {photo.caption && (
+                              <span className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/60 rounded-b-lg px-1 py-0.5 truncate">
+                                {photo.caption}
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClientPhoto(property.id, photo.id);
+                              }}
+                              disabled={deletingPhotoId === photo.id}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity print:hidden"
+                              style={{ opacity: deletingPhotoId === photo.id ? 1 : undefined }}
+                            >
+                              {deletingPhotoId === photo.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <X className="w-3 h-3" />
+                              )}
+                            </button>
                           </div>
                         ))}
                       </div>

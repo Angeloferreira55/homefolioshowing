@@ -78,6 +78,12 @@ verify_jwt = false
 [functions.update-welcome-password]
 verify_jwt = false
 
+[functions.upload-client-photo]
+verify_jwt = false
+
+[functions.delete-client-photo]
+verify_jwt = false
+
 [functions.upload-delivery-photo]
 verify_jwt = false
 

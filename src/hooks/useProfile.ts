@@ -29,6 +29,10 @@ export interface Profile {
   mls_api_secret: string | null;
   mls_board_id: string | null;
   mls_provider: string | null;
+  // Notification preferences
+  notify_session_viewed: boolean;
+  notify_feedback_submitted: boolean;
+  notify_photo_uploaded: boolean;
   // Team fields
   role: string | null;
   team_id: string | null;
@@ -58,6 +62,10 @@ export interface ProfileUpdate {
   mls_api_secret?: string;
   mls_board_id?: string;
   mls_provider?: string;
+  // Notification preferences
+  notify_session_viewed?: boolean;
+  notify_feedback_submitted?: boolean;
+  notify_photo_uploaded?: boolean;
 }
 
 export function useProfile() {
@@ -118,6 +126,9 @@ export function useProfile() {
           mls_api_secret: null,
           mls_board_id: null,
           mls_provider: null,
+          notify_session_viewed: true,
+          notify_feedback_submitted: true,
+          notify_photo_uploaded: true,
           role: null,
           team_id: null,
         });

@@ -61,6 +61,7 @@ import {
   Download,
   Camera,
   MessageSquare,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -200,6 +201,7 @@ interface SortableGalleryCardProps {
   drivingMinutes: number | null;
   drivingFromStart: number | null;
   onPhotoUploaded?: () => void;
+  onDeleteClientPhoto?: (photoId: string) => void;
   isPopBy?: boolean;
   showingDuration?: number;
   onShowingDurationChange?: (id: string, minutes: number) => void;
@@ -222,6 +224,7 @@ const SortableGalleryCard = ({
   drivingMinutes,
   drivingFromStart,
   onPhotoUploaded,
+  onDeleteClientPhoto,
   isPopBy = false,
   showingDuration = 30,
   onShowingDurationChange,
@@ -518,13 +521,27 @@ const SortableGalleryCard = ({
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {property.client_photos.map((photo) => (
-                  <img
-                    key={photo.id}
-                    src={photo.file_url}
-                    alt="Client photo"
-                    className="w-20 h-20 rounded-lg object-cover cursor-pointer flex-shrink-0 hover:opacity-80 transition-opacity border border-blue-200 dark:border-blue-800"
-                    onClick={() => window.open(photo.file_url, '_blank')}
-                  />
+                  <div key={photo.id} className="relative flex-shrink-0 group">
+                    <img
+                      src={photo.file_url}
+                      alt={photo.caption || 'Client photo'}
+                      className="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity border border-blue-200 dark:border-blue-800"
+                      onClick={() => window.open(photo.file_url, '_blank')}
+                    />
+                    {photo.caption && (
+                      <span className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/60 rounded-b-lg px-1 py-0.5 truncate">
+                        {photo.caption}
+                      </span>
+                    )}
+                    {onDeleteClientPhoto && (
+                      <button
+                        onClick={() => onDeleteClientPhoto(photo.id)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -666,6 +683,41 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       fetchAgentLogo();
     }
   }, [id]);
+
+  // Realtime subscription for client photos and feedback
+  useEffect(() => {
+    if (!id || !properties.length) return;
+
+    const propertyIds = properties.map(p => p.id);
+
+    const photosChannel = supabase
+      .channel(`client-photos-${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_photos' },
+        (payload) => {
+          const propId = (payload.new as any)?.session_property_id || (payload.old as any)?.session_property_id;
+          if (propertyIds.includes(propId)) {
+            fetchProperties();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'property_ratings' },
+        (payload) => {
+          const propId = (payload.new as any)?.session_property_id || (payload.old as any)?.session_property_id;
+          if (propertyIds.includes(propId)) {
+            fetchProperties();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(photosChannel);
+    };
+  }, [id, properties.length]);
 
   // Load saved addresses from localStorage
   useEffect(() => {
@@ -1149,6 +1201,48 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       toast.success('Property restored');
     } catch (error) {
       toast.error('Failed to restore property');
+    }
+  };
+
+  const handleDeleteClientPhoto = async (photoId: string) => {
+    try {
+      // Get photo record to find the storage path
+      const { data: photo } = await supabase
+        .from('client_photos')
+        .select('file_url')
+        .eq('id', photoId)
+        .single();
+
+      // Delete storage file
+      if (photo?.file_url) {
+        try {
+          const url = new URL(photo.file_url);
+          const pathParts = url.pathname.split('/client-photos/');
+          if (pathParts[1]) {
+            await supabase.storage.from('client-photos').remove([pathParts[1]]);
+          }
+        } catch (e) {
+          console.error('Storage delete error (non-fatal):', e);
+        }
+      }
+
+      // Delete database record
+      const { error } = await supabase
+        .from('client_photos')
+        .delete()
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      // Update locally
+      setProperties(prev => prev.map(p => ({
+        ...p,
+        client_photos: (p.client_photos || []).filter(ph => ph.id !== photoId),
+      })));
+      toast.success('Client photo deleted');
+    } catch (error) {
+      console.error('Delete client photo error:', error);
+      toast.error('Failed to delete photo');
     }
   };
 
@@ -2769,6 +2863,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                           drivingMinutes={drivingMinutes}
                           drivingFromStart={startDrivingMinutes}
                           onPhotoUploaded={fetchProperties}
+                          onDeleteClientPhoto={handleDeleteClientPhoto}
                           isPopBy={isPopBy}
                           showingDuration={showingDurations[property.id] || 30}
                           onShowingDurationChange={(id, minutes) => setShowingDurations(prev => ({ ...prev, [id]: minutes }))}

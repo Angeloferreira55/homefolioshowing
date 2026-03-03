@@ -302,6 +302,9 @@ export type Database = {
           mls_api_secret: string | null
           mls_board_id: string | null
           mls_provider: string | null
+          notify_feedback_submitted: boolean
+          notify_photo_uploaded: boolean
+          notify_session_viewed: boolean
           phone: string | null
           slogan: string | null
           twitter_url: string | null
@@ -331,6 +334,9 @@ export type Database = {
           mls_api_secret?: string | null
           mls_board_id?: string | null
           mls_provider?: string | null
+          notify_feedback_submitted?: boolean
+          notify_photo_uploaded?: boolean
+          notify_session_viewed?: boolean
           phone?: string | null
           slogan?: string | null
           twitter_url?: string | null
@@ -360,6 +366,9 @@ export type Database = {
           mls_api_secret?: string | null
           mls_board_id?: string | null
           mls_provider?: string | null
+          notify_feedback_submitted?: boolean
+          notify_photo_uploaded?: boolean
+          notify_session_viewed?: boolean
           phone?: string | null
           slogan?: string | null
           twitter_url?: string | null

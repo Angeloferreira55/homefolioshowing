@@ -14,6 +14,7 @@ Deno.serve(async (req) => {
     const token = formData.get('token') as string;
     const propertyId = formData.get('propertyId') as string;
     const file = formData.get('photo') as File;
+    const caption = (formData.get('caption') as string) || null;
 
     if (!token || !propertyId || !file) {
       return new Response(
@@ -109,7 +110,7 @@ Deno.serve(async (req) => {
       .insert({
         session_property_id: propertyId,
         file_url: publicUrl,
-        caption: null,
+        caption: caption?.slice(0, 100) || null,
       })
       .select('id')
       .single();

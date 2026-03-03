@@ -26,6 +26,7 @@ import {
   RotateCcw,
   AlertCircle,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 
 // X/Twitter icon (not in lucide-react)
@@ -37,6 +38,7 @@ const XIcon = ({ className }: { className?: string }) => (
 import AdminLayout from '@/components/layout/AdminLayout';
 import ProfileSkeleton from '@/components/skeletons/ProfileSkeleton';
 import ImageCropDialog from '@/components/ui/ImageCropDialog';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { supabase } from '@/integrations/supabase/client';
@@ -592,6 +594,59 @@ const Profile = () => {
                     />
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notification Preferences */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-display flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Email Notifications
+              </CardTitle>
+              <CardDescription>
+                Choose which email notifications you receive when clients interact with your sessions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Session Viewed</p>
+                  <p className="text-xs text-muted-foreground">When a client opens your session link</p>
+                </div>
+                <Switch
+                  checked={profile?.notify_session_viewed ?? true}
+                  onCheckedChange={async (checked) => {
+                    await updateProfile({ notify_session_viewed: checked } as any);
+                  }}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Feedback Submitted</p>
+                  <p className="text-xs text-muted-foreground">When a client rates or reviews a property</p>
+                </div>
+                <Switch
+                  checked={profile?.notify_feedback_submitted ?? true}
+                  onCheckedChange={async (checked) => {
+                    await updateProfile({ notify_feedback_submitted: checked } as any);
+                  }}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Photo Uploaded</p>
+                  <p className="text-xs text-muted-foreground">When a client uploads a photo to a property</p>
+                </div>
+                <Switch
+                  checked={profile?.notify_photo_uploaded ?? true}
+                  onCheckedChange={async (checked) => {
+                    await updateProfile({ notify_photo_uploaded: checked } as any);
+                  }}
+                />
               </div>
             </CardContent>
           </Card>

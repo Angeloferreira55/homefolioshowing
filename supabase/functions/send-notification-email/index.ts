@@ -62,16 +62,58 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get agent profile
+    // Get agent profile with notification preferences
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('email, full_name')
+      .select('email, full_name, notify_session_viewed, notify_feedback_submitted, notify_photo_uploaded')
       .eq('user_id', sessionData.admin_id)
       .single();
 
     if (profileError || !profile?.email) {
       console.error('Agent profile not found');
       throw new Error('Agent profile not found');
+    }
+
+    // Check notification preferences
+    const prefMap: Record<string, boolean> = {
+      session_viewed: profile.notify_session_viewed ?? true,
+      feedback_submitted: profile.notify_feedback_submitted ?? true,
+      client_photo_uploaded: profile.notify_photo_uploaded ?? true,
+    };
+
+    if (prefMap[type] === false) {
+      console.log(`Notification ${type} disabled by agent preferences`);
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: 'disabled_by_preference' }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Throttle session_viewed to once per 24 hours per session
+    if (type === 'session_viewed') {
+      const { data: sessionRow } = await supabase
+        .from('showing_sessions')
+        .select('last_view_notified_at')
+        .eq('id', sessionId)
+        .single();
+
+      const lastNotified = sessionRow?.last_view_notified_at;
+      if (lastNotified) {
+        const hoursSince = (Date.now() - new Date(lastNotified).getTime()) / (1000 * 60 * 60);
+        if (hoursSince < 24) {
+          console.log(`Throttled session_viewed for ${sessionId} (last sent ${hoursSince.toFixed(1)}h ago)`);
+          return new Response(
+            JSON.stringify({ success: true, skipped: true, reason: 'throttled_24h' }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // Update the timestamp
+      await supabase
+        .from('showing_sessions')
+        .update({ last_view_notified_at: new Date().toISOString() })
+        .eq('id', sessionId);
     }
 
     let subject = '';
