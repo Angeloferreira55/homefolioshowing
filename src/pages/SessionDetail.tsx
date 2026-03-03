@@ -860,11 +860,14 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
       // Fetch client photos in bulk
       let photosByProperty: Record<string, ClientPhoto[]> = {};
       if (propertyIds.length > 0) {
-        const { data: photosData } = await supabase
+        const { data: photosData, error: photosError } = await supabase
           .from('client_photos')
           .select('id, file_url, caption, created_at, session_property_id')
           .in('session_property_id', propertyIds)
           .order('created_at', { ascending: false });
+
+        if (photosError) console.error('Client photos fetch error:', photosError);
+        console.log('Client photos fetched:', photosData?.length ?? 0, 'for', propertyIds.length, 'properties');
 
         (photosData || []).forEach(photo => {
           if (!photosByProperty[photo.session_property_id]) {
@@ -892,6 +895,8 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
               .eq('session_property_id', prop.id)
               .maybeSingle()
           ]);
+
+          if (ratingResult.error) console.error('Rating fetch error for', prop.id, ratingResult.error);
 
           let rating: PropertyRating | undefined;
           if (ratingResult.data) {
