@@ -81,6 +81,8 @@ import QRCodeDialog from '@/components/showings/QRCodeDialog';
 import PropertyDocumentsDialog from '@/components/showings/PropertyDocumentsDialog';
 
 import AddressTemplatesDialog from '@/components/showings/AddressTemplatesDialog';
+import { pdf } from '@react-pdf/renderer';
+import { SessionFeedbackPDF } from '@/components/showings/SessionFeedbackPDF';
 import { useActiveAgent } from '@/hooks/useActiveAgent';
 import AdminLayout from '@/components/layout/AdminLayout';
 import SessionDetailSkeleton from '@/components/skeletons/SessionDetailSkeleton';
@@ -653,6 +655,7 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [feedbackDetail, setFeedbackDetail] = useState<{ property: SessionProperty; rating: PropertyRating } | null>(null);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   // Compute filtered properties for display (tag filter for pop-by)
   const filteredProperties = activeTagFilter
@@ -778,6 +781,57 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
     saveAddressToList(newAddressLabel, startingAddress);
     setNewAddressLabel('');
     setShowSaveAddressDialog(false);
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!session) return;
+    setDownloadingPDF(true);
+    try {
+      // Fetch agent profile for footer info
+      let agentName: string | undefined;
+      let agentPhone: string | undefined;
+      let agentEmail: string | undefined;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, phone, email')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (profile) {
+          agentName = profile.full_name || undefined;
+          agentPhone = profile.phone || undefined;
+          agentEmail = profile.email || undefined;
+        }
+      }
+
+      const blob = await pdf(
+        <SessionFeedbackPDF
+          session={{
+            title: session.title,
+            client_name: session.client_name,
+            session_date: session.session_date,
+            agentName,
+            agentPhone,
+            agentEmail,
+          }}
+          properties={properties}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${session.title.replace(/[^a-z0-9]/gi, '_')}_feedback_report.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF report downloaded!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF report');
+    } finally {
+      setDownloadingPDF(false);
+    }
   };
 
   const fetchAgentLogo = async () => {
@@ -2158,6 +2212,19 @@ const [endingAddress, setEndingAddress] = useState({ street: '', city: '', state
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9 text-xs sm:text-sm"
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+            >
+              {downloadingPDF
+                ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                : <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              }
+              {downloadingPDF ? 'Generating...' : 'PDF Report'}
+            </Button>
             <Button
               variant="destructive"
               size="sm"

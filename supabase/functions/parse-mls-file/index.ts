@@ -40,90 +40,133 @@ interface PropertyData {
   features?: string[];
 }
 
-const extractionPrompt = `You are an expert MLS document parser supporting ALL regional MLS formats (New Mexico, California, Texas, etc.). Your job is to extract ALL property listing data with MAXIMUM accuracy.
+const extractionPrompt = `You are an expert MLS document parser supporting ALL regional MLS formats (California CRMLS/Skyslope, New Mexico, Texas, etc.). Your job is to extract ALL property listing data with MAXIMUM accuracy.
 
 CRITICAL INSTRUCTIONS:
 1. Look CAREFULLY at the ENTIRE document for each data point - check ALL pages
 2. Numbers like price, beds, baths, sqft are ALWAYS present - search thoroughly
-3. Read field labels EXACTLY - don't guess or assume values
-4. For heating/cooling, copy the EXACT text from the document
+3. Read field labels EXACTLY - do not guess or assume values
+4. If a field is present but BLANK/EMPTY (e.g., "HEATING:  " with nothing after it), return null - do NOT guess or invent a value
+5. For heating/cooling, copy the EXACT text from the document
 
-PRICE variations by region:
-   - Standard: "List Price:", "Asking Price:", "Price:", "Listing Price:"
-   - California MLS: "List Price:", "LP:", "Listing Price:"
+══════════════════════════════════════════════════
+CALIFORNIA CRMLS / SKYSLOPE FORMAT (most common)
+══════════════════════════════════════════════════
+
+ADDRESS — In CRMLS the address is ONLY in the page header as:
+  "702 Diamond, Laguna Beach 92651"  →  street="702 Diamond", city="Laguna Beach", zip="92651", state="CA"
+  "2621 Victoria Dr, Laguna Beach 92651"  →  street="2621 Victoria Dr", city="Laguna Beach", zip="92651", state="CA"
+  The state is NEVER written explicitly — infer "CA" from the California city names.
+
+BEDS / BATHS — CRMLS uses this exact format:
+  "BED / BATH: 3/2,0,1,0"
+  Parse as: beds=3, then baths = full + (half × 0.5) + (¾ × 0.75)
+  The four numbers after the "/" are: full, three-quarter, half, quarter baths
+  Examples:
+    3/2,0,1,0  →  beds=3, baths=2.5  (2 full + 1 half)
+    3/3,0,1,0  →  beds=3, baths=3.5  (3 full + 1 half)
+    4/3,1,0,0  →  beds=4, baths=3.75 (3 full + 1 three-quarter)
+    2/2,0,0,0  →  beds=2, baths=2.0  (2 full only)
+
+SQUARE FOOTAGE — CRMLS format: "SQFT(src): 1,740 (AP)"
+  Strip the source code in parentheses: (AP), (E), (ASR), (A), (B), (T), etc.
+  Extract only the number: 1740
+
+YEAR BUILT — CRMLS format: "YEAR BUILT(src): 1941 (ASR)"
+  Strip source code, extract year: 1941
+
+LOT SIZE — CRMLS format: "LOT(src): 2,400/0.0551 (A)"
+  Format is: sqft/acres (source). Extract acres = 0.0551
+  If only sqft shown, convert: lotSizeAcres = sqft / 43560
+
+DAYS ON MARKET — CRMLS calls it "DAM / CDAM: 28/28"
+  Use the first number (DAM) as daysOnMarket
+
+LISTING ID — CRMLS calls it "LISTING ID: NP25279099" (not "MLS#")
+  Also accept: "MLS#", "Matrix ID", "Listing Number"
+
+PARCEL NUMBER — CRMLS calls it "PARCEL #: 65615125" (not "APN")
+  Use this as the apn field
+
+PRICE — Always in header: "LIST PRICE: $4,395,000" or top-right of page
+  Remove $ and commas: 4395000
+
+GARAGE — CRMLS format: "GARAGE: 2/Attached" or "GARAGE: 3/Detached"
+  Extract number before "/" as garageSpaces
+
+HOA — CRMLS: "HOA FEE: $0" means no HOA (hasHoa=false, hoaFee=null)
+  Only set hasHoa=true if fee > 0 or HOA name is present
+
+COOLING/HEATING — Copy EXACTLY as written after the label.
+  If field label exists but value is blank/empty, return null.
+  "COOLING: Central Air" → "Central Air"
+  "HEATING: Forced Air" → "Forced Air"
+  "COOLING: None" → "None"
+  "HEATING:  " (blank) → null
+
+═══════════════════════════════════
+OTHER REGIONAL FORMATS
+═══════════════════════════════════
+
+PRICE variations:
+   - "List Price:", "Asking Price:", "Price:", "LP:", "Listing Price:"
    - New Mexico MLS: "Price:", "List Price:"
-   - Look in header, details section, or pricing grid
 
-BEDROOM/BATH variations:
+BEDROOM/BATH variations (non-CRMLS):
    - "3 BR / 2 BA", "Beds: 3, Baths: 2", "3BD/2BA", "Bedrooms: 3"
-   - California: "Bedrooms:", "# Bedrooms:", "BR:", "Total Bedrooms:"
-   - Sometimes in property details grid or table
    - Full baths + half baths = total (e.g., 2 full + 1 half = 2.5)
 
-SQUARE FOOTAGE variations:
-   - "Sq Ft", "Living Area", "SqFt", "Approx SqFt", "Total Sq Ft", "Square Feet"
-   - California: "Approx. Living Area", "Living Space", "Interior Sq Ft"
-   - Look for the LIVING area sqft, not lot size
-
-ADDRESS:
-   - Full address may be in header, footer, or property details section
-   - California often includes county name
-   - Format: street number + street name only (e.g., "123 Main Street")
-
-HEATING & COOLING - CRITICAL (Copy EXACTLY as written):
-   - Common heating: "Central Heat", "Forced Air", "Gas Heat", "Heat Pump", "Electric", "Radiant", "Baseboard", "Wall Heater", "None"
-   - Common cooling: "Central Air", "AC", "Air Conditioning", "Evaporative Cooler", "Swamp Cooler", "Window Unit", "None"
-   - DO NOT guess - only extract if clearly labeled as "Heating:" or "Cooling:"
-   - If it says "Central Air", use that EXACTLY, not "Air Conditioning"
+HEATING & COOLING (non-CRMLS):
+   - "Central Heat", "Forced Air", "Gas Heat", "Heat Pump", "Electric", "Radiant", "Baseboard", "Wall Heater", "None"
+   - "Central Air", "AC", "Air Conditioning", "Evaporative Cooler", "Swamp Cooler", "Window Unit", "None"
    - If multiple values listed, include all (e.g., "Forced Air, Heat Pump")
 
-REGIONAL FORMAT SUPPORT:
-- California MLS (CRMLS, MLSListings, etc.): Look for "Parcel Number", "APN", "Mello-Roos", "HOA", community names
-- New Mexico MLS: Look for "MLS#", "DOM", standard fields
-- All formats: Adapt to table layouts, grid formats, or narrative descriptions
+═══════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════
 
 Return a JSON array with one object per property. Use these EXACT field names:
 
-REQUIRED FIELDS (search thoroughly, these should almost always be found):
-- address: string (street address only, e.g., "123 Main Street NE")
-- city: string (city name)
-- state: string (2-letter abbreviation, e.g., "NM", "TX")
-- zipCode: string (5-digit zip code)
-- price: number (list price as integer, e.g., 499000 not "$499,000")
-- beds: number (total bedrooms as integer)
-- baths: number (total bathrooms, can be decimal like 2.5)
-- sqft: number (living area square footage as integer)
+REQUIRED FIELDS:
+- address: string (street address only, no city/state/zip)
+- city: string
+- state: string (2-letter, e.g., "CA", "NM", "TX")
+- zipCode: string (5-digit)
+- price: number (integer, no $ or commas)
+- beds: number (integer)
+- baths: number (decimal, e.g., 2.5)
+- sqft: number (living area only, integer)
 
-ADDITIONAL FIELDS (extract if present, use null if not found):
-- mlsNumber: string (MLS listing number/ID, may be labeled "MLS#", "Listing ID", "Matrix ID")
-- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse", "SFR")
-- daysOnMarket: number (DOM, CDOM, or "Days on Market" value)
-- yearBuilt: number (4-digit year, e.g., 1985)
-- pricePerSqft: number (price per square foot, may need to calculate)
-- lotSizeAcres: number (lot size in acres, convert from sqft if needed: sqft/43560)
-- garageSpaces: number (number of garage spaces, may be "attached" or "detached")
-- roof: string (roof type/material, e.g., "Composition Shingle", "Tile", "Metal")
-- heating: string (EXACT heating type from document - Common: "Central Heat", "Forced Air", "Gas Heat", "Heat Pump", "Electric", "None")
-- cooling: string (EXACT cooling type from document - Common: "Central Air", "AC", "Air Conditioning", "Evaporative Cooler", "None")
-- taxAnnualAmount: number (annual tax amount, may be "Annual Taxes")
-- hasHoa: boolean (true if HOA/Association mentioned)
-- hoaFee: number (HOA fee amount if applicable)
-- hoaFeeFrequency: string (e.g., "Monthly", "Quarterly", "Annually")
-- hasPid: boolean (true if PID/Special assessment is present)
-- county: string (county name, especially important for California MLS)
-- apn: string (California: Assessor's Parcel Number / APN)
-- melloroos: boolean (California: true if Mello-Roos tax mentioned)
-- communityName: string (planned community, subdivision, or development name)
-- schoolDistrict: string (school district name if mentioned)
-- publicRemarks: string (full public remarks/description text)
-- summary: string (generate 3-5 bullet points highlighting KEY selling features, format as "• Feature 1\\n• Feature 2\\n• Feature 3")
-- features: string[] (array of notable features, e.g., ["Hardwood Floors", "Updated Kitchen", "Pool", "Mountain Views"])
+ADDITIONAL FIELDS (null if not found):
+- mlsNumber: string (LISTING ID, MLS#, Matrix ID, Listing Number)
+- propertySubType: string (e.g., "Single Family Residence", "Condo", "Townhouse")
+- daysOnMarket: number (DAM, DOM, CDOM, or Days on Market)
+- yearBuilt: number (4-digit year)
+- pricePerSqft: number
+- lotSizeAcres: number (in acres, convert if needed)
+- garageSpaces: number
+- roof: string
+- heating: string (EXACT text, null if blank/missing)
+- cooling: string (EXACT text, null if blank/missing)
+- taxAnnualAmount: number
+- hasHoa: boolean (true only if fee > 0 or named HOA exists)
+- hoaFee: number (null if $0)
+- hoaFeeFrequency: string
+- hasPid: boolean
+- county: string
+- apn: string (PARCEL # or APN)
+- melloroos: boolean
+- communityName: string (SUBDIVISION field in CRMLS)
+- schoolDistrict: string (HIGH SCHOOL DISTRICT field in CRMLS)
+- publicRemarks: string (DESCRIPTION section full text)
+- summary: string (3-5 bullet points of KEY selling features: "• Feature 1\\n• Feature 2\\n• Feature 3")
+- features: string[] (notable features array)
 
-IMPORTANT:
-- Return ONLY a valid JSON array, no markdown code blocks or explanation
-- Each property is a separate object in the array
-- Use null for truly missing values, but try hard to find the required fields
-- Clean numeric values: remove $ and commas (e.g., "$499,000" → 499000)`;
+RULES:
+- Return ONLY a valid JSON array, no markdown, no explanation
+- Each property is a separate object
+- null for missing/blank values — never invent data
+- Strip all $ and commas from numbers`;
 
 async function processInBackground(
   jobId: string,
@@ -352,7 +395,7 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         instructions: extractionPrompt,
         input: [
           {
@@ -360,7 +403,7 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
             content: [
               {
                 type: 'input_text',
-                text: 'Extract ALL property data from this MLS document with MAXIMUM accuracy. Pay special attention to:\n\n1. CRITICAL FIELDS (must find): PRICE, BEDROOMS, BATHROOMS, SQUARE FOOTAGE, ADDRESS\n2. HEATING & COOLING: Copy the EXACT text as shown. Do NOT interpret or change the wording. If it says "Central Air", write "Central Air" (not "AC" or "Air Conditioning"). If it says "Forced Air", write "Forced Air" (not "Central Heat").\n3. Read ALL pages of the document carefully\n4. Look for data in tables, grids, and text sections\n5. For California MLS: also extract APN, county, Mello-Roos\n6. Use OCR for scanned documents\n\nCommon field locations:\n- Price: Usually near top as "List Price:", "LP:", or "Price:"\n- Beds/Baths: Often as "3BR/2BA" or in details grid\n- Sqft: Look for "Living Area:", "Sq Ft:", "Total Sq Ft:"\n- Heating/Cooling: Usually in property features or details section'
+                text: 'Extract ALL property data from this MLS document. This may be a California CRMLS/Skyslope sheet or another regional format.\n\nCRITICAL for CRMLS/California sheets:\n1. ADDRESS is ONLY in the page header (e.g., "702 Diamond, Laguna Beach 92651") — parse street, city, zip from there. State = "CA" (never written explicitly).\n2. BED/BATH format "3/2,0,1,0" means beds=3, baths=2+0.5=2.5 (full,¾,half,¼). Calculate total baths correctly.\n3. SQFT(src), YEAR BUILT(src), LOT(src) — strip the source code in parentheses like (AP), (E), (ASR).\n4. LOT(src): "2400/0.0551 (A)" — acres are after the slash: 0.0551.\n5. LISTING ID is the mlsNumber. PARCEL # is the apn.\n6. DAM in "DAM / CDAM" is Days on Market.\n7. HEATING or COOLING field that is blank/empty after the colon → return null, do NOT guess.\n8. HOA FEE $0 → hasHoa=false, hoaFee=null.\n9. GARAGE "2/Attached" → garageSpaces=2.\n\nFor ALL formats: price is always near the top. Read every page carefully.'
               },
               {
                 type: 'input_file',
@@ -370,7 +413,7 @@ async function extractPdfWithVisionApi(fileData: Blob, apiKey: string): Promise<
             ]
           }
         ],
-        temperature: 0.1,
+        temperature: 0,
       }),
     });
 
